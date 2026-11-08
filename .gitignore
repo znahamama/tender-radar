@@ -9,3 +9,6 @@ sample_descriptions.txt
 *.tfstate*
 .DS_Store
 staticfiles/
+data/
+# test fixtures are hand-made fake CSVs
+!backend/tenders/tests/fixtures/*.csv
