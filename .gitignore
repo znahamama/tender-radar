@@ -8,3 +8,4 @@ sample_descriptions.txt
 .terraform/
 *.tfstate*
 .DS_Store
+staticfiles/
