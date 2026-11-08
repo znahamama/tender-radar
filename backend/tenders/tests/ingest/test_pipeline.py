@@ -5,11 +5,9 @@ from tenders.ingest.schema import TenderNotice
 
 from .conftest import FY_FAKE, OPEN_FAKE
 
-NOW = datetime(2026, 11, 7, tzinfo=UTC)
-
 
 def _run(*paths):
-    return run(paths or [OPEN_FAKE, FY_FAKE], now=NOW)
+    return run(paths or [OPEN_FAKE, FY_FAKE])
 
 
 def test_run_counts_and_filters():

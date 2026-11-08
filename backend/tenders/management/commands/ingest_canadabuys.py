@@ -48,7 +48,7 @@ class Command(BaseCommand):
                 raise CommandError(f"Not a file: {p}")
 
         now = datetime.now(UTC)
-        result = run(paths, now=now)
+        result = run(paths)
         s = result.stats
         nl, it, nat, kept_refs = result.nl, result.it, result.national, result.kept_refs
         kept = result.kept

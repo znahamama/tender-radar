@@ -8,6 +8,7 @@ from tenders.ingest.filters import (
     is_nl,
     notice_kind,
     region_scope,
+    sa_required_from_metadata,
 )
 from tenders.ingest.schema import TenderNotice
 
@@ -132,14 +133,27 @@ def test_is_kept(regions, unspsc, gsin, kept, dropped_it):
 @pytest.mark.parametrize(
     "kw, expected",
     [
-        ({"notice_type": "Request for Standing Offer"}, "standing_or_ongoing"),
-        ({"notice_type": "RFP against Supply Arrangement"}, "standing_or_ongoing"),
-        ({"title": "Ongoing qualification for IT pros"}, "standing_or_ongoing"),
-        ({"description": "Open to pre-qualified suppliers only."}, "standing_or_ongoing"),
-        ({"description": "Only prequalified firms may bid."}, "standing_or_ongoing"),
-        ({"data_quality": ["placeholder_closing_date"]}, "standing_or_ongoing"),
+        # notice type
+        ({"notice_type": "RFP against Supply Arrangement"}, "against_sa"),
+        ({"notice_type": "Call-up against Standing Offer"}, "against_sa"),
+        ({"notice_type": "Request for Standing Offer"}, "sa_or_so_request"),
+        ({"notice_type": "Request for Supply Arrangement"}, "sa_or_so_request"),
+        # type beats title: an RFSA refresh that names the SA method is still a request
+        ({"notice_type": "Request for Supply Arrangement", "title": "ProServices refresh"},
+         "sa_or_so_request"),
+        # title equivalents
+        ({"notice_type": "Request for Proposal", "title": "TBIPS: Business Analyst"}, "against_sa"),
+        ({"title": "Data work against the TSPS Supply Arrangement"}, "against_sa"),
+        ({"title": "RFSO for fuel delivery"}, "sa_or_so_request"),
+        ({"title": "Ongoing qualification for IT pros"}, "sa_or_so_request"),
+        ({"title": "Standing Offer for janitorial services"}, "sa_or_so_request"),
+        # placeholder closing date
+        ({"data_quality": ["placeholder_closing_date"]}, "sa_or_so_request"),
+        # description-only mentions no longer set the kind
+        ({"description": "Open to pre-qualified suppliers only."}, "regular"),
+        ({"description": "This is not a standing offer."}, "regular"),
         ({"notice_type": "Request for Proposal", "title": "Laptop refresh"}, "regular"),
-        ({"description": "Supply of ten arrangements of flowers"}, "regular"),
+        ({"title": "SA and SO staffing"}, "regular"),  # bare SA/SO tokens are too ambiguous
     ],
 )
 def test_notice_kind(kw, expected):
@@ -147,3 +161,18 @@ def test_notice_kind(kw, expected):
     for k, v in kw.items():
         setattr(n, k, v)  # set after validation: data_quality is derived on validate
     assert notice_kind(n) == expected
+
+
+@pytest.mark.parametrize(
+    "notice_type, expected",
+    [
+        ("RFP against Supply Arrangement", True),
+        ("Request for Supply Arrangement", None),
+        ("Request for Proposal", None),  # unknown, not False: the LLM decides later
+        (None, None),
+    ],
+)
+def test_sa_required_from_metadata(notice_type, expected):
+    n = _n()
+    n.notice_type = notice_type
+    assert sa_required_from_metadata(n) is expected

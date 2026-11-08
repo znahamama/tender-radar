@@ -50,13 +50,25 @@ NL_REGIONS = frozenset(
 )
 NATIONAL_REGIONS = frozenset({"canada"})
 
-STANDING_RE = re.compile(
-    r"supply\s+arrangements?|standing\s+offers?|ongoing\s+qualification|pre-?\s?qualified",
+# notice_type "RFP against Supply Arrangement" (and any "... against ... standing offer").
+AGAINST_TYPE_RE = re.compile(r"\bagainst\b.*\b(?:supply\s+arrangement|standing\s+offer)", re.IGNORECASE)
+REQUEST_TYPE_RE = re.compile(r"request\s+for\s+(?:supply\s+arrangement|standing\s+offer)", re.IGNORECASE)
+# Title equivalents. SA method names (TBIPS, TSPS, ...) on an RFP mean a competition among
+# existing SA holders.
+AGAINST_TITLE_RE = re.compile(
+    r"\bagainst\s+(?:the\s+|an?\s+)?(?:[\w-]+\s+){0,3}"
+    r"(?:supply\s+arrangements?|standing\s+offers?)"
+    r"|\b(?:TBIPS|SBIPS|TSPS|ProServices|PS\s?SA)\b",
+    re.IGNORECASE,
+)
+REQUEST_TITLE_RE = re.compile(
+    r"\bRFS[AO]\b|request\s+for\s+(?:a\s+)?(?:supply\s+arrangements?|standing\s+offers?)"
+    r"|supply\s+arrangements?|standing\s+offers?|ongoing\s+qualification",
     re.IGNORECASE,
 )
 
 SCOPE_NL, SCOPE_NATIONAL, SCOPE_BOTH = "nl", "national", "nl+national"
-KIND_STANDING, KIND_REGULAR = "standing_or_ongoing", "regular"
+KIND_REGULAR, KIND_SA_SO_REQUEST, KIND_AGAINST_SA = "regular", "sa_or_so_request", "against_sa"
 
 
 def _norm(token: str) -> str:
@@ -104,7 +116,22 @@ def is_dropped_regional_it(notice) -> bool:
 
 
 def notice_kind(notice) -> str:
-    text = " ".join(filter(None, (notice.notice_type, notice.title, notice.description)))
-    if STANDING_RE.search(text) or PLACEHOLDER_CLOSING_DATE in notice.data_quality:
-        return KIND_STANDING
+    """From metadata only (notice type, title, placeholder date), never the description.
+
+    Notice type wins over title; within each, "against an SA" wins over "request for".
+    """
+    notice_type, title = notice.notice_type or "", notice.title or ""
+    if AGAINST_TYPE_RE.search(notice_type):
+        return KIND_AGAINST_SA
+    if REQUEST_TYPE_RE.search(notice_type):
+        return KIND_SA_SO_REQUEST
+    if AGAINST_TITLE_RE.search(title):
+        return KIND_AGAINST_SA
+    if REQUEST_TITLE_RE.search(title) or PLACEHOLDER_CLOSING_DATE in notice.data_quality:
+        return KIND_SA_SO_REQUEST
     return KIND_REGULAR
+
+
+def sa_required_from_metadata(notice) -> bool | None:
+    """True when metadata says only SA holders may bid; otherwise unknown (None), not False."""
+    return True if notice_kind(notice) == KIND_AGAINST_SA else None

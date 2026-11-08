@@ -11,7 +11,8 @@ The description arrives here already normalised and redacted by the pipeline (se
 from __future__ import annotations
 
 import html
-from datetime import UTC, date, datetime, timedelta
+import re
+from datetime import UTC, date, datetime
 from typing import Annotated, Any
 from zoneinfo import ZoneInfo
 
@@ -20,7 +21,6 @@ from pydantic import (
     BeforeValidator,
     ConfigDict,
     Field,
-    ValidationInfo,
     field_validator,
     model_validator,
 )
@@ -31,13 +31,21 @@ from pydantic import (
 SOURCE_TZ = ZoneInfo("America/Toronto")
 NOTICE_URL_TEMPLATE = "https://canadabuys.canada.ca/en/tender-opportunities/tender-notice/{ref}"
 PLACEHOLDER_YEAR = 2099
-PLACEHOLDER_HORIZON = timedelta(days=3 * 365)
+PLACEHOLDER_HORIZON_YEARS = 3  # closing more than this long after publication
 
 # Data-quality flags
 CLOSES_BEFORE_PUBLISHED = "closes_before_published"
 NO_PUBLICATION_DATE = "no_publication_date"
 NO_CLOSING_DATE = "no_closing_date"
 PLACEHOLDER_CLOSING_DATE = "placeholder_closing_date"
+MENTIONS_STANDING_OFFER = "mentions_standing_offer"
+
+# A description merely mentioning these does not make the notice an SA/SO (it may say
+# "this is not a standing offer"), so it only raises a data-quality flag.
+MENTIONS_STANDING_RE = re.compile(
+    r"supply\s+arrangements?|standing\s+offers?|ongoing\s+qualification|pre-?\s?qualified",
+    re.IGNORECASE,
+)
 
 
 def normalize_text(text: str | None) -> str:
@@ -138,12 +146,11 @@ class TenderNotice(BaseModel):
         return _blank_to_none(v)  # "003" -> 3 via int coercion; "" -> None
 
     @model_validator(mode="after")
-    def _derive(self, info: ValidationInfo) -> TenderNotice:
+    def _derive(self) -> TenderNotice:
         if not self.notice_url:
             self.notice_url = NOTICE_URL_TEMPLATE.format(ref=self.reference_number)
             self.notice_url_derived = True
-        now = (info.context or {}).get("now") or datetime.now(UTC)
-        self.data_quality = quality_flags(self.publication_date, self.closing_date, now)
+        self.data_quality = quality_flags(self.publication_date, self.closing_date, self.description)
         return self
 
     @property
@@ -157,7 +164,25 @@ class TenderNotice(BaseModel):
         )
 
 
-def quality_flags(published: datetime | None, closing: datetime | None, now: datetime) -> list[str]:
+def _add_years(dt: datetime, years: int) -> datetime:
+    try:
+        return dt.replace(year=dt.year + years)
+    except ValueError:  # Feb 29 -> Feb 28
+        return dt.replace(year=dt.year + years, day=28)
+
+
+def is_placeholder_closing(published: datetime | None, closing: datetime | None) -> bool:
+    """Deterministic: depends only on the notice's own dates, never on today's date."""
+    if closing is None:
+        return False
+    if closing.year >= PLACEHOLDER_YEAR:
+        return True
+    return published is not None and closing > _add_years(published, PLACEHOLDER_HORIZON_YEARS)
+
+
+def quality_flags(
+    published: datetime | None, closing: datetime | None, description: str | None = None
+) -> list[str]:
     flags = []
     if published is None:
         flags.append(NO_PUBLICATION_DATE)
@@ -166,8 +191,8 @@ def quality_flags(published: datetime | None, closing: datetime | None, now: dat
     elif published is not None and closing < published:
         # publication is a date (midnight Eastern), so this means "closed on an earlier day".
         flags.append(CLOSES_BEFORE_PUBLISHED)
-    if closing is not None and (
-        closing.year >= PLACEHOLDER_YEAR or closing > now + PLACEHOLDER_HORIZON
-    ):
+    if is_placeholder_closing(published, closing):
         flags.append(PLACEHOLDER_CLOSING_DATE)
+    if description and MENTIONS_STANDING_RE.search(description):
+        flags.append(MENTIONS_STANDING_OFFER)
     return flags

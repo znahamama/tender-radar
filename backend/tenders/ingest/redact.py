@@ -75,6 +75,16 @@ _LABELS = (
     r"contracting\s+authority|contracting\s+officer|procurement\s+officer|point\s+of\s+contact"
     r"|contacts?(?:\s+(?:person|information|info|details))?|telephone|t[ée]l[ée]phone|tel\.?"
     r"|phone|fax|e-?mail|courriel|autorit[ée]\s+contractante"
+    r"|(?:[\w-]+\s+)?poc|attn\.?"  # "DND POC: ...", "Attn: ..."
+)
+# Labels whose value is a single datum (an address/number), not a person or block.
+_DATUM_LABEL_RE = re.compile(r"t[ée]l|phone|fax|e-?mail|courriel", re.IGNORECASE)
+# A contact label glued mid-line to the previous text by lost newlines:
+# "...protocols.Contracting Authority: Jane DoeEmail: ..." (case-sensitive on purpose).
+_GLUED_CONTACT_LABEL_RE = re.compile(
+    r"(?<=[a-z.;:)\]])(?=(?:Contracting Authority|Contracting Officer|Procurement Officer|"
+    r"Point of Contact|Contact Person|Contact|Name|Email|E-mail|E-Mail|Telephone|Phone|Tel|"
+    r"Fax|Courriel|POC)\s*[:\-–])"
 )
 _QUALIFIER = r"(?:\s+(?:number|no\.?|address|adresse|information|info|details|\(s\)))?"
 LABEL_RE = re.compile(
@@ -202,6 +212,11 @@ def _scrub_blocks(text: str, counts: dict[str, int]) -> str:
             or m.group("sep")
             or not m.group("value").strip()  # bare "Contracting Authority" heading
         )
+        if is_block and m.group("label") and _DATUM_LABEL_RE.match(m.group("label")) and (
+            _PLACEHOLDER_RE.match(m.group("value").strip())
+        ):
+            # "Email: [EMAIL] Closing- July 3, ..." - the datum is already scrubbed; keep the rest.
+            is_block = False
         if is_block:
             # A whole block glued onto one line by lost newlines
             # ("Name:   Jane DoeTitle:   OfficerDepartment: ..."): scrub up to the next label.
@@ -259,6 +274,7 @@ def redact(text: str | None, hints: ContactHints | None = None) -> tuple[str, di
     masked = _scrub_hints(masked, hints or ContactHints(), counts)
     masked = _sub(EMAIL_RE, EMAIL, masked, counts)
     masked = _sub(PHONE_RE, PHONE, masked, counts)
+    masked = _GLUED_CONTACT_LABEL_RE.sub("\n", masked)
     masked = _scrub_blocks(masked, counts)
     return _unmask_urls(masked, urls), counts
 

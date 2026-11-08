@@ -8,7 +8,6 @@ import sys
 from collections import Counter
 from collections.abc import Iterable, Iterator
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
 from pathlib import Path
 
 from pydantic import ValidationError
@@ -48,7 +47,7 @@ def _reason(exc: ValidationError) -> str:
     return "; ".join(f"{'.'.join(map(str, e['loc']))}: {e['msg']}" for e in errs)
 
 
-def _to_notice(data: dict[str, str], now: datetime) -> TenderNotice:
+def _to_notice(data: dict[str, str]) -> TenderNotice:
     """Redact the description with this row's contact hints, then validate.
 
     The hints live only in this frame: they are not passed to the model, stats or logs.
@@ -57,12 +56,11 @@ def _to_notice(data: dict[str, str], now: datetime) -> TenderNotice:
     clean, counts = redact(normalize_text(data.get(DESC_HEADER)), hints)
     del hints
     data = {**data, DESC_HEADER: clean, "redaction_counts": counts}
-    return TenderNotice.model_validate(data, context={"now": now})
+    return TenderNotice.model_validate(data)
 
 
-def parse_file(path: Path, stats: IngestStats, now: datetime | None = None) -> Iterator[TenderNotice]:
+def parse_file(path: Path, stats: IngestStats) -> Iterator[TenderNotice]:
     """Yield valid, redacted notices from one CanadaBuys CSV; count (not raise on) bad rows."""
-    now = now or datetime.now(UTC)
     read = 0
     with open(path, encoding="utf-8-sig", newline="") as fh:
         reader = csv.reader(fh)
@@ -86,7 +84,7 @@ def parse_file(path: Path, stats: IngestStats, now: datetime | None = None) -> I
                 stats.record_failure(ref, f"expected {len(header)} columns, got {len(row)}")
                 continue
             try:
-                yield _to_notice(dict(zip(header, row, strict=True)), now)
+                yield _to_notice(dict(zip(header, row, strict=True)))
             except ValidationError as exc:
                 stats.record_failure(ref, _reason(exc))
     stats.rows_read[path.name] = read
@@ -139,13 +137,12 @@ class IngestResult:
         return total, refs
 
 
-def run(paths: Iterable[Path], now: datetime | None = None) -> IngestResult:
+def run(paths: Iterable[Path]) -> IngestResult:
     stats = IngestStats()
-    now = now or datetime.now(UTC)
 
     def all_rows() -> Iterator[TenderNotice]:
         for p in paths:
-            yield from parse_file(Path(p), stats, now)
+            yield from parse_file(Path(p), stats)
 
     notices = dedupe(all_rows(), stats)
     items = notices.items()

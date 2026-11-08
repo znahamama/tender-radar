@@ -8,6 +8,7 @@ from tenders.ingest.pipeline import IngestStats, parse_file
 from tenders.ingest.schema import (
     SOURCE_TZ,
     TenderNotice,
+    is_placeholder_closing,
     normalize_text,
     quality_flags,
 )
@@ -19,17 +20,15 @@ FORBIDDEN_FIELD = re.compile(r"contact|email|phone|address|authority|fax|hint", 
 FORBIDDEN_ALIAS = re.compile(
     r"contact|courriel|email|phone|telephone|fax|address|adresse|postal", re.IGNORECASE
 )
-NOW = datetime(2026, 11, 7, tzinfo=UTC)
 
 
 def _notices(path=OPEN_FAKE):
-    return {n.reference_number: n for n in parse_file(path, IngestStats(), NOW)}
+    return {n.reference_number: n for n in parse_file(path, IngestStats())}
 
 
 def _minimal(**extra):
     return TenderNotice.model_validate(
-        {"referenceNumber-numeroReference": "R-1", "title-titre-eng": "T", **extra},
-        context={"now": NOW},
+        {"referenceNumber-numeroReference": "R-1", "title-titre-eng": "T", **extra}
     )
 
 
@@ -113,6 +112,10 @@ def test_notice_url_falls_back_to_canadabuys_page():
     assert kept.notice_url_derived is False
 
 
+def _dt(t):
+    return datetime(*t, tzinfo=UTC) if t else None
+
+
 @pytest.mark.parametrize(
     "pub, close, expected",
     [
@@ -120,20 +123,45 @@ def test_notice_url_falls_back_to_canadabuys_page():
         (None, (2026, 12, 1), ["no_publication_date"]),
         ((2026, 10, 10), (2026, 10, 1), ["closes_before_published"]),
         ((2026, 10, 1), (2099, 12, 31), ["placeholder_closing_date"]),
-        ((2026, 10, 1), (2030, 1, 1), ["placeholder_closing_date"]),  # > 3 years out
-        ((2026, 10, 1), (2029, 6, 1), []),  # < 3 years out
+        (None, (2099, 1, 1), ["no_publication_date", "placeholder_closing_date"]),
+        ((2026, 10, 1), (2029, 10, 2), ["placeholder_closing_date"]),  # > 3 years after pub
+        ((2026, 10, 1), (2029, 10, 1), []),  # exactly 3 years: not "more than"
+        ((2018, 8, 15), (2022, 1, 2), ["placeholder_closing_date"]),  # old notice, old dates
+        (None, (2040, 1, 2), ["no_publication_date"]),  # no pub date: only the year rule
         ((2026, 10, 1), None, ["no_closing_date"]),
     ],
 )
 def test_quality_flags(pub, close, expected):
-    def dt(t):
-        return datetime(*t, tzinfo=UTC) if t else None
+    assert quality_flags(_dt(pub), _dt(close)) == expected
 
-    assert quality_flags(dt(pub), dt(close), NOW) == expected
+
+def test_placeholder_rule_ignores_todays_date():
+    # A 2035 closing published in 2034 is a normal notice, whenever ingest runs.
+    assert is_placeholder_closing(_dt((2034, 1, 1)), _dt((2035, 1, 1))) is False
+    assert is_placeholder_closing(_dt((2024, 2, 29)), _dt((2027, 3, 1))) is True  # leap day
+
+
+@pytest.mark.parametrize(
+    "description, flagged",
+    [
+        ("This is not a standing offer.", True),
+        ("Issued under the TBIPS supply arrangement.", True),
+        ("Open to pre-qualified suppliers.", True),
+        ("Ongoing qualification process.", True),
+        ("Supply of ten offers of flowers", False),
+        (None, False),
+    ],
+)
+def test_mentions_standing_offer_flag(description, flagged):
+    flags = quality_flags(_dt((2026, 10, 1)), _dt((2026, 12, 1)), description)
+    assert ("mentions_standing_offer" in flags) is flagged
 
 
 def test_quality_flags_from_fixture():
-    assert _notices()["FAKE-GSIN-1"].data_quality == ["placeholder_closing_date"]
+    assert _notices()["FAKE-GSIN-1"].data_quality == [
+        "placeholder_closing_date", "mentions_standing_offer"
+    ]
+    assert _notices()["FAKE-IT-2"].data_quality == ["mentions_standing_offer"]
     assert _notices(FY_FAKE)["FAKE-SO-1"].data_quality == ["closes_before_published"]
 
 

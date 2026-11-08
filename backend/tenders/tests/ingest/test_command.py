@@ -20,7 +20,8 @@ def test_dry_run_prints_summary_without_db():
         "dropped regional IT       2",
         "kept                      6",
         "by region_scope nl 4, national 1, nl+national 1",
-        "by notice_kind  regular 4, standing_or_ongoing 2",
+        "by notice_kind  regular 3, sa_or_so_request 2, against_sa 1",
+        "mentions_standing_offer 2",
         "redactions kept      name 3, email 2, phone 4, contact_block 1  | leftovers 0",
         "dry run: nothing written",
     ):

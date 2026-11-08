@@ -17,8 +17,8 @@ FAKE_CONTACTS = ("Test Person", "Person, Test", "test@example.com", "Test.Person
                  "555 0100", "555.0100", "1 Fake Street", "A1A 1A1", "helpdesk.fake")
 
 
-def _kept(now=NOW):
-    return run([OPEN_FAKE, FY_FAKE], now=now).kept
+def _kept():
+    return run([OPEN_FAKE, FY_FAKE]).kept
 
 
 def test_tender_model_has_no_contact_columns_or_attributes():
@@ -76,8 +76,11 @@ def test_stored_values():
     gsin = Tender.objects.get(reference_number="FAKE-GSIN-1")
     assert gsin.is_it and gsin.is_nl
     assert gsin.region_scope == "nl+national"
-    assert gsin.notice_kind == "standing_or_ongoing"
-    assert gsin.data_quality == ["placeholder_closing_date"]
+    assert gsin.notice_kind == "sa_or_so_request"
+    assert gsin.sa_required_from_metadata is None
+    assert gsin.data_quality == ["placeholder_closing_date", "mentions_standing_offer"]
+    dup = Tender.objects.get(reference_number="FAKE-DUP-1")
+    assert dup.notice_kind == "against_sa" and dup.sa_required_from_metadata is True
     assert gsin.notice_url_derived
     assert gsin.notice_url.endswith("/tender-notice/FAKE-GSIN-1")
     assert gsin.redaction_counts == {"name": 0, "email": 1, "phone": 1, "contact_block": 0}
@@ -110,3 +113,18 @@ def test_admin_is_read_only(admin_client):
     assert resp.status_code == 403
     t.refresh_from_db()
     assert t.title != "hacked"
+
+
+@pytest.mark.django_db
+def test_audit_command_prints_counts_and_refs_only():
+    upsert(_kept(), now=NOW)
+    out = StringIO()
+    call_command("audit_redaction", "--file", str(OPEN_FAKE), str(FY_FAKE), stdout=out)
+    text = out.getvalue()
+    assert "tenders scanned       6" in text
+    assert "description  known_name       1        1" in text
+    assert "description/known_name: FAKE-CITY-1" in text
+    assert "description/known_phone: FAKE-IT-2" in text
+    assert "title        known_name       0        0" in text
+    for fake in ("Alex", "Buyer", "Test Person", "example.com", "555"):
+        assert fake not in text, fake

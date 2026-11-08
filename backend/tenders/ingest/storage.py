@@ -41,6 +41,7 @@ def tender_fields(n: TenderNotice) -> dict:
     data["is_it"] = filters.notice_is_it(n)
     data["region_scope"] = filters.region_scope(n.regions_of_delivery) or ""
     data["notice_kind"] = filters.notice_kind(n)
+    data["sa_required_from_metadata"] = filters.sa_required_from_metadata(n)
     if mismatch := set(CONTENT_FIELDS) ^ set(data):
         raise RuntimeError(f"Tender/TenderNotice field mismatch: {sorted(mismatch)}")
     return data

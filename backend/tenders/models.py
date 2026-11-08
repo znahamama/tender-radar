@@ -11,8 +11,9 @@ class Tender(models.Model):
         NL_NATIONAL = "nl+national", "NL + national"
 
     class NoticeKind(models.TextChoices):
-        STANDING_OR_ONGOING = "standing_or_ongoing", "Standing / ongoing"
         REGULAR = "regular", "Regular"
+        SA_OR_SO_REQUEST = "sa_or_so_request", "Request for SA / standing offer"
+        AGAINST_SA = "against_sa", "Competition against an SA"
 
     reference_number = models.CharField(max_length=100, unique=True)
     solicitation_number = models.CharField(max_length=200, blank=True)
@@ -39,6 +40,8 @@ class Tender(models.Model):
     is_it = models.BooleanField(default=False)
     region_scope = models.CharField(max_length=16, choices=RegionScope.choices)
     notice_kind = models.CharField(max_length=24, choices=NoticeKind.choices)
+    # True: metadata says only SA holders may bid. None: unknown (decided later, not False).
+    sa_required_from_metadata = models.BooleanField(null=True, blank=True)
     data_quality = models.JSONField(default=list, blank=True)
     redaction_counts = models.JSONField(default=dict, blank=True)
 

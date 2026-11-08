@@ -267,3 +267,33 @@ def test_leftover_check():
 def test_empty_text():
     assert r("") == ("", {"name": 0, "email": 0, "phone": 0, "contact_block": 0})
     assert r(None)[0] == ""
+
+
+# --- cases found by the independent audit (fake values) ----------------------------------
+
+def test_contact_label_glued_mid_line_is_split_and_scrubbed():
+    text = "Bidders must follow protocols.Contracting Authority: Jane DoeEmail: jane@example.com Closing- July 3"
+    clean, counts = r(text)
+    assert clean == (
+        "Bidders must follow protocols.\nContracting Authority: [CONTACT_BLOCK]\n"
+        "Email: [EMAIL] Closing- July 3"
+    )
+    assert "Jane" not in clean and counts["contact_block"] == 1
+
+
+@pytest.mark.parametrize("label", ["DND POC", "POC", "Technical POC", "Attn"])
+def test_poc_and_attn_labels(label):
+    clean, counts = r(f"{label}: Jane Doe \nE-Mail: jane@example.com")
+    assert clean == f"{label}: [CONTACT_BLOCK]\nE-Mail: [EMAIL]"
+    assert counts["contact_block"] == 1
+
+
+def test_datum_label_keeps_text_after_its_placeholder():
+    clean, counts = r("Email: jane@example.com Closing date is July 3, 2026 at 2 PM")
+    assert clean == "Email: [EMAIL] Closing date is July 3, 2026 at 2 PM"
+    assert counts["contact_block"] == 0
+
+
+def test_glued_split_needs_a_capitalised_label_with_separator():
+    for text in ("Please contact: the desk", "the Contact list", "a NameTag item", "fooName"):
+        assert r(text)[0] == text
