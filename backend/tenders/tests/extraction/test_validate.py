@@ -229,6 +229,31 @@ def test_sa_gate_grounded_by_notice_type_value():
     assert flags == []
 
 
+
+def test_rendered_label_value_line_is_grounded():
+    # The notice renders metadata as "label: value"; the model often quotes the whole line.
+    n = notice(notice_type="RFP against Supply Arrangement")
+    d = valid_data(deadlines=[{"type": "closing", "datetime": "2026-12-01T17:30:00Z",
+                               "evidence": "closing_date: 2026-12-01T17:30:00+00:00"}])
+    d["eligibility"]["supply_arrangement_required"] = {
+        "value": "yes", "name": None,
+        "evidence": "notice_type: RFP against Supply Arrangement"}
+    data, flags = check(d, sa_meta=True, n=n)
+    assert flags == [] and len(data.deadlines) == 1
+    assert data.eligibility.supply_arrangement_required.value == "yes"
+
+
+@pytest.mark.parametrize("evidence", [
+    "closing_date 2026-12-01T17:30:00+00:00",  # no colon: not the rendered line
+    "notice_type: 2026-12-01T17:30:00+00:00",  # another field's value
+    "closing_date: 2026-12-01",  # part of the value
+])
+def test_label_value_line_must_be_exact(evidence):
+    d = valid_data(deadlines=[{"type": "closing", "datetime": "2026-12-01T17:30:00Z",
+                               "evidence": evidence}])
+    data, flags = check(d)
+    assert flags == ["ungrounded:deadlines[0]"] and data.deadlines == []
+
 # --- punctuation-insensitive details (b) -------------------------------------------------------
 
 SLSA = notice(description="This Request for Quote is issued pursuant to Software Licensing "

@@ -47,7 +47,8 @@ def normalize_loose(s: str) -> str:
 def is_grounded(evidence: str | None, sources: list[str],
                 whole_values: frozenset[str] = frozenset()) -> bool:
     """Evidence sits inside one normalized source segment and is 3+ words and 15+ chars,
-    or it is exactly one whole metadata value (e.g. a date or a notice type)."""
+    or it is exactly one whole metadata value (e.g. a date or a notice type), bare or with
+    its rendered label ("closing_date: 2026-11-13T19:00:00+00:00")."""
     if evidence is None:
         return False
     ev = normalize(evidence)
@@ -80,8 +81,11 @@ def postvalidate(data: ExtractionData, notice: Notice,
     """
     data = data.model_copy(deep=True)
     all_sources = [normalize(text) for _, text in notice.sources]
-    whole_values = frozenset(normalize(text) for kind, text in notice.sources
-                             if kind.startswith(META_PREFIX))
+    # A whole metadata value, bare or as the exact "label: value" line the notice renders.
+    meta = [(kind.removeprefix(META_PREFIX), text) for kind, text in notice.sources
+            if kind.startswith(META_PREFIX)]
+    whole_values = frozenset(normalize(form) for label, text in meta
+                             for form in (text, f"{label}: {text}"))
     detail_sources = [normalize_loose(text) for _, text in notice.sources]
     place_sources = [normalize_loose(text) for kind, text in notice.sources
                      if kind not in REGION_SOURCES]

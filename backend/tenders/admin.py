@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Extraction, LlmCall, Tender
+from .models import Assessment, Extraction, LlmCall, SupplierProfile, Tender
 
 
 class ReadOnlyAdmin(admin.ModelAdmin):
@@ -39,3 +39,39 @@ class LlmCallAdmin(ReadOnlyAdmin):
                     "output_tokens", "cost_usd", "latency_ms")
     list_filter = ("purpose", "model_id", "status")
     date_hierarchy = "created_at"
+
+
+@admin.register(Assessment)
+class AssessmentAdmin(ReadOnlyAdmin):
+    """Read-only: computed by tenders.eligibility.service.assess()."""
+
+    list_display = ("tender", "model_id", "status", "blocker_reasons", "warning_reasons",
+                    "computed_at")
+    list_filter = ("status", "extraction__model_id", "profile")
+    search_fields = ("tender__reference_number", "tender__title")
+    list_select_related = ("tender", "extraction")
+
+    @admin.display(description="model", ordering="extraction__model_id")
+    def model_id(self, obj):
+        return obj.extraction.model_id
+
+    @admin.display(description="blockers")
+    def blocker_reasons(self, obj):
+        return "; ".join(b["reason"] for b in obj.blockers) or "-"
+
+    @admin.display(description="warnings")
+    def warning_reasons(self, obj):
+        return "; ".join(w["reason"] for w in obj.warnings) or "-"
+
+
+@admin.register(SupplierProfile)
+class SupplierProfileAdmin(admin.ModelAdmin):
+    """Editable. Saving re-assesses the latest extractions for this profile (no API calls)."""
+
+    list_display = ("name", "corporate_clearance", "personnel_clearance", "updated_at")
+
+    def save_model(self, request, obj, form, change):
+        super().save_model(request, obj, form, change)
+        from .eligibility.service import reassess
+
+        reassess(profile=obj)

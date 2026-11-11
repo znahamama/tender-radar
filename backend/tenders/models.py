@@ -128,3 +128,59 @@ class LlmCall(models.Model):
 
     def __str__(self) -> str:
         return f"{self.created_at:%Y-%m-%d %H:%M} {self.purpose} {self.model_id} {self.status}"
+
+
+CLEARANCE_CHOICES = [
+    ("none", "None"), ("reliability", "Reliability"), ("secret", "Secret"),
+    ("top_secret", "Top Secret"),
+]
+
+
+class SupplierProfile(models.Model):
+    """The (fictional) firm whose eligibility we assess. The lowest id is the default."""
+
+    name = models.CharField(max_length=200, unique=True)
+    capabilities = models.JSONField(default=list, blank=True)
+    supply_arrangements = models.JSONField(
+        default=list, blank=True, help_text="Names held, e.g. TBIPS, ProServices.")
+    corporate_clearance = models.CharField(max_length=12, choices=CLEARANCE_CHOICES,
+                                           default="none")
+    personnel_clearance = models.CharField(max_length=12, choices=CLEARANCE_CHOICES,
+                                           default="none")
+    work_locations = models.JSONField(default=list, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self) -> str:
+        return self.name
+
+
+class Assessment(models.Model):
+    """Eligibility of one extraction for one profile. Recomputed by
+    tenders.eligibility.service.assess(); ``inputs_hash`` covers everything it depends on."""
+
+    class Status(models.TextChoices):
+        BLOCKED = "blocked", "Blocked"
+        CHECK_SOLICITATION = "check_solicitation", "Check solicitation"
+        NO_BLOCKERS_STATED = "no_blockers_stated", "No blockers stated"
+
+    tender = models.ForeignKey(Tender, on_delete=models.CASCADE, related_name="assessments")
+    extraction = models.ForeignKey(Extraction, on_delete=models.CASCADE,
+                                   related_name="assessments")
+    profile = models.ForeignKey(SupplierProfile, on_delete=models.CASCADE,
+                                related_name="assessments")
+    status = models.CharField(max_length=20, choices=Status.choices)
+    blockers = models.JSONField(default=list, blank=True)  # [{gate, reason, evidence}]
+    warnings = models.JSONField(default=list, blank=True)
+    notes = models.JSONField(default=list, blank=True)
+    rules_version = models.CharField(max_length=20)
+    inputs_hash = models.CharField(max_length=64)
+    computed_at = models.DateTimeField()
+
+    class Meta:
+        constraints = (
+            models.UniqueConstraint(fields=["extraction", "profile"],
+                                    name="assessment_per_extraction_profile"),
+        )
+
+    def __str__(self) -> str:
+        return f"{self.tender_id} {self.status}"

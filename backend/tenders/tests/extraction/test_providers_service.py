@@ -25,7 +25,7 @@ from tenders.extraction.providers import (
     AnthropicExtractor,
     FakeExtractor,
 )
-from tenders.extraction.service import assess, extract_tender
+from tenders.extraction.service import extract_tender, revalidate
 from tenders.models import Extraction, LlmCall
 
 from .conftest import StubClient, response, valid_data
@@ -328,7 +328,7 @@ def test_changed_validation_rule_applies_to_cached_row(make_tender, meter, monke
     assert x.raw_output["eligibility"]["clearance"]["corporate"] == "reliability"
 
 
-def test_assess_reflects_metadata_change_and_stale_text(make_tender, meter):
+def test_revalidate_reflects_metadata_change_and_stale_text(make_tender, meter):
     t = make_tender()
     d = valid_data()
     d["eligibility"]["supply_arrangement_required"] = {"value": "unknown", "name": None,
@@ -338,7 +338,7 @@ def test_assess_reflects_metadata_change_and_stale_text(make_tender, meter):
     assert x.flags == []
     t.sa_required_from_metadata = True
     t.description += " Amended."
-    assert assess(x, tender=t).flags == ["stale_input", "sa_metadata_disagrees"]
+    assert revalidate(x, tender=t).flags == ["stale_input", "sa_metadata_disagrees"]
 
 
 def test_truncated_flag_stored(make_tender, meter, settings):

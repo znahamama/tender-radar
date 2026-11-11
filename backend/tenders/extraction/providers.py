@@ -57,6 +57,7 @@ class ExtractionResult:
 
 class Extractor(Protocol):
     model_id: str
+    prompt_version: str  # stored on Extraction and part of its cache key
     fingerprint: str  # changes whenever anything that shapes the output changes
 
     def extract(self, notice: Notice, meter: CallMeter,
@@ -80,6 +81,7 @@ class FakeExtractor:
     """Returns saved JSON fixtures: ``<reference>.json`` if present, else ``default.json``."""
 
     model_id = "fake"
+    prompt_version = PROMPT_VERSION
 
     def __init__(self, fixtures_dir: Path = FIXTURES_DIR):
         self.fixtures_dir = Path(fixtures_dir)
@@ -132,6 +134,8 @@ def retry_after_s(e: anthropic.APIStatusError) -> float | None:
 
 class AnthropicExtractor:
     """Messages API with native structured outputs (``output_config.format`` json_schema)."""
+
+    prompt_version = PROMPT_VERSION
 
     def __init__(self, client: anthropic.Anthropic | None = None, *, model_id: str | None = None,
                  max_tokens: int | None = None, effort: str | None = None,

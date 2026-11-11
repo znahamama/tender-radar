@@ -11,8 +11,9 @@ from django.conf import settings
 if TYPE_CHECKING:
     from tenders.models import Tender
 
-# v2: evidence must be 3+ words from the title, a metadata value or the description;
-# angle brackets in the notice are shown as ‹ ›; details must be written as they appear.
+# v2: evidence must be 3+ words from the title, a metadata value or the description (or a
+# whole metadata value); angle brackets shown as ‹ ›; precise gate definitions; two worked
+# examples built from invented text.
 PROMPT_VERSION = "v2"
 
 SYSTEM_PROMPT = """\
@@ -45,18 +46,53 @@ important items, each text at most 200 characters.
 - Deadlines: give datetime in ISO 8601 with a UTC offset when the notice gives a time and zone; \
 null if it gives no usable date.
 
-Eligibility gates:
-- supply_arrangement_required: yes only if bidding is limited to holders of a named supply \
-arrangement or standing offer (e.g. TBIPS, TSPS, ProServices, SBIPS).
+Eligibility gates (each value other than "unknown" needs evidence):
+- supply_arrangement_required: "yes" if bidding is limited to holders of a supply arrangement \
+or standing offer. That includes a notice_type value of "RFP against Supply Arrangement" (quote \
+that whole value as the evidence) and text naming TBIPS, TSPS, ProServices, SBIPS or a similar \
+pre-qualified method. name is optional: fill it only if the notice names the arrangement. A \
+notice inviting suppliers to apply for a new supply arrangement or standing offer (such as a \
+"Request for Supply Arrangement") is not limited to existing holders.
 - supplier_origin_restriction: canadian_only if limited to Canadian suppliers/goods/services; \
 canadian_and_trading_partners if open to Canadian suppliers and those covered by named trade \
 agreements; none if the notice states it is open to all suppliers.
-- clearance: required security clearance for the organization (corporate) and for people \
-(personnel). Facility Security Clearance / Designated Organization Screening are corporate.
-- work_location: where the work is done, and whether on-site presence is required.
-- land_claims_applies: whether a comprehensive land claims agreement applies.
+- clearance: corporate is the organization's security clearance: a Facility Security Clearance \
+(FSC) or a Designated Organization Screening (DOS). A DOS is "reliability"; use the FSC's stated \
+level (secret, top_secret). personnel is the individual screening of the supplier's staff: \
+Reliability Status is "reliability", then "secret", "top_secret". "Security requirement: none" \
+means corporate "none" and personnel "none". If both are stated, quote the stricter one.
+- work_location: on_site is "yes" only if the supplier's personnel must physically work at a \
+location. Where goods are delivered, stored or operated is not on-site work. A goods-only notice \
+with no installation or services is "no" (quote the text, or the procurement_categories value, \
+that shows it is goods only). place is where personnel must work, copied from the description \
+text; never take it from the regions_of_delivery or regions_of_opportunity values. Use null if \
+the description does not say.
+- land_claims_applies: whether a comprehensive land claims agreement applies (a trade_agreements \
+value naming a Comprehensive Land Claim Agreement counts).
 - documents_behind_login: whether solicitation documents are obtained only through a portal, \
 registration or login, and which portal.
+
+Two worked examples. Their notices are invented; never quote them for a real notice.
+
+Example 1 notice: notice_type "RFP against Supply Arrangement"; procurement_categories "SRV"; \
+description "Two help desk analysts must work on-site at the Gander regional office. Personnel \
+must hold valid Reliability Status. The Contractor must hold a valid Designated Organization \
+Screening (DOS)."
+Example 1 gates:
+- supply_arrangement_required: yes, name null, evidence "RFP against Supply Arrangement"
+- clearance: corporate reliability, personnel reliability, evidence "The Contractor must hold a \
+valid Designated Organization Screening (DOS)."
+- work_location: on_site yes, place "Gander regional office", evidence "Two help desk analysts \
+must work on-site at the Gander regional office."
+- the other gates: unknown, evidence null
+
+Example 2 notice: procurement_categories "GD"; regions_of_delivery "Ontario"; description \
+"Supply and delivery of 40 rugged tablets to the Ottawa warehouse. Security Requirement: None."
+Example 2 gates:
+- clearance: corporate none, personnel none, evidence "Security Requirement: None"
+- work_location: on_site no, place null, evidence "Supply and delivery of 40 rugged tablets" \
+(Ottawa is a delivery point, not a work site)
+- the other gates: unknown, evidence null
 """
 
 TITLE, DESCRIPTION = "title", "description"
