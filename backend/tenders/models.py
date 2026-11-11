@@ -58,9 +58,11 @@ class Tender(models.Model):
 
 
 class Extraction(models.Model):
-    """LLM-extracted fields for one version of a tender's text under one model + prompt.
+    """LLM-extracted fields for one version of a tender's text under one extractor config.
 
-    The unique key makes re-runs cache hits: same text, model and prompt means no API call.
+    The unique key makes re-runs cache hits: same text and config means no API call.
+    ``raw_output`` is the source of truth; ``data`` and ``flags`` are the latest assessment
+    (post-validation re-run on read, see tenders.extraction.service.assess).
     """
 
     class Status(models.TextChoices):
@@ -68,13 +70,21 @@ class Extraction(models.Model):
         FAILED = "failed", "Failed"
 
     tender = models.ForeignKey(Tender, on_delete=models.CASCADE, related_name="extractions")
-    content_hash = models.CharField(max_length=64, help_text="sha256 of the exact prompt input.")
+    content_hash = models.CharField(
+        max_length=64,
+        help_text="Cache key: sha256 of the extractor config fingerprint and the prompt input.")
+    input_hash = models.CharField(max_length=64, blank=True,
+                                  help_text="sha256 of the prompt input alone.")
     model_id = models.CharField(max_length=100)
     prompt_version = models.CharField(max_length=20)
     schema_version = models.CharField(max_length=20)
     status = models.CharField(max_length=10, choices=Status.choices)
-    data = models.JSONField(null=True, blank=True)
-    flags = models.JSONField(default=list, blank=True)
+    raw_output = models.JSONField(null=True, blank=True,
+                                  help_text="Schema-valid model output, before post-validation.")
+    call_flags = models.JSONField(default=list, blank=True,
+                                  help_text="Flags from the call itself (retries, truncation).")
+    data = models.JSONField(null=True, blank=True, help_text="Latest post-validated output.")
+    flags = models.JSONField(default=list, blank=True, help_text="call_flags + latest checks.")
     error = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -92,7 +102,7 @@ class Extraction(models.Model):
 
 
 class LlmCall(models.Model):
-    """One API request (retries by the SDK are inside it). Drives the daily cost cap."""
+    """One API attempt (the SDK does no hidden retries). Drives the daily cost cap."""
 
     class Status(models.TextChoices):
         OK = "ok", "OK"
@@ -111,6 +121,9 @@ class LlmCall(models.Model):
     latency_ms = models.PositiveIntegerField(default=0)
     status = models.CharField(max_length=10, choices=Status.choices)
     request_id = models.CharField(max_length=100, blank=True)
+    estimated = models.BooleanField(
+        default=False, help_text="Tokens and cost are a worst-case estimate (timeout or "
+                                 "connection error), so the daily cap still counts the call.")
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
 
     def __str__(self) -> str:

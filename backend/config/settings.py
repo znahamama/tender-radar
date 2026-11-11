@@ -1,8 +1,11 @@
 import os
+from decimal import Decimal
 from pathlib import Path
 
 import dj_database_url
 from dotenv import load_dotenv
+
+from .envvars import env_decimal, env_float, env_int, env_str
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR.parent / ".env")  # local only; Lambda gets env vars from SSM
@@ -76,11 +79,14 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.IsAuthenticatedOrReadOnly"],
 }
+
 # LLM extraction (tenders.extraction). The API key comes from ANTHROPIC_API_KEY in the env.
-LLM_MODEL = os.environ.get("LLM_MODEL", "claude-haiku-5-5")
-LLM_EFFORT = os.environ.get("LLM_EFFORT", "low")  # Haiku 5.5 default is "medium"
-LLM_MAX_TOKENS = int(os.environ.get("LLM_MAX_TOKENS", "2000"))
-LLM_TIMEOUT_S = float(os.environ.get("LLM_TIMEOUT_S", "60"))
-LLM_MAX_RETRIES = int(os.environ.get("LLM_MAX_RETRIES", "2"))
-LLM_MAX_CALLS_PER_RUN = int(os.environ.get("LLM_MAX_CALLS_PER_RUN", "50"))
-LLM_DAILY_BUDGET_USD = os.environ.get("LLM_DAILY_BUDGET_USD", "0.50")  # parsed as Decimal
+# Every value is validated here, so a typo fails at startup instead of on the first API call.
+LLM_MODEL = env_str("LLM_MODEL", "claude-haiku-5-5")
+LLM_EFFORT = env_str("LLM_EFFORT", "low", choices=("low", "medium", "high", "xhigh", "max"))
+LLM_MAX_TOKENS = env_int("LLM_MAX_TOKENS", 2000, lo=256, hi=16_000)  # non-streaming requests
+LLM_TIMEOUT_S = env_float("LLM_TIMEOUT_S", 60, lo=5, hi=600)
+LLM_MAX_CALLS_PER_RUN = env_int("LLM_MAX_CALLS_PER_RUN", 50, lo=1, hi=1000)
+LLM_DAILY_BUDGET_USD = env_decimal("LLM_DAILY_BUDGET_USD", "0.50",
+                                   lo=Decimal(0), hi=Decimal(10))
+LLM_MAX_DESCRIPTION_CHARS = env_int("LLM_MAX_DESCRIPTION_CHARS", 30_000, lo=1_000, hi=200_000)

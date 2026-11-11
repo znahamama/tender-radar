@@ -1,10 +1,9 @@
 from collections import Counter
-from decimal import Decimal
 
 from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
 
-from tenders.extraction.budget import CallMeter, CapReached
+from tenders.extraction.budget import CallMeter, StopRun
 from tenders.extraction.providers import AnthropicExtractor, FakeExtractor
 from tenders.extraction.schema import GATES
 from tenders.extraction.service import extract_tender
@@ -53,14 +52,14 @@ class Command(BaseCommand):
 
         extractor = FakeExtractor() if fake else AnthropicExtractor()
         meter = CallMeter(max_calls=settings.LLM_MAX_CALLS_PER_RUN,
-                          daily_budget_usd=Decimal(settings.LLM_DAILY_BUDGET_USD))
+                          daily_budget_usd=settings.LLM_DAILY_BUDGET_USD)
         out = self.stdout.write
         out(f"model {extractor.model_id}, {len(tenders)} tender(s)")
         counts: Counter = Counter()
         for t in tenders:
             try:
                 o = extract_tender(t, extractor, meter)
-            except CapReached as e:
+            except StopRun as e:  # caps, bad key/model, 400 on the first call
                 out(self.style.WARNING(f"stopped: {e}"))
                 break
             counts[o.status] += 1
@@ -73,4 +72,4 @@ class Command(BaseCommand):
         out(f"calls {meter.calls}  cache hits {counts['cache_hit']}  ok {counts['ok']}  "
             f"failed {counts['failed']}")
         out(f"tokens in {meter.input_tokens}  out {meter.output_tokens}  "
-            f"cost ${meter.cost:.6f}")
+            f"cost ${meter.cost:.6f}  (worst-case estimates included for failed connections)")
