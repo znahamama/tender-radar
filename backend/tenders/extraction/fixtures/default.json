@@ -1,0 +1,19 @@
+{
+  "summary": "Fake extraction from a fixture (--fake). Not derived from the notice.",
+  "work_type": "other",
+  "criteria_location": "see_solicitation",
+  "deliverables": [],
+  "procurement_method": null,
+  "deadlines": [],
+  "mandatory_requirements": [],
+  "certifications": [],
+  "eligibility": {
+    "supply_arrangement_required": {"value": "unknown", "name": null, "evidence": null},
+    "supplier_origin_restriction": {"value": "unknown", "evidence": null},
+    "clearance": {"corporate": "unknown", "personnel": "unknown", "evidence": null},
+    "work_location": {"place": null, "on_site": "unknown", "evidence": null},
+    "land_claims_applies": {"value": "unknown", "evidence": null},
+    "documents_behind_login": {"value": "unknown", "portal": null, "evidence": null}
+  },
+  "injection_suspected": false
+}

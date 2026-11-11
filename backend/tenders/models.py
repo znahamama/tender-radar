@@ -55,3 +55,63 @@ class Tender(models.Model):
 
     def __str__(self) -> str:
         return f"{self.reference_number}: {self.title}"
+
+
+class Extraction(models.Model):
+    """LLM-extracted fields for one version of a tender's text under one model + prompt.
+
+    The unique key makes re-runs cache hits: same text, model and prompt means no API call.
+    """
+
+    class Status(models.TextChoices):
+        OK = "ok", "OK"
+        FAILED = "failed", "Failed"
+
+    tender = models.ForeignKey(Tender, on_delete=models.CASCADE, related_name="extractions")
+    content_hash = models.CharField(max_length=64, help_text="sha256 of the exact prompt input.")
+    model_id = models.CharField(max_length=100)
+    prompt_version = models.CharField(max_length=20)
+    schema_version = models.CharField(max_length=20)
+    status = models.CharField(max_length=10, choices=Status.choices)
+    data = models.JSONField(null=True, blank=True)
+    flags = models.JSONField(default=list, blank=True)
+    error = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = (
+            models.UniqueConstraint(
+                fields=["tender", "content_hash", "model_id", "prompt_version"],
+                name="extraction_cache_key",
+            ),
+        )
+
+    def __str__(self) -> str:
+        return f"{self.tender_id} {self.model_id} {self.prompt_version} {self.status}"
+
+
+class LlmCall(models.Model):
+    """One API request (retries by the SDK are inside it). Drives the daily cost cap."""
+
+    class Status(models.TextChoices):
+        OK = "ok", "OK"
+        INVALID = "invalid", "Schema-invalid output"
+        REFUSAL = "refusal", "Refusal"
+        ERROR = "error", "API error"
+
+    purpose = models.CharField(max_length=20, default="extract")
+    tender = models.ForeignKey(Tender, null=True, blank=True, on_delete=models.SET_NULL,
+                               related_name="llm_calls")
+    model_id = models.CharField(max_length=100)
+    prompt_version = models.CharField(max_length=20)
+    input_tokens = models.PositiveIntegerField(default=0)
+    output_tokens = models.PositiveIntegerField(default=0)
+    cost_usd = models.DecimalField(max_digits=10, decimal_places=6, default=0)
+    latency_ms = models.PositiveIntegerField(default=0)
+    status = models.CharField(max_length=10, choices=Status.choices)
+    request_id = models.CharField(max_length=100, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    def __str__(self) -> str:
+        return f"{self.created_at:%Y-%m-%d %H:%M} {self.purpose} {self.model_id} {self.status}"

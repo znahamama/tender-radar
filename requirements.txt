@@ -2,5 +2,6 @@ django~=5.2
 djangorestframework
 dj-database-url
 pydantic>=2
+anthropic>=2.8,<3
 psycopg[binary]
 python-dotenv

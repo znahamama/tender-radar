@@ -76,3 +76,11 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.IsAuthenticatedOrReadOnly"],
 }
+# LLM extraction (tenders.extraction). The API key comes from ANTHROPIC_API_KEY in the env.
+LLM_MODEL = os.environ.get("LLM_MODEL", "claude-haiku-5-5")
+LLM_EFFORT = os.environ.get("LLM_EFFORT", "low")  # Haiku 5.5 default is "medium"
+LLM_MAX_TOKENS = int(os.environ.get("LLM_MAX_TOKENS", "2000"))
+LLM_TIMEOUT_S = float(os.environ.get("LLM_TIMEOUT_S", "60"))
+LLM_MAX_RETRIES = int(os.environ.get("LLM_MAX_RETRIES", "2"))
+LLM_MAX_CALLS_PER_RUN = int(os.environ.get("LLM_MAX_CALLS_PER_RUN", "50"))
+LLM_DAILY_BUDGET_USD = os.environ.get("LLM_DAILY_BUDGET_USD", "0.50")  # parsed as Decimal

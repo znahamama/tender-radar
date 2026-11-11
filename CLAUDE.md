@@ -17,4 +17,5 @@ Public data only; no real user or client data.
   Lambda). Keep `CONN_MAX_AGE=0` and `DISABLE_SERVER_SIDE_CURSORS=True` (Neon PgBouncer).
 - Budget: free tiers, under $10/month. Don't add paid services or new infra without asking.
 - Before saying a task is done: run `ruff check .` and `python -m pytest`, and show
-  `git status`. Don't push without asking.
+  `git status`.
+- Never commit or push. Stage changes, show git status, suggest a commit message.
