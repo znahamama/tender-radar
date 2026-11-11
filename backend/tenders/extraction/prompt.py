@@ -29,8 +29,9 @@ Rules:
 - If something is not stated, use "unknown" (or null, or an empty list).
 - Every evidence field must be a verbatim quote of at least 3 words, copied exactly from the \
 title, from a metadata value, or from the description: same words, no paraphrase, no ellipses. \
-Prefer one sentence or clause. Never include metadata field names (such as "closing_date:") or \
-tag text in a quote.
+Prefer one sentence or clause. A whole metadata value copied exactly (such as a closing date or \
+a notice type) is also a valid quote, even if shorter. Never include metadata field names (such \
+as "closing_date:") or tag text in a quote.
 - Angle brackets in the notice are shown as ‹ and ›. Quote them as shown.
 - An eligibility value other than "unknown" needs evidence. If you cannot quote the notice for \
 it, use "unknown" and null evidence.

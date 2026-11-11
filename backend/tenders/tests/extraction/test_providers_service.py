@@ -173,6 +173,45 @@ def test_retryable_error_twice_fails(make_tender, meter):
     assert statuses() == ["error", "error"]
 
 
+def rate_limited(retry_after=None):
+    headers = {} if retry_after is None else {"retry-after": retry_after}
+    return anthropic.RateLimitError(
+        "slow down", response=httpx2.Response(429, request=REQ, headers=headers), body=None)
+
+
+@pytest.mark.parametrize(("header", "expected"), [
+    ("7", 7.0),
+    ("120", 30.0),       # capped
+    ("-5", 0.0),
+    (None, 2.5),         # no header: the default backoff
+    ("soon", 2.5),       # unparseable: the default backoff
+])
+def test_rate_limit_honours_retry_after(make_tender, meter, monkeypatch, header, expected):
+    slept = []
+    monkeypatch.setattr(providers.time, "sleep", slept.append)
+    t = make_tender()
+    ex = AnthropicExtractor(StubClient(rate_limited(header), response(valid_data())),
+                            retry_wait_s=2.5)
+    assert ex.extract(build_notice(t), meter, tender=t).status == "ok"
+    assert slept == ([expected] if expected > 0 else [])
+
+
+def test_retry_after_http_date_and_other_statuses(monkeypatch):
+    fixed = datetime(2026, 11, 11, 12, 0, 0, tzinfo=UTC)
+
+    class FrozenDatetime(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return fixed
+
+    monkeypatch.setattr(providers, "datetime", FrozenDatetime)
+    assert providers.retry_after_s(rate_limited("Wed, 11 Nov 2026 12:00:10 GMT")) == 10.0
+    assert providers.retry_after_s(rate_limited("Wed, 11 Nov 2026 13:00:00 GMT")) == 30.0
+    err = anthropic.InternalServerError(
+        "x", response=httpx2.Response(503, request=REQ, headers={"retry-after": "9"}), body=None)
+    assert providers.retry_after_s(err) is None  # only 429 is honoured
+
+
 def test_non_retryable_status_fails_without_retry(make_tender, meter):
     t = make_tender()
     meter.api_calls = 1  # not the first call of the run

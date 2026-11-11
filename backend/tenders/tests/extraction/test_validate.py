@@ -194,3 +194,72 @@ def test_sa_flag_after_grounding_reset():
 
 def test_injection_flag():
     assert check(valid_data(injection_suspected=True))[1] == ["injection_suspected"]
+
+
+# --- whole metadata values (a) -----------------------------------------------------------------
+
+def test_whole_metadata_value_is_grounded_even_if_short():
+    n = notice(notice_type="RFP against Supply Arrangement")
+    srcs = [normalize(t) for _, t in n.sources]
+    whole = frozenset(normalize(t) for k, t in n.sources if k.startswith("meta:"))
+    closing = dict(n.sources)["meta:closing_date"]
+    assert closing == "2026-12-01T17:30:00+00:00"
+    assert is_grounded(closing, srcs, whole)  # 1 word: only grounded as a whole value
+    assert not is_grounded(closing, srcs)  # without the exemption it is too short
+    assert is_grounded("RFP  against supply arrangement", srcs, whole)
+    assert not is_grounded("2026-12-01", srcs, whole)  # part of a value, too short
+    assert not is_grounded("Supply Arrangement", srcs, whole)
+    assert not is_grounded("notice_type: RFP against Supply Arrangement", srcs, whole)
+
+
+def test_closing_deadline_from_metadata_is_kept():
+    d = valid_data(deadlines=[{"type": "closing", "datetime": "2026-12-01T17:30:00Z",
+                               "evidence": "2026-12-01T17:30:00+00:00"}])
+    data, flags = check(d)
+    assert flags == [] and len(data.deadlines) == 1
+
+
+def test_sa_gate_grounded_by_notice_type_value():
+    n = notice(notice_type="RFP against Supply Arrangement")
+    d = valid_data()
+    d["eligibility"]["supply_arrangement_required"] = {
+        "value": "yes", "name": None, "evidence": "RFP against Supply Arrangement"}
+    data, flags = check(d, sa_meta=True, n=n)
+    assert data.eligibility.supply_arrangement_required.value == "yes"
+    assert flags == []
+
+
+# --- punctuation-insensitive details (b) -------------------------------------------------------
+
+SLSA = notice(description="This Request for Quote is issued pursuant to Software Licensing "
+                          "Supply Arrangement (SLSA) # EN578-232335/065/SMS for licences.")
+
+
+def test_detail_ignores_punctuation_but_quote_stays_strict():
+    d = valid_data(deliverables=[], deadlines=[], mandatory_requirements=[])
+    d["eligibility"]["work_location"] = {"place": None, "on_site": "unknown", "evidence": None}
+    d["eligibility"]["documents_behind_login"] = {"value": "unknown", "portal": None,
+                                                  "evidence": None}
+    d["eligibility"]["clearance"] = {"corporate": "unknown", "personnel": "unknown",
+                                     "evidence": None}
+    d["eligibility"]["supply_arrangement_required"] = {
+        "value": "yes", "name": "(SLSA) EN578",
+        "evidence": "issued pursuant to Software Licensing Supply Arrangement (SLSA) #"}
+    data, flags = check(d, n=SLSA)
+    assert data.eligibility.supply_arrangement_required.name == "(SLSA) EN578"
+    assert flags == []
+
+    # The same text without the "#" is not a verbatim quote: punctuation counts there.
+    d["eligibility"]["supply_arrangement_required"]["evidence"] = \
+        "Software Licensing Supply Arrangement (SLSA) EN578-232335"
+    data, flags = check(d, n=SLSA)
+    assert data.eligibility.supply_arrangement_required.value == "unknown"
+    assert flags == ["ungrounded:eligibility.supply_arrangement_required"]
+
+
+def test_detail_punctuation_does_not_merge_words():
+    d = valid_data()
+    d["eligibility"]["work_location"]["place"] = "St.John's"  # no space: still matches
+    assert check(d)[1] == []
+    d["eligibility"]["work_location"]["place"] = "StJohns"  # letters merged: no match
+    assert check(d)[1] == ["ungrounded_detail:eligibility.work_location.place"]

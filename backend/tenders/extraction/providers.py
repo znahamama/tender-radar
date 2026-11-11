@@ -4,9 +4,12 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import re
 import time
 from dataclasses import dataclass, field
+from datetime import UTC, datetime
+from email.utils import parsedate_to_datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal, Protocol
 
@@ -26,6 +29,7 @@ FIXTURES_DIR = Path(__file__).resolve().parent / "fixtures"
 OUTPUT_SCHEMA = anthropic.transform_schema(ExtractionData)
 MAX_ATTEMPTS = 2  # every API attempt and the validation retry share this budget
 RETRYABLE_STATUS = frozenset({408, 409, 429})  # plus any 5xx
+MAX_RETRY_AFTER_S = 30.0
 RETRY_MESSAGE = (
     "Your previous output failed schema validation:\n{errors}\n"
     "Return the complete JSON again, fixed. Same rules as before."
@@ -106,6 +110,26 @@ def _is_retryable(e: anthropic.APIStatusError) -> bool:
     return e.status_code in RETRYABLE_STATUS or e.status_code >= 500
 
 
+def retry_after_s(e: anthropic.APIStatusError) -> float | None:
+    """Seconds from a 429's retry-after header (delta-seconds or HTTP date), capped at 30."""
+    if e.status_code != 429:
+        return None
+    raw = (e.response.headers.get("retry-after") or "").strip()
+    if not raw:
+        return None
+    try:
+        seconds = float(raw)
+    except ValueError:
+        try:
+            when = parsedate_to_datetime(raw)
+        except (TypeError, ValueError):
+            return None
+        seconds = (when - datetime.now(UTC)).total_seconds()
+    if math.isnan(seconds):
+        return None
+    return min(max(seconds, 0.0), MAX_RETRY_AFTER_S)
+
+
 class AnthropicExtractor:
     """Messages API with native structured outputs (``output_config.format`` json_schema)."""
 
@@ -149,9 +173,10 @@ class AnthropicExtractor:
             estimated=worst_case_chars is not None,
         )
 
-    def _wait(self) -> None:
-        if self.retry_wait_s > 0:
-            time.sleep(self.retry_wait_s)
+    def _wait(self, seconds: float | None = None) -> None:
+        seconds = self.retry_wait_s if seconds is None else seconds
+        if seconds > 0:
+            time.sleep(seconds)
 
     def extract(self, notice: Notice, meter: CallMeter,
                 tender: Tender | None = None) -> ExtractionResult:
@@ -197,7 +222,7 @@ class AnthropicExtractor:
                     f"api_error: {type(e).__name__} ({e.status_code})", flags=[*flags, "api_error"])
                 if _is_retryable(e) and not last:
                     flags.append("api_retry")
-                    self._wait()
+                    self._wait(retry_after_s(e))
                     continue
                 return failure
             except anthropic.APIError as e:  # e.g. a response the SDK couldn't parse
