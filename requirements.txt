@@ -5,3 +5,7 @@ pydantic>=2
 anthropic>=2.8,<3
 psycopg[binary]
 python-dotenv
+# production (Lambda)
+boto3>=1.40
+gunicorn>=23
+whitenoise>=6.9

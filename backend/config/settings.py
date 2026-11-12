@@ -8,11 +8,34 @@ from dotenv import load_dotenv
 from .envvars import env_decimal, env_float, env_int, env_str
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-load_dotenv(BASE_DIR.parent / ".env")  # local only; Lambda gets env vars from SSM
+load_dotenv(BASE_DIR.parent / ".env")  # local only; there is no .env in the image
+
+# Lambda: SSM_PREFIX is set and the three secrets come from SSM SecureStrings, once per
+# cold start. They go into os.environ so the Anthropic SDK finds its key the usual way.
+SSM_PREFIX = os.environ.get("SSM_PREFIX", "").strip()
+if SSM_PREFIX:
+    from .ssm import fetch_secrets
+
+    os.environ.update(fetch_secrets(SSM_PREFIX))
 
 SECRET_KEY = os.environ["DJANGO_SECRET_KEY"]
 DEBUG = os.environ.get("DJANGO_DEBUG") == "1"
-ALLOWED_HOSTS = os.environ.get("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
+ALLOWED_HOSTS = [h.strip() for h in
+                 os.environ.get("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
+                 if h.strip()]
+# Shown by /api/health; baked into the image at build time.
+APP_VERSION = os.environ.get("APP_VERSION", "dev")
+
+if not DEBUG:
+    # API Gateway terminates TLS and sets X-Forwarded-Proto; the Web Adapter passes it on.
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    # A wildcard, not the exact API URL: the URL only exists after the Lambda that would
+    # need it, so naming it here would be a Terraform cycle.
+    CSRF_TRUSTED_ORIGINS = [o.strip() for o in os.environ.get(
+        "DJANGO_CSRF_TRUSTED_ORIGINS", "https://*.execute-api.us-east-2.amazonaws.com",
+    ).split(",") if o.strip()]
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -27,6 +50,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",  # admin static files, no S3/CDN
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -73,7 +97,13 @@ USE_I18N = True
 USE_TZ = True
 
 STATIC_URL = "static/"
-STATIC_ROOT = BASE_DIR / "staticfiles"
+STATIC_ROOT = BASE_DIR / "staticfiles"  # filled by collectstatic in the image build
+STORAGES = {
+    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    # Not the Manifest variant: that one 500s on any template whose static file wasn't
+    # collected, which includes the test suite. Admin assets rarely change.
+    "staticfiles": {"BACKEND": "whitenoise.storage.CompressedStaticFilesStorage"},
+}
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 REST_FRAMEWORK = {

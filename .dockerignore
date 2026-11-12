@@ -1,0 +1,8 @@
+# Allow-list: only what the image needs. Keeps .env, .git, .venv and data/ out for sure.
+*
+!requirements.txt
+!backend/
+backend/**/__pycache__
+backend/**/tests
+backend/staticfiles
+**/.DS_Store

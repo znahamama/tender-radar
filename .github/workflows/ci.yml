@@ -46,3 +46,20 @@ jobs:
       - run: python backend/manage.py check
       - run: python backend/manage.py makemigrations --check --dry-run
       - run: pytest
+
+  terraform:
+    runs-on: ubuntu-latest
+    # Static checks only: no AWS credentials, no backend, no plan.
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.17.2
+          terraform_wrapper: false
+      - run: terraform fmt -check -recursive infra
+      - name: validate
+        run: |
+          for dir in infra/bootstrap infra/prod; do
+            terraform -chdir="$dir" init -backend=false -input=false -lockfile=readonly
+            terraform -chdir="$dir" validate
+          done

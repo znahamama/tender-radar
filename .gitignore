@@ -13,3 +13,4 @@ data/
 # test fixtures are hand-made fake CSVs
 !backend/tenders/tests/fixtures/*.csv
 .claude/settings.local.json
+*.tfplan
