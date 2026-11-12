@@ -19,3 +19,5 @@ Public data only; no real user or client data.
 - Before saying a task is done: run `ruff check .` and `python -m pytest`, and show
   `git status`.
 - Never commit or push. Stage changes, show git status, suggest a commit message.
+- Enforced in .claude/settings.json: Claude Code may run terraform plan but never
+  apply/destroy/import/state rm, and never git commit or push. Ziad runs those.
