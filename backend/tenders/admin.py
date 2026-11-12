@@ -46,7 +46,7 @@ class AssessmentAdmin(ReadOnlyAdmin):
     """Read-only: computed by tenders.eligibility.service.assess()."""
 
     list_display = ("tender", "model_id", "status", "blocker_reasons", "warning_reasons",
-                    "computed_at")
+                    "not_stated_gates", "computed_at")
     list_filter = ("status", "extraction__model_id", "profile")
     search_fields = ("tender__reference_number", "tender__title")
     list_select_related = ("tender", "extraction")
@@ -62,6 +62,10 @@ class AssessmentAdmin(ReadOnlyAdmin):
     @admin.display(description="warnings")
     def warning_reasons(self, obj):
         return "; ".join(w["reason"] for w in obj.warnings) or "-"
+
+    @admin.display(description="not stated")
+    def not_stated_gates(self, obj):
+        return ", ".join(obj.not_stated) or "-"
 
 
 @admin.register(SupplierProfile)

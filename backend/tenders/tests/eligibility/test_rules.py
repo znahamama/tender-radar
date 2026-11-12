@@ -3,6 +3,7 @@ import copy
 import pytest
 
 from tenders.eligibility.rules import (
+    RULES_VERSION,
     Decision,
     Profile,
     TenderFacts,
@@ -41,6 +42,30 @@ def test_all_clear_is_no_blockers_stated():
     dec = run(data())
     assert dec.status == "no_blockers_stated"
     assert dec.blockers == [] and dec.warnings == []
+    # data() leaves these two unknown (from VALID)
+    assert dec.not_stated == ["supplier_origin_restriction", "land_claims_applies"]
+
+
+def test_rules_version():
+    assert RULES_VERSION == "2"
+
+
+def test_not_stated_lists_every_unknown_gate_in_schema_order():
+    d = data(supply_arrangement_required={"value": "unknown", "evidence": None},
+             clearance={"corporate": "unknown", "personnel": "unknown", "evidence": None},
+             work_location={"on_site": "unknown", "evidence": None},
+             documents_behind_login={"value": "unknown", "evidence": None})
+    dec = run(d)
+    assert dec.status == "no_blockers_stated"  # unknowns no longer change the status
+    assert dec.not_stated == ["supply_arrangement_required", "supplier_origin_restriction",
+                              "clearance", "work_location", "land_claims_applies",
+                              "documents_behind_login"]
+
+
+def test_nothing_not_stated():
+    d = data(supplier_origin_restriction={"value": "none", "evidence": "q"},
+             land_claims_applies={"value": "no", "evidence": "q"})
+    assert run(d).not_stated == []
 
 
 # --- supply arrangement ----------------------------------------------------------------------
@@ -121,8 +146,14 @@ def test_profile_with_clearance_is_not_blocked():
     {"corporate": "unknown", "personnel": "none"},
     {"corporate": "none", "personnel": "unknown"},
 ])
-def test_unknown_clearance_means_check_solicitation(clearance):
-    assert run(data(clearance=clearance)).status == "check_solicitation"
+def test_unknown_clearance_is_not_stated(clearance):
+    dec = run(data(clearance=clearance))
+    assert dec.status == "no_blockers_stated" and "clearance" in dec.not_stated
+
+
+def test_unknown_side_with_a_blocking_side():
+    dec = run(data(clearance={"corporate": "secret", "personnel": "unknown"}))
+    assert dec.status == "blocked" and "clearance" in dec.not_stated
 
 
 # --- on-site -----------------------------------------------------------------------------------
@@ -146,8 +177,9 @@ def test_on_site_place_unknown_is_a_warning():
     assert reasons(dec.warnings) == ["On-site work, location not stated."]
 
 
-def test_on_site_unknown_means_check_solicitation():
-    assert run(data(work_location={"on_site": "unknown"})).status == "check_solicitation"
+def test_on_site_unknown_is_not_stated():
+    dec = run(data(work_location={"on_site": "unknown"}))
+    assert dec.status == "no_blockers_stated" and "work_location" in dec.not_stated
 
 
 def test_off_site_place_is_ignored():
@@ -172,9 +204,17 @@ def test_see_solicitation_means_check_solicitation():
     assert run(data(criteria="partly_stated")).status == "no_blockers_stated"
 
 
-def test_sa_unknown_means_check_solicitation():
+def test_sa_unknown_is_not_stated():
     d = data(supply_arrangement_required={"value": "unknown", "evidence": None})
-    assert run(d).status == "check_solicitation"
+    dec = run(d)
+    assert dec.status == "no_blockers_stated"
+    assert "supply_arrangement_required" in dec.not_stated
+
+
+def test_sa_from_metadata_is_stated_even_if_llm_unknown():
+    d = data(supply_arrangement_required={"value": "unknown", "evidence": None})
+    dec = run(d, facts=TenderFacts(True, "RFP against Supply Arrangement"))
+    assert dec.status == "blocked" and "supply_arrangement_required" not in dec.not_stated
 
 
 def test_blocker_beats_everything():
@@ -186,11 +226,12 @@ def test_failed_extraction():
     dec = run(None, error="schema_invalid:\n- x: bad")
     assert dec.status == "check_solicitation"
     assert reasons(dec.warnings) == ["Extraction failed: schema_invalid:"]
+    assert len(dec.not_stated) == 6
 
 
 def test_failed_extraction_still_blocked_by_metadata():
     dec = run(None, facts=TenderFacts(True, "RFP against Supply Arrangement"))
-    assert dec.status == "blocked"
+    assert dec.status == "blocked" and len(dec.not_stated) == 5
 
 
 def test_injection_flag_warns():
@@ -201,5 +242,6 @@ def test_injection_flag_warns():
 def test_as_fields_is_json_ready():
     f = run(data(clearance={"corporate": "secret", "personnel": "none"})).as_fields()
     assert f["status"] == "blocked"
+    assert f["not_stated"] == ["supplier_origin_restriction", "land_claims_applies"]
     assert f["blockers"] == [{"gate": "clearance", "evidence": "q",
                               "reason": "Corporate clearance required: Secret (profile: none)."}]

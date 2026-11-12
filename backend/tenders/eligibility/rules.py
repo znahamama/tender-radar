@@ -2,7 +2,7 @@
 
 No Django models or database here; tenders.eligibility.service does the storage.
 
-Rules (RULES_VERSION "1"):
+Rules (RULES_VERSION "2"):
 - Supply arrangement: tender.sa_required_from_metadata=True means "yes" whatever the LLM said
   (code precedence; the LLM answer stays stored and flagged). "yes" and the profile holds none
   of it -> blocker naming the arrangement if known.
@@ -14,8 +14,9 @@ Rules (RULES_VERSION "1"):
   blocker; both -> warning; place unknown -> warning "on-site, location not stated".
 - Supplier origin -> note. Land claims "yes" -> warning. Documents behind login -> note.
 - Status: blocked if any blocker; else check_solicitation if criteria_location is
-  see_solicitation, the extraction failed, or SA, clearance (either side) or on_site is
-  unknown; else no_blockers_stated.
+  see_solicitation or the extraction failed; else no_blockers_stated.
+- not_stated: the gates whose (effective) value is unknown, in schema order. Clearance counts
+  when either side is unknown; SA does not when the metadata says it is required.
 """
 
 from __future__ import annotations
@@ -23,11 +24,12 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass, field
 from typing import Literal
 
+from tenders.extraction.schema import GATES
 from tenders.extraction.validate import normalize_loose
 
 from .places import Where, classify
 
-RULES_VERSION = "1"
+RULES_VERSION = "2"
 CLEARANCE_RANK = {"none": 0, "reliability": 1, "secret": 2, "top_secret": 3}
 CLEARANCE_LABEL = {"none": "none", "reliability": "Reliability", "secret": "Secret",
                    "top_secret": "Top Secret"}
@@ -66,9 +68,10 @@ class Decision:
     blockers: list[Finding] = field(default_factory=list)
     warnings: list[Finding] = field(default_factory=list)
     notes: list[Finding] = field(default_factory=list)
+    not_stated: list[str] = field(default_factory=list)
 
     def as_fields(self) -> dict:
-        return {"status": self.status,
+        return {"status": self.status, "not_stated": list(self.not_stated),
                 "blockers": [asdict(f) for f in self.blockers],
                 "warnings": [asdict(f) for f in self.warnings],
                 "notes": [asdict(f) for f in self.notes]}
@@ -165,9 +168,17 @@ def evaluate(data: dict | None, flags: list[str], facts: TenderFacts, profile: P
     d = Decision(status="check_solicitation")
     gates = (data or {}).get("eligibility") or _UNKNOWN_GATES
 
-    sa = _supply_arrangement(gates["supply_arrangement_required"], facts, profile, d)
-    clearance_unknown = _clearance(gates["clearance"], profile, d)
-    on_site = _work_location(gates["work_location"], d)
+    unknown = {
+        "supply_arrangement_required":
+            _supply_arrangement(gates["supply_arrangement_required"], facts, profile, d)
+            == "unknown",
+        "clearance": _clearance(gates["clearance"], profile, d),
+        "work_location": _work_location(gates["work_location"], d) == "unknown",
+        "supplier_origin_restriction": gates["supplier_origin_restriction"]["value"] == "unknown",
+        "land_claims_applies": gates["land_claims_applies"]["value"] == "unknown",
+        "documents_behind_login": gates["documents_behind_login"]["value"] == "unknown",
+    }
+    d.not_stated = [g for g in GATES if unknown[g]]
 
     origin = gates["supplier_origin_restriction"]
     if origin["value"] in _ORIGIN_NOTES:
@@ -191,8 +202,7 @@ def evaluate(data: dict | None, flags: list[str], facts: TenderFacts, profile: P
 
     if d.blockers:
         d.status = "blocked"
-    elif (data is None or data.get("criteria_location") == "see_solicitation"
-          or "unknown" in (sa, on_site) or clearance_unknown):
+    elif data is None or data.get("criteria_location") == "see_solicitation":
         d.status = "check_solicitation"
     else:
         d.status = "no_blockers_stated"

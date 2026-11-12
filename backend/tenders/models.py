@@ -172,6 +172,8 @@ class Assessment(models.Model):
     blockers = models.JSONField(default=list, blank=True)  # [{gate, reason, evidence}]
     warnings = models.JSONField(default=list, blank=True)
     notes = models.JSONField(default=list, blank=True)
+    not_stated = models.JSONField(default=list, blank=True,
+                                  help_text="Gates whose value is unknown.")
     rules_version = models.CharField(max_length=20)
     inputs_hash = models.CharField(max_length=64)
     computed_at = models.DateTimeField()

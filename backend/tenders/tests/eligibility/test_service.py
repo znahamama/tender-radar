@@ -62,7 +62,8 @@ def test_profile_change_recomputes(make_tender, meter):
     p.save()
     (a,) = reassess(profile=p)
     assert a.blockers == []
-    assert a.status == "check_solicitation"  # VALID leaves personnel clearance unknown
+    assert a.status == "no_blockers_stated"
+    assert "clearance" in a.not_stated  # VALID leaves personnel clearance unknown
 
 
 def test_validation_rule_change_recomputes(make_tender, meter, monkeypatch):
@@ -70,7 +71,8 @@ def test_validation_rule_change_recomputes(make_tender, meter, monkeypatch):
     assert assess(x).status == "blocked"
     monkeypatch.setattr(validate, "MIN_EVIDENCE_WORDS", 50)  # every quote now ungrounded
     a = assess(x)
-    assert a.status == "check_solicitation" and a.blockers == []
+    assert a.status == "no_blockers_stated" and a.blockers == []
+    assert len(a.not_stated) == 6  # every gate fell back to unknown
     assert LlmCall.objects.count() == 1  # no new API call
 
 
@@ -143,6 +145,15 @@ def test_assessment_admin_is_read_only(rf):
     assert not admin.has_change_permission(req)
     assert not admin.has_delete_permission(req)
     assert "status" in admin.list_filter
+    assert "not_stated_gates" in admin.list_display
+
+
+def test_admin_shows_not_stated(make_tender, meter):
+    x = extract_tender(make_tender(), llm(response(valid_data())), meter).extraction
+    a = assess(x)
+    assert a.not_stated == ["supplier_origin_restriction", "clearance", "land_claims_applies"]
+    assert AssessmentAdmin(Assessment, None).not_stated_gates(a) == \
+        "supplier_origin_restriction, clearance, land_claims_applies"
 
 
 def test_profile_admin_save_reassesses(make_tender, meter, rf):
