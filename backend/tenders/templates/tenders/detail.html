@@ -9,7 +9,7 @@
 <dl class="meta">
   <dt>Reference</dt><dd>{{ tender.reference_number }}{% if tender.solicitation_number %} (solicitation {{ tender.solicitation_number }}){% endif %}</dd>
   <dt>Buyer</dt><dd>{{ tender.buyer_org_name|default:"Not stated" }}</dd>
-  <dt>Published</dt><dd>{% if tender.publication_date %}<time datetime="{{ tender.publication_date|date:'c' }}">{{ tender.publication_date|date:"Y-m-d H:i T" }}</time>{% else %}Not stated{% endif %}</dd>
+  <dt>Published</dt><dd>{% if published %}<time datetime="{{ published|date:'Y-m-d' }}">{{ published|date:"Y-m-d" }}</time>{% else %}Not stated{% endif %}</dd>
   <dt>Closes</dt><dd>{% if tender.closing_date %}<time datetime="{{ tender.closing_date|date:'c' }}">{{ tender.closing_date|date:"Y-m-d H:i T" }}</time> (St. John's time){% else %}Not stated{% endif %}{% if not is_open %} · <span class="closed">not open</span>{% endif %}</dd>
   <dt>Notice type</dt><dd>{{ tender.notice_type|default:"Not stated" }} ({{ tender.get_notice_kind_display }})</dd>
   <dt>Region scope</dt><dd>{{ tender.get_region_scope_display }}</dd>
@@ -38,6 +38,15 @@
     </ul>
     {% endif %}
     {% if not blockers and not warnings %}<p>No blockers or warnings.</p>{% endif %}
+    {% if notes %}
+    <h3>Notes</h3>
+    <ul class="findings">
+      {% for f in notes %}
+      <li><span class="gate">{{ f.gate_label }}</span>: {{ f.reason }}
+        {% if f.evidence %}<blockquote>{{ f.evidence }}</blockquote>{% endif %}</li>
+      {% endfor %}
+    </ul>
+    {% endif %}
     <h3>Not stated in the notice</h3>
     {% if not_stated %}
     <ul class="plain">{% for label in not_stated %}<li>{{ label }}</li>{% endfor %}</ul>

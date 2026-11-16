@@ -9,6 +9,7 @@ detail page for comparison only.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import date
 
 from django.conf import settings
 from django.core.paginator import Paginator
@@ -20,6 +21,7 @@ from django.views.decorators.http import require_GET
 
 from tenders.extraction.keyword import KeywordExtractor
 from tenders.extraction.schema import GATES
+from tenders.ingest.schema import SOURCE_TZ
 from tenders.models import Assessment, Extraction, SupplierProfile, Tender
 
 PAGE_SIZE = 25
@@ -236,6 +238,14 @@ def labelled(findings: list[dict]) -> list[dict]:
     return [{**f, "gate_label": GATE_LABELS.get(f.get("gate"), f.get("gate"))} for f in findings]
 
 
+def published_date(tender: Tender) -> date | None:
+    """The CSV's publication date is date-only; ingest stores it as midnight in SOURCE_TZ.
+    Convert back in that zone (not St. John's) so the day is the one the source gave."""
+    if tender.publication_date is None:
+        return None
+    return tender.publication_date.astimezone(SOURCE_TZ).date()
+
+
 def tender_is_open(tender: Tender) -> bool:
     """is_open() for one row, without a query."""
     return (tender.tender_status.lower() == "open"
@@ -261,11 +271,13 @@ def tender_detail(request, reference: str):
                 .order_by("-created_at", "-id").first())
     return render(request, "tenders/detail.html", {
         "tender": tender,
+        "published": published_date(tender),
         "official_url": official_url(tender),
         "is_open": tender_is_open(tender),
         "assessment": assessment,
         "blockers": labelled(assessment.blockers if assessment else []),
         "warnings": labelled(assessment.warnings if assessment else []),
+        "notes": labelled(assessment.notes if assessment else []),
         "not_stated": [GATE_LABELS.get(g, g) for g in (assessment.not_stated if assessment
                                                         else [])],
         "llm": llm,

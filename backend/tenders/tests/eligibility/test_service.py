@@ -16,6 +16,7 @@ from tenders.extraction.keyword import KeywordExtractor
 from tenders.extraction.providers import AnthropicExtractor
 from tenders.extraction.service import extract_tender
 from tenders.models import Assessment, Extraction, LlmCall, SupplierProfile
+from tenders.tests.eligibility.conftest import SA_REQUEST_NOTICE, sa_request_output
 from tenders.tests.extraction.conftest import StubClient, response, valid_data
 
 pytestmark = pytest.mark.django_db
@@ -87,34 +88,6 @@ def test_metadata_precedence_with_llm_no(make_tender, meter):
     a = assess(x)
     assert a.status == "blocked"
     assert any(b["gate"] == "supply_arrangement_required" for b in a.blockers)
-
-
-# Shaped like cb-8448-42897985 (a request to qualify for ProServices); text invented.
-SA_REQUEST_NOTICE = {
-    "reference_number": "cb-0000-00000001",
-    "title": "ProServices Method of Supply",
-    "description": ("Canada is inviting suppliers to qualify for the ProServices supply "
-                    "arrangement. Locations in areas subject to Comprehensive Land Claims "
-                    "Agreements are excluded from this solicitation."),
-    "notice_type": "Request for Supply Arrangement",
-    "notice_kind": "sa_or_so_request",
-    "sa_required_from_metadata": None,
-    "region_scope": "national",
-}
-
-
-def sa_request_output():
-    d = valid_data(criteria_location="see_solicitation", deliverables=[], deadlines=[],
-                   mandatory_requirements=[])
-    e = d["eligibility"]
-    e["supply_arrangement_required"] = {"value": "yes", "name": "ProServices",
-                                        "evidence": "Request for Supply Arrangement"}
-    e["clearance"] = {"corporate": "unknown", "personnel": "unknown", "evidence": None}
-    e["work_location"] = {"place": None, "on_site": "unknown", "evidence": None}
-    e["documents_behind_login"] = {"value": "unknown", "portal": None, "evidence": None}
-    e["land_claims_applies"] = {
-        "value": "yes", "evidence": "areas subject to Comprehensive Land Claims Agreements"}
-    return d
 
 
 def test_sa_request_notice_is_not_blocked(make_tender, meter):

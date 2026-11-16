@@ -1,14 +1,28 @@
 """Public pages: list filters and pagination, detail, escaping, security headers."""
 
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
+from decimal import Decimal
 
 import pytest
 from django.urls import reverse
 from django.utils import timezone
 
+from tenders.eligibility.service import assess as real_assess
+from tenders.extraction.budget import CallMeter
 from tenders.extraction.keyword import KeywordExtractor
+from tenders.extraction.providers import AnthropicExtractor
+from tenders.extraction.service import extract_tender
+from tenders.ingest.schema import SOURCE_TZ
 from tenders.models import Assessment, Extraction, SupplierProfile, Tender
-from tenders.tests.extraction.conftest import valid_data
+from tenders.tests.eligibility.conftest import SA_REQUEST_NOTICE, sa_request_output
+from tenders.tests.extraction.conftest import (  # noqa: F401  (autouse fixtures)
+    StubClient,
+    no_real_api,
+    pin_llm_settings,
+    response,
+    tender_fields,
+    valid_data,
+)
 
 pytestmark = pytest.mark.django_db
 
@@ -210,7 +224,7 @@ def test_detail_shows_metadata_eligibility_and_gates(client):
     data = valid_data()
     data["eligibility"]["clearance"] = {"corporate": "unknown", "personnel": "unknown",
                                         "evidence": None}
-    t = make_tender("cb-1-2", publication_date=datetime(2026, 11, 2, 13, tzinfo=UTC),
+    t = make_tender("cb-1-2", publication_date=datetime(2026, 11, 2, tzinfo=SOURCE_TZ),
                     closing_date=datetime(2030, 12, 1, 17, 30, tzinfo=UTC),
                     notice_type="Request for Proposal")
     assess(t, "blocked",
@@ -232,7 +246,8 @@ def test_detail_shows_metadata_eligibility_and_gates(client):
     html = r.content.decode()
     # Metadata.
     assert "Public Services and Procurement Canada" in html
-    assert "2026-11-02 09:30 NST" in html and "2030-12-01 14:00 NST" in html
+    assert '<dd><time datetime="2026-11-02">2026-11-02</time></dd>' in html
+    assert "2030-12-01 14:00 NST" in html
     assert "Request for Proposal" in html and "NL" in html
     assert ('href="https://canadabuys.canada.ca/en/tender-opportunities/tender-notice/cb-1-2"'
             in html)
@@ -255,6 +270,35 @@ def test_detail_shows_metadata_eligibility_and_gates(client):
     # The description is there, collapsed.
     assert "<details" in html and "Plain description." in html
     assert "<details open" not in html
+
+
+def test_detail_shows_notes_for_sa_request_notice(client):
+    """The ProServices-style request notice: the SA answer is a note, not a blocker."""
+    t = Tender.objects.create(**tender_fields(**SA_REQUEST_NOTICE))
+    extractor = AnthropicExtractor(StubClient(response(sa_request_output())), retry_wait_s=0)
+    meter = CallMeter(max_calls=5, daily_budget_usd=Decimal("0.50"))
+    real_assess(extract_tender(t, extractor, meter).extraction)
+
+    r = client.get(reverse("tender-detail", args=[t.reference_number]))
+    html = r.content.decode()
+    assert 'badge-check">Check solicitation<' in html
+    assert "<h3>Blockers</h3>" not in html
+    assert html.index("<h3>Warnings</h3>") < html.index("<h3>Notes</h3>")
+    assert ('<span class="gate">Supply arrangement required</span>: This notice is how firms '
+            'qualify for the ProServices arrangement.') in html
+    assert "<blockquote>Request for Supply Arrangement</blockquote>" in html
+
+
+@pytest.mark.parametrize(("stored_utc", "shown"), [
+    (datetime(2026, 11, 2, 5, tzinfo=UTC), date(2026, 11, 2)),   # midnight EST
+    (datetime(2026, 7, 1, 4, tzinfo=UTC), date(2026, 7, 1)),     # midnight EDT
+])
+def test_detail_published_is_the_source_date(client, stored_utc, shown):
+    make_tender("P", publication_date=stored_utc)
+    r = client.get(reverse("tender-detail", args=["P"]))
+    assert r.context["published"] == shown
+    published = r.content.decode().split("<dt>Published</dt>")[1].split("</dd>")[0]
+    assert published == f'<dd><time datetime="{shown}">{shown}</time>'
 
 
 def test_detail_unassessed_notice(client):
