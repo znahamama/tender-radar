@@ -1,0 +1,93 @@
+{% extends "tenders/base.html" %}
+
+{% block title %}{{ tender.title|truncatechars:80 }} · NL Public Tender Radar{% endblock %}
+
+{% block content %}
+<p class="back"><a href="{% url 'tender-list' %}">← All open notices</a></p>
+<h1>{{ tender.title }}</h1>
+
+<dl class="meta">
+  <dt>Reference</dt><dd>{{ tender.reference_number }}{% if tender.solicitation_number %} (solicitation {{ tender.solicitation_number }}){% endif %}</dd>
+  <dt>Buyer</dt><dd>{{ tender.buyer_org_name|default:"Not stated" }}</dd>
+  <dt>Published</dt><dd>{% if tender.publication_date %}<time datetime="{{ tender.publication_date|date:'c' }}">{{ tender.publication_date|date:"Y-m-d H:i T" }}</time>{% else %}Not stated{% endif %}</dd>
+  <dt>Closes</dt><dd>{% if tender.closing_date %}<time datetime="{{ tender.closing_date|date:'c' }}">{{ tender.closing_date|date:"Y-m-d H:i T" }}</time> (St. John's time){% else %}Not stated{% endif %}{% if not is_open %} · <span class="closed">not open</span>{% endif %}</dd>
+  <dt>Notice type</dt><dd>{{ tender.notice_type|default:"Not stated" }} ({{ tender.get_notice_kind_display }})</dd>
+  <dt>Region scope</dt><dd>{{ tender.get_region_scope_display }}</dd>
+  <dt>Official notice</dt><dd>{% if official_url %}<a href="{{ official_url }}" rel="external noreferrer">{{ official_url }}</a>{% else %}No link available{% endif %}</dd>
+</dl>
+
+<section class="card" aria-labelledby="elig-heading">
+  <h2 id="elig-heading">Eligibility {% include "tenders/_badge.html" with status=assessment.status %}</h2>
+  {% if assessment %}
+    {% if blockers %}
+    <h3>Blockers</h3>
+    <ul class="findings">
+      {% for f in blockers %}
+      <li><span class="gate">{{ f.gate_label }}</span>: {{ f.reason }}
+        {% if f.evidence %}<blockquote>{{ f.evidence }}</blockquote>{% endif %}</li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+    {% if warnings %}
+    <h3>Warnings</h3>
+    <ul class="findings">
+      {% for f in warnings %}
+      <li><span class="gate">{{ f.gate_label }}</span>: {{ f.reason }}
+        {% if f.evidence %}<blockquote>{{ f.evidence }}</blockquote>{% endif %}</li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+    {% if not blockers and not warnings %}<p>No blockers or warnings.</p>{% endif %}
+    <h3>Not stated in the notice</h3>
+    {% if not_stated %}
+    <ul class="plain">{% for label in not_stated %}<li>{{ label }}</li>{% endfor %}</ul>
+    {% else %}<p>Every gate is stated.</p>{% endif %}
+    <p class="small">Assessed {{ assessment.computed_at|date:"Y-m-d H:i T" }} from extraction by {{ assessment.extraction.model_id }} (prompt {{ assessment.extraction.prompt_version }}), rules v{{ assessment.rules_version }}.</p>
+  {% else %}
+    <p>This notice has not been assessed yet. Only notices open at ingest time are assessed.</p>
+  {% endif %}
+</section>
+
+<section aria-labelledby="gates-heading">
+  <h2 id="gates-heading">The six gates</h2>
+  {% if llm or baseline %}
+  <div class="table-wrap">
+  <table class="gates">
+    <thead>
+      <tr>
+        <th scope="col">Gate</th>
+        <th scope="col">LLM value</th>
+        <th scope="col">Evidence</th>
+        <th scope="col">Flags</th>
+        <th scope="col" class="baseline">Keyword baseline</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in rows %}
+      <tr>
+        <th scope="row">{{ r.label }}</th>
+        <td data-label="LLM value">{{ r.value|default:"—" }}{% if r.raw_value %}<br><span class="small">model said: {{ r.raw_value }}</span>{% endif %}</td>
+        <td data-label="Evidence">{% if r.evidence %}<blockquote>{{ r.evidence }}</blockquote>{% else %}—{% endif %}</td>
+        <td data-label="Flags">{% for flag in r.flags %}<span class="flag">{{ flag }}</span>{% empty %}—{% endfor %}</td>
+        <td data-label="Keyword baseline" class="baseline">{{ r.baseline|default:"—" }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% if not llm %}<p class="small">No LLM extraction yet.</p>{% endif %}
+  {% if not baseline %}<p class="small">No keyword baseline run for this notice.</p>{% endif %}
+  {% if other_flags %}
+  <h3>Extraction notes</h3>
+  <ul>{% for flag in other_flags %}<li>{{ flag }}</li>{% endfor %}</ul>
+  {% endif %}
+  {% else %}
+  <p>No extraction yet.</p>
+  {% endif %}
+</section>
+
+<details class="description">
+  <summary>Notice description (contact details redacted)</summary>
+  {% if tender.description %}<div class="desc-text">{{ tender.description }}</div>{% else %}<p>No description.</p>{% endif %}
+</details>
+{% endblock %}

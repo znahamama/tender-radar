@@ -1,0 +1,9 @@
+{% extends "tenders/base.html" %}
+
+{% block title %}Not found · NL Public Tender Radar{% endblock %}
+
+{% block content %}
+<h1>Not found</h1>
+<p>There is no page here. The notice may never have been ingested, or its reference may be mistyped.</p>
+<p><a href="{% url 'tender-list' %}">See the open notices</a></p>
+{% endblock %}

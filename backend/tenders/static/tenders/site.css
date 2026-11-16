@@ -1,0 +1,164 @@
+/* NL Public Tender Radar: one plain stylesheet, no build step, no web fonts. */
+
+:root {
+  --text: #1d2125;
+  --muted: #5b636b;
+  --bg: #ffffff;
+  --panel: #f4f6f8;
+  --line: #d5dbe1;
+  --link: #0b57a4;
+  --blocked-bg: #fde8e8; --blocked: #8a1c1c;
+  --check-bg: #fff4d6;   --check: #6b4a00;
+  --clear-bg: #e3f4e6;   --clear: #1e5a2a;
+  --none-bg: #eceff2;    --none: #4a525a;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color: var(--text);
+  background: var(--bg);
+}
+
+a { color: var(--link); }
+a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible,
+summary:focus-visible { outline: 3px solid var(--link); outline-offset: 2px; }
+
+main, .site-header, .banner, .site-footer {
+  max-width: 72rem;
+  margin: 0 auto;
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+
+.site-header { padding-top: .75rem; padding-bottom: .5rem; }
+.brand { font-weight: 700; font-size: 1.1rem; text-decoration: none; color: var(--text); }
+
+.banner {
+  background: var(--check-bg);
+  border-left: 4px solid #c99700;
+  padding-top: .5rem;
+  padding-bottom: .5rem;
+  font-size: .95rem;
+}
+
+h1 { font-size: 1.5rem; line-height: 1.25; margin: 1rem 0 .5rem; overflow-wrap: anywhere; }
+h2 { font-size: 1.2rem; margin: 1.5rem 0 .5rem; }
+h3 { font-size: 1rem; margin: 1rem 0 .25rem; }
+
+.small, .count, .back { font-size: .875rem; color: var(--muted); }
+
+/* --- list ---------------------------------------------------------------------- */
+
+.toggle { margin-bottom: .75rem; }
+.toggle a, .toggle strong { margin-right: .75rem; }
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem 1rem;
+  align-items: flex-end;
+  background: var(--panel);
+  padding: .75rem;
+  border-radius: 6px;
+}
+.filters label { display: flex; flex-direction: column; font-size: .875rem; gap: .2rem; }
+.filters input, .filters select, .filters button {
+  font: inherit;
+  padding: .35rem .5rem;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: #fff;
+}
+.filters input[type="search"] { min-width: 14rem; }
+.filters button { background: var(--link); color: #fff; border-color: var(--link); cursor: pointer; }
+
+table { width: 100%; border-collapse: collapse; margin: .5rem 0 1rem; }
+th, td { text-align: left; vertical-align: top; padding: .5rem; border-bottom: 1px solid var(--line); }
+thead th { font-size: .875rem; color: var(--muted); border-bottom-width: 2px; }
+.tenders td:first-child { min-width: 16rem; }
+.tenders td { overflow-wrap: break-word; }
+.tenders time { white-space: nowrap; }
+
+.badge {
+  display: inline-block;
+  padding: .1rem .5rem;
+  border-radius: 999px;
+  font-size: .8rem;
+  font-weight: 600;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+.badge-blocked { background: var(--blocked-bg); color: var(--blocked); }
+.badge-check   { background: var(--check-bg);   color: var(--check); }
+.badge-clear   { background: var(--clear-bg);   color: var(--clear); }
+.badge-none    { background: var(--none-bg);    color: var(--none); }
+
+.pager { display: flex; gap: 1rem; align-items: center; justify-content: center; margin: 1rem 0; }
+
+/* --- detail -------------------------------------------------------------------- */
+
+.meta { display: grid; grid-template-columns: max-content 1fr; gap: .25rem 1rem; margin: 1rem 0; }
+.meta dt { font-weight: 600; color: var(--muted); }
+.meta dd { margin: 0; overflow-wrap: anywhere; }
+.closed { color: var(--blocked); font-weight: 600; }
+
+.card { border: 1px solid var(--line); border-radius: 6px; padding: 0 1rem 1rem; }
+.card h2 { display: flex; gap: .5rem; align-items: center; }
+.findings { padding-left: 1.2rem; }
+.findings li { margin-bottom: .5rem; }
+.gate { font-weight: 600; }
+.plain { margin: 0; padding-left: 1.2rem; }
+
+blockquote {
+  margin: .25rem 0;
+  padding: .25rem .6rem;
+  border-left: 3px solid var(--line);
+  background: var(--panel);
+  font-size: .9rem;
+  overflow-wrap: anywhere;
+}
+
+.table-wrap { overflow-x: auto; }
+.gates th[scope="row"] { font-weight: 600; min-width: 9rem; }
+.gates .baseline { font-size: .8rem; color: var(--muted); }
+.flag {
+  display: block;
+  font-size: .8rem;
+  color: var(--check);
+}
+
+.description { margin: 1.5rem 0; border: 1px solid var(--line); border-radius: 6px; padding: .5rem 1rem; }
+.description summary { cursor: pointer; font-weight: 600; }
+.desc-text { white-space: pre-wrap; overflow-wrap: anywhere; margin-top: .5rem; }
+
+/* --- footer -------------------------------------------------------------------- */
+
+.site-footer { border-top: 1px solid var(--line); margin-top: 2rem; padding-top: .5rem; padding-bottom: 1.5rem; font-size: .875rem; color: var(--muted); }
+.site-footer p { margin: .25rem 0; }
+
+/* --- phones: table rows become stacked cards ------------------------------------ */
+
+@media (max-width: 640px) {
+  .filters { flex-direction: column; align-items: stretch; }
+  .filters input[type="search"] { min-width: 0; }
+  .meta { grid-template-columns: 1fr; }
+  .meta dd { margin-bottom: .4rem; }
+
+  table, thead, tbody, tr, th, td { display: block; }
+  thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  tr { border: 1px solid var(--line); border-radius: 6px; margin-bottom: .75rem; padding: .25rem .5rem; }
+  td, .gates th[scope="row"] { border: 0; padding: .25rem 0; }
+  td[data-label]::before {
+    content: attr(data-label);
+    display: block;
+    font-size: .75rem;
+    color: var(--muted);
+    font-weight: 600;
+  }
+  .tenders td:first-child { min-width: 0; font-weight: 600; }
+  .tenders td:first-child::before { display: none; }
+  .tenders td:empty { display: none; }
+}

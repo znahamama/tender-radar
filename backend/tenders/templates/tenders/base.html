@@ -1,0 +1,24 @@
+{% load static %}<!doctype html>
+<html lang="en-CA">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}NL Public Tender Radar{% endblock %}</title>
+<link rel="stylesheet" href="{% static 'tenders/site.css' %}">
+</head>
+<body>
+<header class="site-header">
+  <a class="brand" href="{% url 'tender-list' %}">NL Public Tender Radar</a>
+</header>
+<p class="banner" role="note">Eligibility is assessed for a fictional firm, Harbourline Software (fictional). Always verify in the solicitation documents.</p>
+<main>
+{% block content %}{% endblock %}
+</main>
+<footer class="site-footer">
+  <p>Contains information licensed under the <a href="https://open.canada.ca/en/open-government-licence-canada" rel="license external">Open Government Licence – Canada</a>.</p>
+  {% with updated=last_ingest %}
+  <p>Data updated {% if updated %}<time datetime="{{ updated|date:'c' }}">{{ updated|date:"Y-m-d H:i T" }}</time>{% else %}never{% endif %}.</p>
+  {% endwith %}
+</footer>
+</body>
+</html>

@@ -47,7 +47,7 @@ def test_all_clear_is_no_blockers_stated():
 
 
 def test_rules_version():
-    assert RULES_VERSION == "2"
+    assert RULES_VERSION == "3"
 
 
 def test_not_stated_lists_every_unknown_gate_in_schema_order():
@@ -108,6 +108,70 @@ def test_metadata_precedence_keeps_llm_evidence_when_it_agrees():
     d = data(supply_arrangement_required={"value": "yes", "name": "TSPS", "evidence": "x y z"})
     dec = run(d, facts=facts)
     assert dec.blockers[0].evidence == "x y z" and "TSPS" in dec.blockers[0].reason
+
+
+# A request to become a holder (notice_kind sa_or_so_request): "yes" is not a blocker (v3).
+SA_REQUEST = TenderFacts(None, "Request for Supply Arrangement", "sa_or_so_request")
+
+
+def test_sa_request_named_is_a_note_not_a_blocker():
+    d = data(supply_arrangement_required={"value": "yes", "name": "ProServices",
+                                          "evidence": "Request for Supply Arrangement"})
+    dec = run(d, facts=SA_REQUEST)
+    assert dec.status == "no_blockers_stated"
+    assert dec.blockers == [] and dec.warnings == []
+    assert reasons(dec.notes)[0] == "This notice is how firms qualify for the ProServices " \
+                                    "arrangement."
+    assert dec.notes[0].evidence == "Request for Supply Arrangement"
+    assert "supply_arrangement_required" not in dec.not_stated
+    # The same answer on a regular notice still blocks.
+    assert run(d).status == "blocked"
+
+
+def test_sa_request_unnamed_is_a_note():
+    d = data(supply_arrangement_required={"value": "yes", "name": None})
+    dec = run(d, facts=SA_REQUEST)
+    assert dec.blockers == [] and dec.warnings == []
+    assert reasons(dec.notes)[0] == ("This notice is how firms qualify for this supply "
+                                     "arrangement or standing offer.")
+
+
+def test_sa_request_with_other_blockers_still_blocked():
+    d = data(supply_arrangement_required={"value": "yes", "name": "ProServices"},
+             clearance={"corporate": "secret", "personnel": "none"})
+    dec = run(d, facts=SA_REQUEST)
+    assert dec.status == "blocked" and [b.gate for b in dec.blockers] == ["clearance"]
+
+
+def test_sa_request_no_or_unknown_adds_nothing():
+    for value in ("no", "unknown"):
+        dec = run(data(supply_arrangement_required={"value": value, "name": None}),
+                  facts=SA_REQUEST)
+        assert [n for n in dec.notes if n.gate == "supply_arrangement_required"] == []
+
+
+# --- short labels ----------------------------------------------------------------------------
+
+@pytest.mark.parametrize(("gates", "label"), [
+    ({"supply_arrangement_required": {"value": "yes", "name": "E60HN"}},
+     "Supply arrangement (E60HN)"),
+    ({"supply_arrangement_required": {"value": "yes", "name": None}}, "Supply arrangement"),
+    ({"clearance": {"corporate": "none", "personnel": "secret"}},
+     "Clearance: Secret (personnel)"),
+    ({"clearance": {"corporate": "top_secret", "personnel": "none"}},
+     "Clearance: Top Secret (corporate)"),
+    ({"work_location": {"on_site": "yes", "place": "Ottawa"}}, "On-site (Ottawa)"),
+])
+def test_blocker_labels(gates, label):
+    dec = run(data(**gates))
+    assert dec.status == "blocked" and dec.blockers[0].label == label
+
+
+def test_warning_and_note_labels():
+    assert run(data(work_location={"on_site": "yes", "place": None})).warnings[0].label \
+        == "On-site"
+    assert run(data(work_location={"on_site": "yes", "place": "Gander"})).warnings[0].label \
+        == "On-site (Gander)"
 
 
 def test_holds_arrangement_loose():
@@ -244,4 +308,5 @@ def test_as_fields_is_json_ready():
     assert f["status"] == "blocked"
     assert f["not_stated"] == ["supplier_origin_restriction", "land_claims_applies"]
     assert f["blockers"] == [{"gate": "clearance", "evidence": "q",
-                              "reason": "Corporate clearance required: Secret (profile: none)."}]
+                              "reason": "Corporate clearance required: Secret (profile: none).",
+                              "label": "Clearance: Secret (corporate)"}]

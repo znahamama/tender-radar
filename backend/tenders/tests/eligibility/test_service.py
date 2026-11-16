@@ -89,6 +89,65 @@ def test_metadata_precedence_with_llm_no(make_tender, meter):
     assert any(b["gate"] == "supply_arrangement_required" for b in a.blockers)
 
 
+# Shaped like cb-8448-42897985 (a request to qualify for ProServices); text invented.
+SA_REQUEST_NOTICE = {
+    "reference_number": "cb-0000-00000001",
+    "title": "ProServices Method of Supply",
+    "description": ("Canada is inviting suppliers to qualify for the ProServices supply "
+                    "arrangement. Locations in areas subject to Comprehensive Land Claims "
+                    "Agreements are excluded from this solicitation."),
+    "notice_type": "Request for Supply Arrangement",
+    "notice_kind": "sa_or_so_request",
+    "sa_required_from_metadata": None,
+    "region_scope": "national",
+}
+
+
+def sa_request_output():
+    d = valid_data(criteria_location="see_solicitation", deliverables=[], deadlines=[],
+                   mandatory_requirements=[])
+    e = d["eligibility"]
+    e["supply_arrangement_required"] = {"value": "yes", "name": "ProServices",
+                                        "evidence": "Request for Supply Arrangement"}
+    e["clearance"] = {"corporate": "unknown", "personnel": "unknown", "evidence": None}
+    e["work_location"] = {"place": None, "on_site": "unknown", "evidence": None}
+    e["documents_behind_login"] = {"value": "unknown", "portal": None, "evidence": None}
+    e["land_claims_applies"] = {
+        "value": "yes", "evidence": "areas subject to Comprehensive Land Claims Agreements"}
+    return d
+
+
+def test_sa_request_notice_is_not_blocked(make_tender, meter):
+    t = make_tender(**SA_REQUEST_NOTICE)
+    x = extract_tender(t, llm(response(sa_request_output())), meter).extraction
+    assert x.data["eligibility"]["supply_arrangement_required"]["value"] == "yes"  # grounded
+    a = assess(x)
+    assert a.status == "check_solicitation"
+    assert a.blockers == []
+    assert [w["gate"] for w in a.warnings] == ["land_claims_applies"]
+    assert {"gate": "supply_arrangement_required",
+            "reason": "This notice is how firms qualify for the ProServices arrangement.",
+            "evidence": "Request for Supply Arrangement",
+            "label": "Supply arrangement (ProServices)"} in a.notes
+    # The keyword baseline reads the notice type as "no": no SA finding at all.
+    b = assess(extract_tender(t, KeywordExtractor(), meter).extraction)
+    assert b.extraction.data["eligibility"]["supply_arrangement_required"]["value"] == "no"
+    assert not any(f["gate"] == "supply_arrangement_required" for f in b.blockers + b.notes)
+
+
+def test_notice_kind_change_recomputes(make_tender, meter):
+    t = make_tender(**{**SA_REQUEST_NOTICE, "notice_kind": "regular"})
+    x = extract_tender(t, llm(response(sa_request_output())), meter).extraction
+    before = assess(x)
+    assert before.status == "blocked"
+    t.notice_kind = "sa_or_so_request"
+    t.save(update_fields=["notice_kind"])
+    x.refresh_from_db()
+    after = assess(x)
+    assert after.pk == before.pk and after.status == "check_solicitation"
+    assert after.inputs_hash != before.inputs_hash
+
+
 def test_failed_extraction_is_assessed(make_tender, meter):
     import anthropic
     import httpx2

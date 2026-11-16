@@ -1,0 +1,82 @@
+{% extends "tenders/base.html" %}
+
+{% block content %}
+<h1>{% if filters.show == "all" %}All notices{% else %}Open notices{% endif %}</h1>
+
+<nav class="toggle" aria-label="Which notices">
+  {% if filters.show == "all" %}
+  <a href="{% querystring show=None page=None %}">Open only</a> <strong aria-current="page">All</strong>
+  {% else %}
+  <strong aria-current="page">Open only</strong> <a href="{% querystring show='all' page=None %}">All</a>
+  {% endif %}
+</nav>
+
+<form class="filters" method="get" action="{% url 'tender-list' %}" role="search">
+  <label>Title contains
+    <input type="search" name="q" value="{{ filters.q }}" maxlength="200">
+  </label>
+  <label>Eligibility
+    <select name="status">
+      <option value="">Any</option>
+      {% for value, label in status_choices %}
+      <option value="{{ value }}"{% if filters.status == value %} selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  <label>Region scope
+    <select name="region">
+      <option value="">Any</option>
+      {% for value, label in region_choices %}
+      <option value="{{ value }}"{% if filters.region == value %} selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  {% if filters.show == "all" %}<input type="hidden" name="show" value="all">{% endif %}
+  <button type="submit">Filter</button>
+  {% if filtered %}<a href="{% if filters.show == 'all' %}?show=all{% else %}{% url 'tender-list' %}{% endif %}">Clear</a>{% endif %}
+</form>
+
+<p class="count">
+  {% if page.paginator.count %}
+  {{ page.start_index }}–{{ page.end_index }} of {{ page.paginator.count }}.
+  {% else %}No notices match.{% endif %}
+  {% if filters.show == "all" %}Latest closing date first.{% else %}Closing soonest first.{% endif %}
+</p>
+
+{% if page.object_list %}
+<table class="tenders">
+  <thead>
+    <tr>
+      <th scope="col">Title</th>
+      <th scope="col">Buyer</th>
+      <th scope="col">Closes (St. John's time)</th>
+      <th scope="col">Region scope</th>
+      <th scope="col">Notice kind</th>
+      <th scope="col">Eligibility</th>
+      <th scope="col">First blocker</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for t in page.object_list %}
+    <tr>
+      <td data-label="Title"><a href="{% url 'tender-detail' t.reference_number %}">{{ t.title }}</a></td>
+      <td data-label="Buyer">{{ t.buyer_org_name|default:"—" }}</td>
+      <td data-label="Closes">{% if t.closing_date %}<time datetime="{{ t.closing_date|date:'c' }}">{{ t.closing_date|date:"Y-m-d H:i T" }}</time>{% else %}—{% endif %}</td>
+      <td data-label="Region scope">{{ t.get_region_scope_display }}</td>
+      <td data-label="Notice kind">{{ t.get_notice_kind_display }}</td>
+      <td data-label="Eligibility">{% include "tenders/_badge.html" with status=t.eligibility_status %}</td>
+      <td data-label="First blocker">{{ t.first_blocker|truncatechars:60 }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+
+{% if page.has_other_pages %}
+<nav class="pager" aria-label="Pages">
+  {% if page.has_previous %}<a href="{% querystring page=page.previous_page_number %}" rel="prev">← Previous</a>{% endif %}
+  <span>Page {{ page.number }} of {{ page.paginator.num_pages }}</span>
+  {% if page.has_next %}<a href="{% querystring page=page.next_page_number %}" rel="next">Next →</a>{% endif %}
+</nav>
+{% endif %}
+{% endblock %}

@@ -2,10 +2,13 @@
 
 No Django models or database here; tenders.eligibility.service does the storage.
 
-Rules (RULES_VERSION "2"):
+Rules (RULES_VERSION "3"):
 - Supply arrangement: tender.sa_required_from_metadata=True means "yes" whatever the LLM said
   (code precedence; the LLM answer stays stored and flagged). "yes" and the profile holds none
-  of it -> blocker naming the arrangement if known.
+  of it -> blocker naming the arrangement if known. Except on a request for a supply
+  arrangement or standing offer (notice_kind "sa_or_so_request"): that notice is how firms
+  become holders, so "yes" is a note, never a blocker or warning. (v3; the metadata override
+  only ever fires on "against_sa" notices, so the two never meet.)
 - Clearance: a required level above the profile's -> blocker, except personnel Reliability,
   which is a warning (individual screening the firm can arrange). With the seeded profile
   (none/none) this is exactly: corporate not in (none, unknown) -> blocker; personnel
@@ -17,6 +20,8 @@ Rules (RULES_VERSION "2"):
   see_solicitation or the extraction failed; else no_blockers_stated.
 - not_stated: the gates whose (effective) value is unknown, in schema order. Clearance counts
   when either side is unknown; SA does not when the metadata says it is required.
+- Every SA, clearance and work-location finding carries a short ``label`` for lists, e.g.
+  "Supply arrangement (TBIPS)", "Clearance: Secret (corporate)", "On-site (Ottawa)".
 """
 
 from __future__ import annotations
@@ -29,7 +34,8 @@ from tenders.extraction.validate import normalize_loose
 
 from .places import Where, classify
 
-RULES_VERSION = "2"
+RULES_VERSION = "3"
+SA_OR_SO_REQUEST = "sa_or_so_request"  # Tender.NoticeKind.SA_OR_SO_REQUEST
 CLEARANCE_RANK = {"none": 0, "reliability": 1, "secret": 2, "top_secret": 3}
 CLEARANCE_LABEL = {"none": "none", "reliability": "Reliability", "secret": "Secret",
                    "top_secret": "Top Secret"}
@@ -53,6 +59,7 @@ class Profile:
 class TenderFacts:
     sa_required_from_metadata: bool | None
     notice_type: str = ""
+    notice_kind: str = ""
 
 
 @dataclass(frozen=True)
@@ -60,6 +67,7 @@ class Finding:
     gate: str
     reason: str
     evidence: str | None = None
+    label: str = ""  # short form for lists; reason is the full sentence
 
 
 @dataclass
@@ -101,19 +109,23 @@ def _supply_arrangement(g: dict, facts: TenderFacts, profile: Profile, d: Decisi
         value = "yes"
     if value != "yes":
         return value
+    gate = "supply_arrangement_required"
+    label = f"Supply arrangement ({name})" if name else "Supply arrangement"
+    if facts.notice_kind == SA_OR_SO_REQUEST:
+        what = f"the {name} arrangement" if name else "this supply arrangement or standing offer"
+        d.notes.append(Finding(gate, f"This notice is how firms qualify for {what}.", evidence,
+                               label))
+        return value
     what = f"the {name} supply arrangement" if name else \
         "a supply arrangement or standing offer (not named)"
     if name and holds_arrangement(name, profile.supply_arrangements):
-        d.notes.append(Finding("supply_arrangement_required",
-                               f"Requires {what}; the profile holds it.", evidence))
+        d.notes.append(Finding(gate, f"Requires {what}; the profile holds it.", evidence, label))
     elif not name and profile.supply_arrangements:
-        d.warnings.append(Finding("supply_arrangement_required",
-                                  f"Requires {what}; check whether the profile's "
-                                  "arrangements qualify.", evidence))
+        d.warnings.append(Finding(gate, f"Requires {what}; check whether the profile's "
+                                        "arrangements qualify.", evidence, label))
     else:
-        d.blockers.append(Finding("supply_arrangement_required",
-                                  f"Bidding is limited to holders of {what}; the profile "
-                                  "holds none of it.", evidence))
+        d.blockers.append(Finding(gate, f"Bidding is limited to holders of {what}; the profile "
+                                        "holds none of it.", evidence, label))
     return value
 
 
@@ -122,11 +134,13 @@ def _clearance(g: dict, profile: Profile, d: Decision) -> bool:
     if corp in CLEARANCE_RANK and CLEARANCE_RANK[corp] > CLEARANCE_RANK[profile.corporate_clearance]:
         d.blockers.append(Finding(
             "clearance", f"Corporate clearance required: {CLEARANCE_LABEL[corp]} "
-                         f"(profile: {CLEARANCE_LABEL[profile.corporate_clearance]}).", ev))
+                         f"(profile: {CLEARANCE_LABEL[profile.corporate_clearance]}).", ev,
+            f"Clearance: {CLEARANCE_LABEL[corp]} (corporate)"))
     if pers in CLEARANCE_RANK and CLEARANCE_RANK[pers] > CLEARANCE_RANK[profile.personnel_clearance]:
         finding = Finding(
             "clearance", f"Personnel clearance required: {CLEARANCE_LABEL[pers]} "
-                         f"(profile: {CLEARANCE_LABEL[profile.personnel_clearance]}).", ev)
+                         f"(profile: {CLEARANCE_LABEL[profile.personnel_clearance]}).", ev,
+            f"Clearance: {CLEARANCE_LABEL[pers]} (personnel)")
         (d.warnings if pers == "reliability" else d.blockers).append(finding)
     return "unknown" in (corp, pers)
 
@@ -137,21 +151,22 @@ def _work_location(g: dict, d: Decision) -> str:
         return on_site
     gate = "work_location"
     if not place:
-        d.warnings.append(Finding(gate, "On-site work, location not stated.", ev))
+        d.warnings.append(Finding(gate, "On-site work, location not stated.", ev, "On-site"))
         return on_site
+    label = f"On-site ({place})"
     where = classify(place)
     if where is Where.OUTSIDE_NL:
-        d.blockers.append(Finding(gate, f"On-site work at {place}, outside NL.", ev))
+        d.blockers.append(Finding(gate, f"On-site work at {place}, outside NL.", ev, label))
     elif where is Where.ST_JOHNS_AREA:
-        d.notes.append(Finding(gate, f"On-site work at {place} (St. John's area).", ev))
+        d.notes.append(Finding(gate, f"On-site work at {place} (St. John's area).", ev, label))
     elif where is Where.NL_OTHER:
-        d.warnings.append(Finding(gate, f"On-site work at {place}, elsewhere in NL.", ev))
+        d.warnings.append(Finding(gate, f"On-site work at {place}, elsewhere in NL.", ev, label))
     elif where is Where.MIXED:
         d.warnings.append(Finding(gate, f"On-site work at {place}: some locations are "
-                                        "outside NL.", ev))
+                                        "outside NL.", ev, label))
     else:
         d.warnings.append(Finding(gate, f"On-site work at {place}: could not tell whether "
-                                        "it is in NL.", ev))
+                                        "it is in NL.", ev, label))
     return on_site
 
 

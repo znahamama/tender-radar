@@ -32,13 +32,15 @@ def assess(extraction: Extraction, profile: SupplierProfile | None = None) -> As
     profile = profile or default_profile()
     tender = extraction.tender
     refresh(extraction, tender=tender)
-    facts = TenderFacts(tender.sa_required_from_metadata, tender.notice_type or "")
+    facts = TenderFacts(tender.sa_required_from_metadata, tender.notice_type or "",
+                        tender.notice_kind or "")
     prof = Profile.from_model(profile)
     data = extraction.data if extraction.status == Extraction.Status.OK else None
     decision = evaluate(data, list(extraction.flags), facts, prof, extraction.error)
 
     inputs = {"data": data, "flags": extraction.flags, "error": extraction.error,
-              "facts": [facts.sa_required_from_metadata, facts.notice_type],
+              "facts": [facts.sa_required_from_metadata, facts.notice_type,
+                        facts.notice_kind],
               "profile": [prof.supply_arrangements, prof.corporate_clearance,
                           prof.personnel_clearance], "rules": RULES_VERSION}
     fields = {**decision.as_fields(), "rules_version": RULES_VERSION,
