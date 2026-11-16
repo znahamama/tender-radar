@@ -1,0 +1,127 @@
+# ==================================================================================================
+# Eval case dev-07. Do not edit this comment block: check_labels reads the notice
+# text from it. Guide: docs/label-guide.md
+# ==================================================================================================
+# reference: cb-117-66588222
+# title: Cabot Tower Signal Mast Replacement, Signal Hill National Historic Site
+# buyer: Parks Canada Agency (PC)
+# notice_type: Request for Proposal
+# procurement_categories: CNST
+# regions_of_delivery: Newfoundland and Labrador; Canada
+# regions_of_opportunity: St. John's
+# trade_agreements: Canadian Free Trade Agreement (CFTA)
+# closing_date: 2026-11-03T17:30:00+00:00
+# url: https://canadabuys.canada.ca/en/tender-opportunities/tender-notice/cb-117-66588222
+# description (redacted):
+#   5P468-26-0234/A         Cabot Tower Signal Mast Replacement, Signal Hill National Historic Site
+#
+#   BIDS RECEIVED BY FAX AND EMAIL WILL BE ACCEPTED AS OFFICIAL.
+#
+#   PARKS CANADA IS NOT CURRENTLY ACCEPTING BIDS VIA SAP ARIBA, YOU MUST SUBMIT YOUR BID VIA FAX OR
+#   EMAIL AS INDICATED IN THE SOLICITATION DOCUMENT.
+#
+#   BIDS RECEIVED IN-PERSON OR BY COURIER WILL NOT BE ACCEPTED.
+#
+#   The only acceptable email address for responses to the bid solicitation is [EMAIL]. Bids
+#   submitted by email directly to the Contracting Authority or to any email address other than
+#   [EMAIL] will not be accepted.
+#
+#   The only acceptable facsimile for responses to bid solicitations is [PHONE].
+#
+#   The maximum email file size that Parks Canada is capable of receiving is 15 megabytes. The
+#   Bidder is responsible for any failure attributable to the transmission or receipt of the emailed
+#   bid due to file size.
+#
+#   The Bidder should be cognisant of the size of the email as a whole, and not only the
+#   attachments. Please take into consideration that some attachments, when sent, may be resized
+#   during the email transfer. If the email size is too large, the Bidder should send the bid in
+#   multiple emails properly labeled with the solicitation number, project name, and indicate how
+#   many emails are included (ex. 1 of 2).
+#
+#   Emails with links to bid documents will not be accepted. Bid documents must be sent as email
+#   attachments.
+#
+#
+#   REQUIREMENT
+#
+#   Parks Canada requires the removal of the existing signal mast, and the supply and install of a
+#   new signal mast atop of Cabot Tower.
+#
+#   CONTRACTOR SELECTION AND INDIGENOUS PARTICIPATION PLAN
+#
+#   The Contractor should ensure provision of specific and agreed upon benefits for Indigenous
+#   People and Indigenous Businesses in the Area of the Contract.
+#
+#   This Invitation to Tender contains bid criteria in order to provide socioeconomic benefits to
+#   Indigenous communities within the area covered by the contract.
+#
+#   PERIOD OF CONTRACT / DELIVERY DATE
+#
+#   Contractor must perform and complete the Work no later than March 31, 2027.
+#
+#   OPTIONAL SITE VISIT
+#
+#   It is recommended that the Bidder or a representative of the Bidder visit the work site.
+#   Arrangements have been made for the site visit to be held at at the entrance door for Cabot
+#   Tower, located at 230 Signal Hill Rd, St. John's, NL A1C 5M on October 14, 2026. The site visit
+#   will begin at 10:30am NDT.
+#
+#   Bidders must communicate with the Contracting Authority no later than October 12 at 12:00pm NDT
+#   to confirm attendance and provide the name(s) of the person(s) who will attend. Bidders must
+#   also complete and submit a certification.
+#
+#   Bidders who do not confirm attendance, provide the name(s) of the person(s) who will attend, or
+#   who do not complete and submit the above certification as required will not be allowed access to
+#   the site. Bidders will be requested to sign an attendance sheet. No alternative appointment will
+#   be given to bidders who do not attend or do not send a representative. Bidders who do not
+#   participate in the visit will not be precluded from submitting a bid. Any clarifications or
+#   changes to the bid solicitation resulting from the site visit will be included as an amendment
+#   to the bid solicitation.
+#
+#   ENQUIRIES
+#
+#   All enquiries of a technical and contractual nature are to be submitted to the Contracting
+#   Authority.
+#
+#   Enquiries regarding this solicitation must be submitted in writing and should be received no
+#   later than five (5) calendar days prior to the date set for solicitation closing to allow
+#   sufficient time to provide a response. Enquiries received after that time may result in an
+#   answer NOT being provided.
+#
+#   INFORMATION
+#
+#   National Parks Regulations require that all work is to be performed in accordance with the
+#   ordinances, laws, rules and regulations set out in the National Park Act.
+#
+#   Bidders that consider themselves qualified to provide this Work and intend to submit bids on
+#   this project should obtain documents from the Government Electronic Tendering Service through
+#   the Government of Canada tendering service at
+#   http://canadabuys.canada.ca/en/tender-opportunities. Addenda, when issued, will be available
+#   from the Government of Canada tendering service. Bidders that elect to base their bids on
+#   documents obtained from other sources do so at their own risk. Late submissions will not be
+#   considered.
+#
+#   The Crown retains the right to negotiate with suppliers on any procurement.
+#
+#   Documents may be submitted in either official language of Canada. Parks Canada has made every
+#   effort to provide equivalent documents in both official languages, however, if you find any
+#   discrepancies between the English and French documents, please notify the contract officer
+#   listed in this opportunity as soon as possible so that we can rectify the situation.
+# ==================================================================================================
+
+criteria_location: TODO   # stated_in_notice | partly_stated | see_solicitation
+gates:
+  # value: yes | no | unknown. name: the arrangement as written in the notice, or null
+  supply_arrangement_required: {value: TODO, name: null, evidence: null}
+  # value: none | canadian_only | canadian_and_trading_partners | unknown
+  supplier_origin_restriction: {value: TODO, evidence: null}
+  # corporate, personnel: none | reliability | secret | top_secret | unknown
+  clearance: {corporate: TODO, personnel: TODO, evidence: null}
+  # on_site: yes | no | unknown. place: where staff must work (title/description), or null
+  work_location: {on_site: TODO, place: null, evidence: null}
+  # value: yes | no | unknown
+  land_claims_applies: {value: TODO, evidence: null}
+  # value: yes | no | unknown. portal: as written in the notice, or null
+  documents_behind_login: {value: TODO, portal: null, evidence: null}
+unsure: false   # true only for a genuinely ambiguous case, with a one-line note
+notes: ""

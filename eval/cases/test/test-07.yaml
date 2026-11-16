@@ -1,0 +1,145 @@
+# ==================================================================================================
+# Eval case test-07. Do not edit this comment block: check_labels reads the notice
+# text from it. Guide: docs/label-guide.md
+# ==================================================================================================
+# reference: cb-364-13128756
+# title: TBIPS (Task-based Informatics)
+# buyer: Department of Public Works and Government Services (PSPC)
+# notice_type: Request for Supply Arrangement
+# procurement_categories: SRV
+# regions_of_delivery: Canada
+# regions_of_opportunity: Canada
+# trade_agreements: Canada-Chile Free Trade Agreement (CCFTA); Canada-Panama Free Trade Agreement;
+#   Canada-UK Trade Continuity Agreement (Canada-UK TCA); Comprehensive and Progressive Agreement
+#   for Trans-Pacific Partnership (CPTPP); Canada-Korea Free Trade Agreement (CKFTA); Canada-Peru
+#   Free Trade Agreement (CPFTA); Canadian Free Trade Agreement (CFTA); Canada-Ukraine Free Trade
+#   Agreement (CUFTA); Canada-Colombia Free Trade Agreement; World Trade Organization Agreement on
+#   Government Procurement (WTO GPA); Canada-Honduras Free Trade Agreement; Canada-European Union
+#   Comprehensive Economic and Trade Agreement (CETA)
+# closing_date: 2028-07-04T18:00:00+00:00
+# url: https://canadabuys.canada.ca/en/tender-opportunities/tender-notice/cb-364-13128756
+# description (redacted):
+#   TBIPS EN578-170432/D
+#
+#   **This is a continuation of the Task-based Informatics Professional Services (TBIPS) Request for
+#   Supply Arrangement originally published in 2017 (Refresh EN578-170432/B).
+#
+#   Suppliers new to PSPC’s online procurement tool may wish to consult the CanadaBuys Getting
+#   Started page where they can find:
+#
+#   •       A registration checklist for Ariba SAP to help understand what is needed before creating
+#   an account, and;
+#   •       Step-by-step instructions on how to create an account.
+#   •       For technical support with SAP Ariba, please contact the CanadaBuys Service Desk agents:
+#   https://canadabuys.canada.ca/en/contact-support
+#
+#   IMPORTANT NOTICE TO SUPPLIERS:
+#
+#   This document is a request for supply arrangements (RFSA). Resulting supply arrangements (SA)
+#   are non-binding agreements between Canada and suppliers to facilitate the procurement process
+#   and are not contracts. Future requirements solicited through a supply arrangement may result in
+#   contracts, but a contract will only exist if and when a contract is awarded.
+#
+#   REQUIREMENT:
+#
+#   This solicitation is a RFSA to satisfy Canada's requirement for the provision of for Task-based
+#   Informatics Professional Services (TBIPS) to locations throughout Canada, excluding any
+#   locations in areas subject to any of the Comprehensive Land Claim Agreement (CLCA), equal to or
+#   above the Canada Korea Free Trade Agreement (CKFTA) threshold.
+#
+#   TBIPS is a mandatory method of supply that offers federal departments the ability to compete
+#   their requirements to pre-qualified suppliers.
+#
+#   Suppliers interested to obtain the solicitation and all amendments in response to this RFSA
+#   solicitation can access it from the ‘Bidding details’ tab above.
+#
+#   This document will serve as a refresh of the RFSA in place for the provision of TBIPS. This will
+#   allow new suppliers to become TBIPS SA Holders and to allow existing TBIPS SA Holders to qualify
+#   for additional streams.
+#
+#   Existing TBIPS SA Holders may submit a bid only if they wish to add to their current
+#   qualifications (Ex.: Tier, Region, Region, Metropolitan Area, Streams, and/or Categories).
+#
+#   It is not mandatory for existing SA Holders to provide a response to a refresh period unless
+#   they are requesting additional streams or categories. Their TBIPS SA will remain active and
+#   unchanged.
+#
+#   The period of the Supply Arrangement will be valid from the date of issuance until July 4, 2028,
+#   or, until such time as Canada chooses to re-compete the Supply Arrangement, no longer deems the
+#   Supply Arrangements necessary, or proceeds with a different procurement vehicle.
+#
+#   QUARTERLY REFRESH NOTICE:
+#
+#   This bid solicitation occurs on a quarterly basis which aligns with the Government of Canada’s
+#   fiscal year quarters, as follows:
+#
+#   April to June
+#   July to September
+#   October to December
+#   January to March
+#
+#   The professional services that TBIPS covers can be found at this link:
+#   https://www.tpsgc-pwgsc.gc.ca/app-acq/sptb-tbps/categories-eng.html
+#
+#   CENTRALIZED PROFESSIONAL SERVICES SYSTEM (CPSS):
+#
+#   All suppliers that want to submit a response to this RFSA must enroll and establish an account
+#   in the Supplier Module of the PWGSC Centralized Professional Services System (CPSS) e-Portal
+#   (http://www.tpsgc-pwgsc.gc.ca/app-acq/spc-cps/iffpe-seeps-eng.html). Instructions on accessing
+#   the Supplier Module e-Portal application are specified in the RFSA document.
+#
+#   All suppliers must submit an online response through the CPSS Supplier Module by the
+#   solicitation closing date and time and must submit the supporting documentation by email upon
+#   request by Canada (this is a paperless bid submission process).
+#
+#   SET-ASIDE PROGRAM FOR INDIGENOUS BUSINESS:
+#
+#   Part of this procurement may be designated by one or more Identified Users as set-aside under
+#   the Federal Government's Procurement Strategy for Indigenous Business (PSIB).
+#
+#   In order to be considered as an Indigenous Business under the PSIB, the Supplier must complete
+#   the Indigenous Business certification in the CPSS and register on the Indigenous Business
+#   Directory (IBD).
+#
+#   COMPREHENSIVE LAND CLAIMS AGREEMENTS (CLCA):
+#
+#   This solicitation, as well as the resulting supply arrangements, excludes locations in areas
+#   subject to Comprehensive Land Claims Agreements.
+#
+#   OFFICIAL LANGUAGES:
+#
+#   The services to be provided under the resulting supply arrangements will be delivered in one or
+#   both of the two official languages of Canada, according to the requirements of the Government
+#   department.
+#
+#   RFSA ENQUIRIES:
+#
+#   All enquiries regarding this RFSA can be directed to:
+#
+#   Informatics Methods of Supply (IMOS)
+#   Public Services and Procurement Canada (PSPC)
+#   [EMAIL]
+#
+#   The Crown retains the right to negotiate with suppliers on any procurement.
+#
+#   Documents may be submitted in either official language of Canada.
+#
+#   EN578-170432/D replaces EN578-170432/B in its entirety
+# ==================================================================================================
+
+criteria_location: TODO   # stated_in_notice | partly_stated | see_solicitation
+gates:
+  # value: yes | no | unknown. name: the arrangement as written in the notice, or null
+  supply_arrangement_required: {value: TODO, name: null, evidence: null}
+  # value: none | canadian_only | canadian_and_trading_partners | unknown
+  supplier_origin_restriction: {value: TODO, evidence: null}
+  # corporate, personnel: none | reliability | secret | top_secret | unknown
+  clearance: {corporate: TODO, personnel: TODO, evidence: null}
+  # on_site: yes | no | unknown. place: where staff must work (title/description), or null
+  work_location: {on_site: TODO, place: null, evidence: null}
+  # value: yes | no | unknown
+  land_claims_applies: {value: TODO, evidence: null}
+  # value: yes | no | unknown. portal: as written in the notice, or null
+  documents_behind_login: {value: TODO, portal: null, evidence: null}
+unsure: false   # true only for a genuinely ambiguous case, with a one-line note
+notes: ""

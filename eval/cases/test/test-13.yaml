@@ -1,0 +1,58 @@
+# ==================================================================================================
+# Eval case test-13. Do not edit this comment block: check_labels reads the notice
+# text from it. Guide: docs/label-guide.md
+# ==================================================================================================
+# reference: WS3971158100-Doc3971158168
+# title: Software Licensing Supply Arrangement (SLSA) RFSA
+# buyer: Department of Public Works and Government Services (PSPC)
+# notice_type: Request for Supply Arrangement
+# procurement_categories: GD
+# regions_of_delivery: Canada
+# regions_of_opportunity:
+# trade_agreements: Canada-Honduras Free Trade Agreement; Canadian Free Trade Agreement (CFTA);
+#   Canada-UK Trade Continuity Agreement (Canada-UK TCA); Canada-Peru Free Trade Agreement (CPFTA);
+#   Canada-Korea Free Trade Agreement (CKFTA); World Trade Organization Agreement on Government
+#   Procurement (WTO GPA); Canada-Panama Free Trade Agreement; Comprehensive and Progressive
+#   Agreement for Trans-Pacific Partnership (CPTPP); Canada-Ukraine Free Trade Agreement (CUFTA);
+#   Canada-European Union Comprehensive Economic and Trade Agreement (CETA); Canada-Colombia Free
+#   Trade Agreement; Canada-Chile Free Trade Agreement (CCFTA)
+# closing_date: 2028-09-29T14:00:00+00:00
+# url: http://discovery.ariba.com/rfx/16043971
+# description (redacted):
+#   IMPORTANT NOTICE: Please submit offers to the generic Software Licensing Arrangement email inbox
+#   [EMAIL]
+#
+#   SUMMARY
+#
+#   Canada is seeking offers from Offerors for a Software Licensing Supply Arrangement (SLSA) for
+#   the delivery of various Off-the-shelf software licenses and related software maintenance and
+#   support services. The SLSA procurement vehicle will not be used to procure IT professional
+#   services, hardware, appliance solutions, hosted solutions, or cloud-based solutions such as
+#   software as a service, infrastructure as a service and platform as a service.
+#
+#   This document is a request for supply arrangements. Resulting supply arrangements are
+#   non-binding agreements between Canada and suppliers to facilitate the procurement process and
+#   are not contracts. Future requirements solicited through a supply arrangement may result in
+#   contracts, but a contract will only exist if and when a contract is awarded.
+#
+#   The current SLSA RFSA (EN578-100808) and existing SA’s will expire September 30, 2023.
+#
+#   RFSA document can be found on the following link: http://discovery.ariba.com/rfx/16043971
+# ==================================================================================================
+
+criteria_location: TODO   # stated_in_notice | partly_stated | see_solicitation
+gates:
+  # value: yes | no | unknown. name: the arrangement as written in the notice, or null
+  supply_arrangement_required: {value: TODO, name: null, evidence: null}
+  # value: none | canadian_only | canadian_and_trading_partners | unknown
+  supplier_origin_restriction: {value: TODO, evidence: null}
+  # corporate, personnel: none | reliability | secret | top_secret | unknown
+  clearance: {corporate: TODO, personnel: TODO, evidence: null}
+  # on_site: yes | no | unknown. place: where staff must work (title/description), or null
+  work_location: {on_site: TODO, place: null, evidence: null}
+  # value: yes | no | unknown
+  land_claims_applies: {value: TODO, evidence: null}
+  # value: yes | no | unknown. portal: as written in the notice, or null
+  documents_behind_login: {value: TODO, portal: null, evidence: null}
+unsure: false   # true only for a genuinely ambiguous case, with a one-line note
+notes: ""

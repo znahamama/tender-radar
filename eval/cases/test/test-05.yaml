@@ -1,0 +1,68 @@
+# ==================================================================================================
+# Eval case test-05. Do not edit this comment block: check_labels reads the notice
+# text from it. Guide: docs/label-guide.md
+# ==================================================================================================
+# reference: SSC-26-00033871:T
+# title: Virtual Hosting Solutions Invitation to Qualify (ITQ)
+# buyer: Shared Services Canada
+# notice_type: Invitation to Qualify
+# procurement_categories: GD
+# regions_of_delivery: Canada
+# regions_of_opportunity: Canada; World
+# trade_agreements: Comprehensive Land Claim Agreement (CLCA); Comprehensive and Progressive
+#   Agreement for Trans-Pacific Partnership (CPTPP); Canada-Korea Free Trade Agreement (CKFTA);
+#   Canada-Panama Free Trade Agreement; Land Claim Set Asides (LCSA); Atlantic Procurement
+#   Agreement; Canada-Colombia Free Trade Agreement; Canadian Free Trade Agreement (CFTA);
+#   Canada-Peru Free Trade Agreement (CPFTA); Canada-Honduras Free Trade Agreement; Canada-UK Trade
+#   Continuity Agreement (Canada-UK TCA); Canada-Ukraine Free Trade Agreement (CUFTA); Canada-Chile
+#   Free Trade Agreement (CCFTA); Canada-European Union Comprehensive Economic and Trade Agreement
+#   (CETA); General Agreement on Tariffs and Trade (GATT)
+# closing_date: 2026-06-26T18:00:00+00:00
+# url: https://canadabuys.canada.ca/en/tender-opportunities/tender-notice/SSC-26-00033871:T
+# description (redacted):
+#   Virtual Hosting Solutions Invitation to Qualify (ITQ) Amendment 005 has been posted to address
+#   the questions received to
+#   date.--------------------------------------------------------------------------------Virtual
+#   Hosting Solutions Invitation to Qualify (ITQ) Amendment 004 has been posted to extend the
+#   submission deadline date to June 26, 2026 at 2:00pm
+#   EDT.--------------------------------------------------------------------------------Virtual
+#   Hosting Solutions Invitation to Qualify (ITQ) Amendment 003 has been posted to address the
+#   questions received to
+#   date.--------------------------------------------------------------------------------Virtual
+#   Hosting Solutions Invitation to Qualify (ITQ) Amendment 002 has been posted to extend the
+#   submission deadline date to June 24, 2026 at 2:00pm
+#   EDT.--------------------------------------------------------------------------------Virtual
+#   Hosting Solutions Invitation to Qualify (ITQ) Amendment 001 has been posted to address the
+#   questions received to
+#   date.--------------------------------------------------------------------------------SSC is
+#   advancing the modernization of the Government of Canada’s (GoC) on-premises virtualization
+#   footprint across enterprise data centres and regional or edge environments. Current and future
+#   requirements encompass largescale hosting needs, potentially supporting upwards of 150,000
+#   Virtual Machines (VMs) while meeting strict security, data residency, and operational continuity
+#   expectations.This Invitation to Qualify (ITQ) is the first phase of a procurement process by
+#   Shared Services Canada (SSC) for Virtual Hosting Solutions for enterprise on premises x86
+#   environments. Suppliers are invited to pre-qualify in accordance with the terms and conditions
+#   of this ITQ in order to become “Qualified Respondents” for any later phases of the procurement
+#   process.This ITQ process is not a solicitation of bids or tenders. No contract will be awarded
+#   as a result of the activities during the ITQ phase. It is not a competitive evaluation for
+#   contract award, and failure to meet the requirements of this ITQ does not preclude a supplier
+#   from participating in the later RFP stage.
+#   SSC Virtual Hosting Solutions Invitation to Qualify (ITQ)- Amendment 005
+# ==================================================================================================
+
+criteria_location: TODO   # stated_in_notice | partly_stated | see_solicitation
+gates:
+  # value: yes | no | unknown. name: the arrangement as written in the notice, or null
+  supply_arrangement_required: {value: TODO, name: null, evidence: null}
+  # value: none | canadian_only | canadian_and_trading_partners | unknown
+  supplier_origin_restriction: {value: TODO, evidence: null}
+  # corporate, personnel: none | reliability | secret | top_secret | unknown
+  clearance: {corporate: TODO, personnel: TODO, evidence: null}
+  # on_site: yes | no | unknown. place: where staff must work (title/description), or null
+  work_location: {on_site: TODO, place: null, evidence: null}
+  # value: yes | no | unknown
+  land_claims_applies: {value: TODO, evidence: null}
+  # value: yes | no | unknown. portal: as written in the notice, or null
+  documents_behind_login: {value: TODO, portal: null, evidence: null}
+unsure: false   # true only for a genuinely ambiguous case, with a one-line note
+notes: ""

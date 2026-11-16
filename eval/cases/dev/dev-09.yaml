@@ -1,0 +1,62 @@
+# ==================================================================================================
+# Eval case dev-09. Do not edit this comment block: check_labels reads the notice
+# text from it. Guide: docs/label-guide.md
+# ==================================================================================================
+# reference: WS3430950409-Doc5344784278
+# title: Electronic Health Record Platform (EHRP)-Invitation to Qualify (ITQ) Results Notification
+# buyer: Department of Public Works and Government Services (PSPC)
+# notice_type: Request for Proposal
+# procurement_categories: SRV
+# regions_of_delivery: Canada
+# regions_of_opportunity:
+# trade_agreements: World Trade Organization Agreement on Government Procurement (WTO GPA);
+#   Canada-Korea Free Trade Agreement (CKFTA); Comprehensive and Progressive Agreement for
+#   Trans-Pacific Partnership (CPTPP); Canada-Ukraine Free Trade Agreement (CUFTA); Canada-Chile
+#   Free Trade Agreement (CCFTA); Canada-European Union Comprehensive Economic and Trade Agreement
+#   (CETA); Canada-Colombia Free Trade Agreement; Canada-Panama Free Trade Agreement; Canadian Free
+#   Trade Agreement (CFTA); Canada-UK Trade Continuity Agreement (Canada-UK TCA); Canada-Peru Free
+#   Trade Agreement (CPFTA)
+# closing_date: 2027-12-31T19:00:00+00:00
+# url: https://discovery.ariba.com/rfx/23426456?extsite=MjM0MjY0NTZfQU4wMTQ4NDA1MDk5Mg==
+# description (redacted):
+#   EHRP Invitation to Qualify (ITQ) Results Notification - Amendment to the list of Qualified
+#   Suppliers
+#
+#   Canadian Armed Forces - Electronic Health Record Platform (EHRP) for Department of National
+#   Defence
+#
+#   Solicitation Number: ITQ #W6369-210257 (SAP Ariba #WS3430950409)
+#
+#   This is a notice only. No solicitation document is associated with this notice. Its purpose is
+#   to announce the results of the EHRP ITQ.The following Respondents have met the ITQ requirements
+#   and have been selected as Qualified Suppliers (QSs) under these workstreams for subsequent
+#   phases of the procurement process. In accordance with the terms and conditions of the ITQ, only
+#   these QSs are eligible to participate in any future phases of the procurement.
+#
+#   System Integrator (SI) workstream:Accenture Inc.
+#   Deloitte Inc.
+#   Ernst & Young
+#   Telus Health Solutions Inc.
+#   Software as a Service (SaaS) Provider (SP) workstream:Alcidion Canada Limited
+#   Logiciels Purkinje Inc.
+#   Oracle Canada ULC
+#   Orion Health and Intrahealth Canada JV Limited
+#   Telus Health Solutions Inc.
+# ==================================================================================================
+
+criteria_location: TODO   # stated_in_notice | partly_stated | see_solicitation
+gates:
+  # value: yes | no | unknown. name: the arrangement as written in the notice, or null
+  supply_arrangement_required: {value: TODO, name: null, evidence: null}
+  # value: none | canadian_only | canadian_and_trading_partners | unknown
+  supplier_origin_restriction: {value: TODO, evidence: null}
+  # corporate, personnel: none | reliability | secret | top_secret | unknown
+  clearance: {corporate: TODO, personnel: TODO, evidence: null}
+  # on_site: yes | no | unknown. place: where staff must work (title/description), or null
+  work_location: {on_site: TODO, place: null, evidence: null}
+  # value: yes | no | unknown
+  land_claims_applies: {value: TODO, evidence: null}
+  # value: yes | no | unknown. portal: as written in the notice, or null
+  documents_behind_login: {value: TODO, portal: null, evidence: null}
+unsure: false   # true only for a genuinely ambiguous case, with a one-line note
+notes: ""

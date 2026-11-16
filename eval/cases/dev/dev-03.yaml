@@ -1,0 +1,52 @@
+# ==================================================================================================
+# Eval case dev-03. Do not edit this comment block: check_labels reads the notice
+# text from it. Guide: docs/label-guide.md
+# ==================================================================================================
+# reference: cb-300-44437270
+# title: Office Furniture
+# buyer: Department of National Defence (DND)
+# notice_type: RFP against Supply Arrangement
+# procurement_categories: GD
+# regions_of_delivery: Newfoundland and Labrador
+# regions_of_opportunity: Canada
+# trade_agreements:
+# closing_date: 2026-06-18T18:00:00+00:00
+# url: https://canadabuys.canada.ca/en/tender-opportunities/tender-notice/cb-300-44437270
+# description (redacted):
+#   Office furniture is required for a new Military Family Resource Centre in Gander, NL.  This
+#   request is for the provision of furniture as indicated in the builders (attached), delivery and
+#   installation. The furniture will need to be in place by July 30, 2026.
+#
+#   Notice of Proposed Procurement (NPP) MFRC Furniture
+#
+#   1. This NPP is issued pursuant to PWGSC Supply Arrangement (SA) # E60PQ-140003/D and covers a
+#   requirement from the following Product Category(ies) of the SA:
+#   - Product Category 1 - Workstation Systems;
+#   - Product Category 2 - Work Surface Products;
+#   - Product Category 3 - Filing and Storage Products;
+#   - Product Category 5 - Ancillary Products
+#   - Product Category 6 – Collaborative Products
+#
+#   2. Department of National Defence has a requirement for the purchase, delivery and installation
+#   of office furniture to Gander, Newfoundland by 30 July 2026.
+#
+#   3. This NPP covers a requirement to be solicited amongst the General Stream of Suppliers (SA
+#   holders).
+# ==================================================================================================
+
+criteria_location: TODO   # stated_in_notice | partly_stated | see_solicitation
+gates:
+  # value: yes | no | unknown. name: the arrangement as written in the notice, or null
+  supply_arrangement_required: {value: TODO, name: null, evidence: null}
+  # value: none | canadian_only | canadian_and_trading_partners | unknown
+  supplier_origin_restriction: {value: TODO, evidence: null}
+  # corporate, personnel: none | reliability | secret | top_secret | unknown
+  clearance: {corporate: TODO, personnel: TODO, evidence: null}
+  # on_site: yes | no | unknown. place: where staff must work (title/description), or null
+  work_location: {on_site: TODO, place: null, evidence: null}
+  # value: yes | no | unknown
+  land_claims_applies: {value: TODO, evidence: null}
+  # value: yes | no | unknown. portal: as written in the notice, or null
+  documents_behind_login: {value: TODO, portal: null, evidence: null}
+unsure: false   # true only for a genuinely ambiguous case, with a one-line note
+notes: ""

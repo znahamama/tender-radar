@@ -1,0 +1,98 @@
+# ==================================================================================================
+# Eval case test-18. Do not edit this comment block: check_labels reads the notice
+# text from it. Guide: docs/label-guide.md
+# ==================================================================================================
+# reference: cb-233-12818571
+# title: Bi-Directional Amplifier
+# buyer: Royal Canadian Mounted Police (RCMP)
+# notice_type: RFP against Supply Arrangement
+# procurement_categories: GD
+# regions_of_delivery: Newfoundland and Labrador; Canada
+# regions_of_opportunity: Newfoundland and Labrador
+# trade_agreements: Canadian Free Trade Agreement (CFTA)
+# closing_date: 2026-10-16T18:00:00+00:00
+# url: https://canadabuys.canada.ca/en/tender-opportunities/tender-notice/cb-233-12818571
+# description (redacted):
+#   This requirement is open to all Supply arrangement (SA) holders under the SA E60HN-16ELEC
+#   authorized for the region of delivery R1 Atlantic, Corner Brook, Newfoundland and Labrador.
+#
+#   Stream: Stream 2 Annex A2 – Electronic Products
+#
+#   As a requirement of the Supply Arrangement (SA) this notice is published for a period of 15
+#   calendar days. Only pre-qualified Suppliers have been invited to bid.
+#
+#   The Royal Canadian Mounted Police (RCMP) has a requirement for the following items, or
+#   equivalent:
+#
+#   Bi-DIRECTIONAL AMPLIFIER 12 MHz BW, 764-806 MHz (Quantity 3) including the following items (or
+#   equivalent):
+#   •       ENCLOSED DONOR ANT 8-9dB GAIN N-MALE 580-6000MHz (Quantity 3)
+#   •       ULTRA WIDE BAND IN-BUILDING ANTENNA 130-1000MHz (Quantity 12)
+#   •       PUBLIC SAFETY SPLITTER 2 WAY: 3dB (130-1000MHz) (Quantity 3)
+#   •       PUBLIC SAFETY SPLITTER 4 WAY: 6.15dB (130-1000MHz) (Quantity 3)
+#   •       LMR-400 CABLE (Price per FT) (Quantity 1200)
+#   •       EZ-400-NMH-X N.M CRIMP FOR LMR-400 (Quantity 30)
+#   •       DC BLOCK SURGE ARRESTOR N-FEMALE 125-1000MHz (Quantity 3)
+#   •       CONNECTOR N-FEMALE CRIMP FOR LMR-400 NONSOLDER (Quantity 30)
+#
+#   Delivery is requested to be completed by March 31, 2027.
+#
+#   Basis of selection:  A bid must comply with the requirements of the bid solicitation and meet
+#   all evaluation criteria to be
+#   declared responsive (compliant). The lowest priced responsive bid on an aggregate basis will be
+#   recommended for award of a contract.
+#
+#   Tenders must be submitted by email to: [EMAIL]
+#
+#   Canada retains the right to negotiate with any supplier on any procurement.
+#
+#   Documents may be submitted in either official language of Canada.
+#
+#   Procuring Office: [NAME], HQ Procurement and Contracting, Royal Canadian Mounted Police, 73
+#   Leikin Drive Ottawa, ON K1A 0R2 Canada, PH: [PHONE], [EMAIL].
+#
+#   Canada will make available Notices of Proposed Procurement (NPP), bid solicitations and related
+#   documents for download through the Government Electronic Tendering Service (GETS) at
+#   https://canadabuys.canada.ca/en/tender-opportunities . Canada is not responsible and will not
+#   assume any liabilities whatsoever for the information found on websites of third parties. In the
+#   event an NPP, bid solicitation or related documentation would be amended, Canada will not be
+#   sending notifications. Canada will post all amendments, including significant enquiries received
+#   and their replies, using GETS. It is the sole responsibility of the Bidder to regularly consult
+#   GETS for the most up-to-date information. Canada will not be liable for any oversight on the
+#   Bidder's part nor for notification services offered by a third party.
+#   The RCMP has adopted the Ineligibility and Suspension Policy administered by Public Services and
+#   Procurement Canada. As a result, the supplier integrity and compliance provisions are being
+#   applied in RCMP contracting activities as outlined in this solicitation.
+#   Indigenous Procurement:
+#   The federal Indigenous Business Directory (IBD) is an online resource for all levels of
+#   government and the private sector to identify Indigenous business capacity. Having a business
+#   profile in the IBD will increase your company’s visibility and may provide additional business.
+#   A profile in the IBD can also allow you to compete for federal government contracts that are
+#   set-aside for Indigenous businesses through the Procurement Strategy for Indigenous Businesses.
+#   For more information and to review eligibility criteria and register, visit:
+#   www.canada.ca/indigenousbusinessdirectory.
+#   Green Procurement - Environmentally Preferable Packaging
+#   The Royal Canadian Mounted Police (RCMP) is committed to promoting the procurement of
+#   environmentally preferable plastic products and the reduction of plastic packaging waste as per
+#   the Policy on Green Procurement, the Greening Government Strategy: A Government of Canada
+#   Directive, and the Ocean Plastics Charter. Bidders are encouraged to use environmentally
+#   preferable packaging for all packaged goods to be delivered to the end user as part of this
+#   procurement.
+# ==================================================================================================
+
+criteria_location: TODO   # stated_in_notice | partly_stated | see_solicitation
+gates:
+  # value: yes | no | unknown. name: the arrangement as written in the notice, or null
+  supply_arrangement_required: {value: TODO, name: null, evidence: null}
+  # value: none | canadian_only | canadian_and_trading_partners | unknown
+  supplier_origin_restriction: {value: TODO, evidence: null}
+  # corporate, personnel: none | reliability | secret | top_secret | unknown
+  clearance: {corporate: TODO, personnel: TODO, evidence: null}
+  # on_site: yes | no | unknown. place: where staff must work (title/description), or null
+  work_location: {on_site: TODO, place: null, evidence: null}
+  # value: yes | no | unknown
+  land_claims_applies: {value: TODO, evidence: null}
+  # value: yes | no | unknown. portal: as written in the notice, or null
+  documents_behind_login: {value: TODO, portal: null, evidence: null}
+unsure: false   # true only for a genuinely ambiguous case, with a one-line note
+notes: ""

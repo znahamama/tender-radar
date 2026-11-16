@@ -1,0 +1,80 @@
+# ==================================================================================================
+# Eval case test-19. Do not edit this comment block: check_labels reads the notice
+# text from it. Guide: docs/label-guide.md
+# ==================================================================================================
+# reference: cb-563-51417133
+# title: Floating Dock Replacement - Charlottetown
+# buyer: Department of Fisheries and Oceans (DFO)
+# notice_type: Invitation to Qualify
+# procurement_categories: CNST
+# regions_of_delivery: Charlottetown (Labrador)
+# regions_of_opportunity: Canada
+# trade_agreements: Canadian Free Trade Agreement (CFTA)
+# closing_date: 2026-07-14T18:00:00+00:00
+# url: https://canadabuys.canada.ca/en/tender-opportunities/tender-notice/cb-563-51417133
+# description (redacted):
+#   1.0     TITLE
+#
+#   Floating Dock Replacement - Charlottetown, Labrador
+#
+#   2.0 DESCRIPTION
+#
+#   2.1 Scope of Work
+#
+#   The purpose of this project is to replace existing floating dock infrastructure at the
+#   Charlottetown harbour facility in Charlottetown, Labrador.
+#
+#   The Work includes, but is not limited to, the following:
+#
+#   1.      Provide all labour, materials, equipment, supervision, and incidentals required to
+#   complete the Work.
+#   2.      Remove and dispose of four (4) existing floating docks, including associated mooring
+#   systems and two (2) concrete anchor blocks.
+#   3.      Remove and dispose of two (2) existing timber gangways.
+#   4.      Remove and dispose of timber decking and related components on existing headblock cribs,
+#   including wheelguards, blocking, and connection hardware, and salvage select items for reuse.
+#   5.      Supply, construct, and install four (4) new floating docks complete with mooring
+#   systems, connection hardware, and anchor systems.
+#   6.      Supply, construct, and install two (2) new timber gangways complete with all required
+#   connections.
+#   7.      Install new treated timber decking, wheelguards, and blocking on existing headblock
+#   cribs, including the reinstallation of salvaged components.
+#
+#   The Contractor shall be responsible for delivering a complete and fully functional floating dock
+#   system, including all associated components and works necessary for safe and operational use.
+#
+#   3.0     FAMILIARIZATION WITH THE SITE
+#
+#   Before submitting a bid, it is recommended that Contractors visit the site and its surroundings,
+#   at their own expense and schedule, to review and verify the form, nature and extent of the work,
+#   materials necessary for the completion of the works, the means of access to the site (including
+#   ferry services), severity, exposure and uncertainty of weather, soil conditions, any
+#   accommodations they may require, and in general shall obtain all necessary information as to
+#   risks, contingencies and other circumstances which may influence or affect their bid.  No
+#   allowance shall be made subsequently in this connection on account of error or negligence to
+#   properly observe and determine the conditions that will apply.
+#
+#   Take all appropriate safety measures for any site visit, either before or after acceptance of
+#   the bid.
+#
+#   4.0     DELIVERY
+#
+#   The completion date for all work under this project must be November 30, 2026.
+# ==================================================================================================
+
+criteria_location: TODO   # stated_in_notice | partly_stated | see_solicitation
+gates:
+  # value: yes | no | unknown. name: the arrangement as written in the notice, or null
+  supply_arrangement_required: {value: TODO, name: null, evidence: null}
+  # value: none | canadian_only | canadian_and_trading_partners | unknown
+  supplier_origin_restriction: {value: TODO, evidence: null}
+  # corporate, personnel: none | reliability | secret | top_secret | unknown
+  clearance: {corporate: TODO, personnel: TODO, evidence: null}
+  # on_site: yes | no | unknown. place: where staff must work (title/description), or null
+  work_location: {on_site: TODO, place: null, evidence: null}
+  # value: yes | no | unknown
+  land_claims_applies: {value: TODO, evidence: null}
+  # value: yes | no | unknown. portal: as written in the notice, or null
+  documents_behind_login: {value: TODO, portal: null, evidence: null}
+unsure: false   # true only for a genuinely ambiguous case, with a one-line note
+notes: ""

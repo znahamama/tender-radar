@@ -1,0 +1,143 @@
+# ==================================================================================================
+# Eval case test-14. Do not edit this comment block: check_labels reads the notice
+# text from it. Guide: docs/label-guide.md
+# ==================================================================================================
+# reference: cb-280-13103447
+# title: Newman Sound Pump House Upgrades – Terra Nova National Park
+# buyer: Parks Canada Agency (PC)
+# notice_type: Invitation to Qualify
+# procurement_categories: CNST
+# regions_of_delivery: Canada; Newfoundland and Labrador
+# regions_of_opportunity: Canada
+# trade_agreements: Canadian Free Trade Agreement (CFTA)
+# closing_date: 2026-06-18T16:30:00+00:00
+# url: https://canadabuys.canada.ca/en/tender-opportunities/tender-notice/cb-280-13103447
+# description (redacted):
+#   5P468-26-0046/A         Newman Sound Pump House Upgrades – Terra Nova National Park
+#
+#   BIDS RECEIVED BY FAX AND EMAIL WILL BE ACCEPTED AS OFFICIAL.
+#
+#   PARKS CANADA IS NOT CURRENTLY ACCEPTING BIDS VIA SAP ARIBA, YOU MUST SUBMIT YOUR BID VIA FAX OR
+#   EMAIL AS INDICATED IN THE SOLICITATION DOCUMENT.
+#
+#   BIDS RECEIVED IN-PERSON OR BY COURIER WILL NOT BE ACCEPTED.
+#
+#   The only acceptable email address for responses to the bid solicitation is [EMAIL]. Bids
+#   submitted by email directly to the Contracting Authority or to any email address other than
+#   [EMAIL] will not be accepted.
+#
+#   The only acceptable facsimile for responses to bid solicitations is [PHONE].
+#
+#   The maximum email file size that Parks Canada is capable of receiving is 15 megabytes. The
+#   Bidder is responsible for any failure attributable to the transmission or receipt of the emailed
+#   bid due to file size.
+#
+#   The Bidder should be cognisant of the size of the email as a whole, and not only the
+#   attachments. Please take into consideration that some attachments, when sent, may be resized
+#   during the email transfer. If the email size is too large, the Bidder should send the bid in
+#   multiple emails properly labeled with the solicitation number, project name, and indicate how
+#   many emails are included (ex. 1 of 2).
+#
+#   Emails with links to bid documents will not be accepted. Bid documents must be sent as email
+#   attachments.
+#
+#   SPECIAL INSTRUCTIONS TO BIDDERS (SI)
+#
+#   This is a two stage selection process. Bidders responding to this selection process are
+#   requested to submit a bid in two stages. This posting is the first stage (Stage One) of a
+#   two-stage solicitation process: the first stage will evaluate the qualifications of all
+#   interested suppliers; the second stage (Stage Two) will invite the qualified suppliers to
+#   provide further qualifications and a financial bid on the project based on the specifications
+#   and drawings. Upon award of contract in Stage Two the pre-qualification list will expire and
+#   will not be used in any other solicitation. The qualification list will expire within 180 days
+#   or upon award of a contract in Stage Two, whichever is earlier, and the prequalification list
+#   will not be used in any other solicitation.
+#
+#   Following the evaluation of the submissions of Stage One, bidders will be advised of their
+#   qualification result and the status of the tender. Parks Canada reserves the right to re-issue
+#   Stage One via a /B solicitation if it is determined there is insufficient competition to proceed
+#   with Stage Two. Bidders that have qualified in Stage One /A will not be required to resubmit on
+#   the Stage One /B. Bidders that failed to demonstrate compliance on the Stage One /A may resubmit
+#   and will be considered in Stage One /B.
+#
+#   Stage Two Bidders will be provided an INVITATION TO TENDER (ITT) for further qualifications and
+#   the financial evaluation in relation to the specifications and drawings. Please note that the
+#   ITT used in Stage 2 of this process will be a Two-Envelope ITT with an Indigenous Participation
+#   Plan (IPP) and a price evaluation component.
+#
+#
+#   LIST OF PRE-QUALIFIED BIDDERS:
+#
+#   A list of pre-qualified bidders from Stage One will not be released. Contract award notice of
+#   the successful bidder of Stage Two will be posted on
+#   http://canadabuys.canada.ca/en/tender-opportunities
+#
+#   PARTNER WITH ANOTHER BUSINESS:
+#
+#   Potential and interested sub-contractors are invited to add their company’s name under the
+#   section “Partner with another business”
+#
+#   REQUIREMENT
+#
+#   This project includes the replacement of the existing diesel-powered pump at Newman Sound Pump
+#   House with a new unit including the automated control system and fresh air supply system, and
+#   the replacement of all steel and cast iron distribution piping, fittings, and valves with
+#   stainless steel components.
+#
+#   To assist with bonding and insurance requirements, this project is estimated at a value between
+#   $500,001 > $ 1,000,000, Taxes extra.
+#
+#
+#   PERIOD OF CONTRACT / DELIVERY DATE
+#
+#   Contractor must perform and complete the Work no later than March 31, 2027.
+#
+#
+#   ENQUIRIES
+#
+#   All enquiries of a technical and contractual nature are to be submitted to the Contracting
+#   Authority.
+#
+#   Enquiries regarding this solicitation must be submitted in writing and should be received no
+#   later than 5 business days prior to the date set for solicitation closing to allow sufficient
+#   time to provide a response. Enquiries received after that time may result in an answer NOT being
+#   provided.
+#
+#
+#   INFORMATION
+#
+#   National Parks Regulations require that all work is to be performed in accordance with the
+#   ordinances, laws, rules and regulations set out in the National Park Act.
+#
+#   Bidders that consider themselves qualified to provide this Work and intend to submit bids on
+#   this project should obtain documents from the Government Electronic Tendering Service through
+#   the Government of Canada tendering service at
+#   http://canadabuys.canada.ca/en/tender-opportunities. Addenda, when issued, will be available
+#   from the Government of Canada tendering service. Bidders that elect to base their bids on
+#   documents obtained from other sources do so at their own risk. Late submissions will not be
+#   considered.
+#
+#   The Crown retains the right to negotiate with suppliers on any procurement.
+#
+#   Documents may be submitted in either official language of Canada. Parks Canada has made every
+#   effort to provide equivalent documents in both official languages, however, if you find any
+#   discrepancies between the English and French documents, please notify the contract officer
+#   listed in this opportunity as soon as possible so that we can rectify the situation.
+# ==================================================================================================
+
+criteria_location: TODO   # stated_in_notice | partly_stated | see_solicitation
+gates:
+  # value: yes | no | unknown. name: the arrangement as written in the notice, or null
+  supply_arrangement_required: {value: TODO, name: null, evidence: null}
+  # value: none | canadian_only | canadian_and_trading_partners | unknown
+  supplier_origin_restriction: {value: TODO, evidence: null}
+  # corporate, personnel: none | reliability | secret | top_secret | unknown
+  clearance: {corporate: TODO, personnel: TODO, evidence: null}
+  # on_site: yes | no | unknown. place: where staff must work (title/description), or null
+  work_location: {on_site: TODO, place: null, evidence: null}
+  # value: yes | no | unknown
+  land_claims_applies: {value: TODO, evidence: null}
+  # value: yes | no | unknown. portal: as written in the notice, or null
+  documents_behind_login: {value: TODO, portal: null, evidence: null}
+unsure: false   # true only for a genuinely ambiguous case, with a one-line note
+notes: ""

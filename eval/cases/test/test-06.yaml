@@ -1,0 +1,158 @@
+# ==================================================================================================
+# Eval case test-06. Do not edit this comment block: check_labels reads the notice
+# text from it. Guide: docs/label-guide.md
+# ==================================================================================================
+# reference: cb-0-11990877
+# title: Reliable AI Sensor Fusion for Real-World Missions
+# buyer: Department of Public Works and Government Services (PSPC)
+# notice_type: Request for Proposal
+# procurement_categories: SRV
+# regions_of_delivery: Canada
+# regions_of_opportunity: Canada
+# trade_agreements: Canadian Free Trade Agreement (CFTA)
+# closing_date: 2026-07-21T18:00:00+00:00
+# url: https://canadabuys.canada.ca/en/tender-opportunities/tender-notice/cb-0-11990877
+# description (redacted):
+#   This Challenge notice is issued under the Innovation for Defence Excellence and Security (IDEaS)
+#   Program Call for Proposals (CFP) Call 006 (W7714-248676/A).
+#
+#   Solicitation Documents reference: See “Bidding details” section.
+#
+#   *For additional general information on the IDEaS Program, visit:
+#   https://www.canada.ca/en/department-national-defence/programs/defence-ideas.html
+#   _____________
+#   This challenge is open to receive proposals for Component 1a, Component 1b and Component 2.
+#   Proposed solutions that fall within technology readiness levels (TRL) 1-9 can be submitted to
+#   this challenge.
+#
+#   Steps to apply:
+#   Step 1: read this challenge
+#   Step 2: read the Call for Proposals : See “Bidding details” section
+#   Step 3: propose your solution here : https://defence-innovation-portal.my.site.com/
+#   _____________
+#   Maximum Funding and Performance Period
+#
+#   Multiple contracts could result from this Challenge.
+#
+#   The individual maximum contract funding available under Component 1a (TRL 1 to 3) is up to
+#   $250,000 CAD (excluding applicable taxes) for a maximum performance period of up to 6 months.
+#
+#   The maximum individual contract funding available under Component 1b (TRL 4 and 5) is up to
+#   $1,500,000 CAD (excluding applicable taxes) for a maximum performance period of 12 months.
+#
+#   The maximum individual contract funding available under Component 2 (TRL 6 to 9) is up to
+#   $5,000,000 CAD (excluding applicable taxes). The period of performance will be determined at the
+#   time of contract negotiation.
+#
+#   The maximum individual contractual funding and the maximum performance period offered under
+#   Component 3 will be determined by Canada at the time of contract negotiation.
+#
+#   This disclosure is made in good faith and does not commit Canada to contract for the total
+#   approximate funding.
+#   _____________
+#   Challenge Details
+#
+#   Challenge Title: W7714-248676/014 - Reliable AI Sensor Fusion for Real-World Missions
+#
+#   The Canadian Armed Forces and the Department of National Defence (DND/CAF) are seeking
+#   innovative Artificial Intelligence (AI) solutions that embed compliance-by-design into
+#   multi-sensor, multi-domain fusion workflows. The goal is to develop a modular Fusion Compliance
+#   Engine (FCE) that automatically enforces classification rules, legal constraints, and policy
+#   adherence in real time during data aggregation and analysis.
+#
+#   Background and Context
+#
+#   When data from different sensors—unmanned aerial systems (UAS), distributed acoustic sensors,
+#   SIGINT (signal intelligence) receivers, EO/IR (electro-optics/infra-red) platforms, and
+#   radar—and from multiple classification domains are combined, a single error can result in
+#   compromised sources, methods, or operations. Today, compliance is enforced through manual
+#   reviews and procedural checklists that cannot keep pace with the volume and velocity of modern
+#   AI-enabled data fusion.
+#
+#   DND/CAF requires an automated compliance layer that sits between raw sensor ingestion and the
+#   fusion analytics pipeline. This layer must act as a policy-aware gatekeeper - tagging,
+#   filtering, and routing data according to classification markings, and operational release
+#   authorities—all without introducing latency that degrades tactical decision-making.
+#
+#   This challenge directly supports the CAF Digital Campaign Plan, the DND/CAF AI Strategy, NORAD
+#   (North American Aerospace Defence Command) modernization priorities, and the Cyber Forces
+#   mandate. A successful FCE becomes a reusable building block for every future fusion system—from
+#   Arctic surveillance to coalition interoperability hubs.
+#
+#   While compliance and data-tagging technologies exist in allied nations, Canada currently lacks a
+#   sovereign, Canadian-developed and Canadian-controlled compliance engine for multi-domain fusion.
+#   This challenge seeks to build Canadian industrial capacity and intellectual property in a
+#   critical enabling technology.
+#
+#   DND/CAF are hosting this challenge to observe advancements in AI technology to resolve this
+#   issue.
+#
+#   Examples of application can be described as, but not limited to:
+#
+#   Joint ISR Fusion: Automated classification enforcement when combining SIGINT, EO/IR imagery, and
+#   radar tracks. The FCE tags every data element with provenance metadata, blocks unauthorized
+#   cross-domain merges and generates an audit trail.
+#
+#   Maritime Domain Awareness: Compliance checks during multi-sensor anomaly detection.
+#
+#   Tactical Edge Dismounted: Modular compliance layer deployed on portable computer (e.g.,
+#   ruggedized laptop or edge server) that enforces classification separation for wearable sensor
+#   networks operating in denied or austere environments.
+#
+#   DND/CAF will not provide any data (classified, unclassified, operational, synthetic, or
+#   representative) for use in training, fine-tuning, or validating AI models. Participation in this
+#   challenge assumes that innovators possess sufficient sensor-domain expertise to independently
+#   generate or obtain appropriate datasets for model development and testing.
+#
+#   Essential Outcomes
+#
+#   Proposed solutions must:
+#   •       Develop a modular AI-enabled component that automatically enforces classification rules
+#   and policy constraints during multi-sensor (at least two) data   fusion operations.
+#   •       Apply enforcement controls based on machine-readable policy definitions across:
+#   •       Multiple sensor modalities (at least two)
+#   •       Security domains (at least Network security)
+#   •       Classification levels (at least Protected B level)
+#   •       Execute compliance checks and enforcement actions programmatically during data ingestion
+#   and fusion processing, without requiring human approval for predefined policy conditions.
+#   •       Generate and retain provenance records for all data ingested into and produced by the
+#   fusion pipeline including source sensor identification, classification markings, timestamps, and
+#   domain of origin.
+#   •       Produce audit logs documenting policy rules applied during fusion processing,
+#   enforcement actions taken (e.g., permit, restrict, downgrade, segregate) and resulting
+#   compliance dispositions.
+#   •       Produce audit records that support traceability of data lineage from original ingestion
+#   through fusion output and are exportable for compliance review, forensic analysis, or
+#   accreditation activities.
+#
+#   Desired Outcomes
+#
+#   Proposed solutions should include capabilities and considerations such as, but not limited to,
+#   the following:
+#   •       Real-time compliance enforcement across multiple sensor modalities (at least two) and
+#   classification levels, with performance suitable for tactical decision-making.
+#   •       Adaptable policy framework that allows compliance rules (e.g. classification guides,
+#   release authorities, coalition-specific caveats) to be updated or reconfigured without system
+#   restart, supporting rapid transition between operational contexts.
+#   •       Incorporate Size/Weight/Power (SWaP) and compute limits into fusion pipelines for edge
+#   deployment and capable of maintaining compliance enforcement.
+#   •       Explainability and operator trust mechanisms, including human-readable compliance
+#   decisions and controlled override capabilities with appropriate accountability safeguards.
+# ==================================================================================================
+
+criteria_location: TODO   # stated_in_notice | partly_stated | see_solicitation
+gates:
+  # value: yes | no | unknown. name: the arrangement as written in the notice, or null
+  supply_arrangement_required: {value: TODO, name: null, evidence: null}
+  # value: none | canadian_only | canadian_and_trading_partners | unknown
+  supplier_origin_restriction: {value: TODO, evidence: null}
+  # corporate, personnel: none | reliability | secret | top_secret | unknown
+  clearance: {corporate: TODO, personnel: TODO, evidence: null}
+  # on_site: yes | no | unknown. place: where staff must work (title/description), or null
+  work_location: {on_site: TODO, place: null, evidence: null}
+  # value: yes | no | unknown
+  land_claims_applies: {value: TODO, evidence: null}
+  # value: yes | no | unknown. portal: as written in the notice, or null
+  documents_behind_login: {value: TODO, portal: null, evidence: null}
+unsure: false   # true only for a genuinely ambiguous case, with a one-line note
+notes: ""

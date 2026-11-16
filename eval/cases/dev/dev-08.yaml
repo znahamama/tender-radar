@@ -1,0 +1,87 @@
+# ==================================================================================================
+# Eval case dev-08. Do not edit this comment block: check_labels reads the notice
+# text from it. Guide: docs/label-guide.md
+# ==================================================================================================
+# reference: cb-777-38226073
+# title: SNOW REMOVAL AND ICE CONTROL SERVICES
+# buyer: Department of Agriculture and Agri-Food (AAFC)
+# notice_type: Request for Proposal
+# procurement_categories: SRV
+# regions_of_delivery: St. John's
+# regions_of_opportunity: World
+# trade_agreements: Canadian Free Trade Agreement (CFTA); Comprehensive and Progressive Agreement
+#   for Trans-Pacific Partnership (CPTPP); Canada-Colombia Free Trade Agreement; Canada-Korea Free
+#   Trade Agreement (CKFTA); Canada-Panama Free Trade Agreement; Canada-Ukraine Free Trade Agreement
+#   (CUFTA); Canada-Chile Free Trade Agreement (CCFTA); Canada-European Union Comprehensive Economic
+#   and Trade Agreement (CETA); Canada-Honduras Free Trade Agreement; Canada-Peru Free Trade
+#   Agreement (CPFTA); World Trade Organization Agreement on Government Procurement (WTO GPA)
+# closing_date: 2026-10-27T18:00:00+00:00
+# url: https://canadabuys.canada.ca/en/tender-opportunities/tender-notice/cb-777-38226073
+# description (redacted):
+#   Invitation to tender ESC-2627-092
+#   SNOW REMOVAL AND ICE CONTROL SERVICES
+#
+#
+#   Tenders for the project indicated above, will be accepted at the following address, up to the
+#   tender closing date and time indicated below: [EMAIL]
+#
+#   Scope of Work:
+#
+#   Agriculture and Agri-Food Canada (AAFC) requires the services of a contractor to provide snow
+#   clearing services at the St.John’s Research and Development Centre.
+#
+#   Optional Site Visit:
+#
+#   There will be a site visit on October 15, 2026 at 2:00PM (NDT Time). Interested bidders must
+#   present themselves at our St.John’s Research Centre , located at 204 Brookfield Road, St.
+#   John’s, NL
+#   Bidders who attend the site visit must sign the attendance sheet. Bidders must arrive at least
+#   10 minutes before the start of the visit.
+#   Attendance to this visit is NOT MANDATORY, however bidders that do not attend will not be given
+#   an alternative appointment, and will not be precluded from submitting an offer.
+#
+#   Safety Equipment: In order to access the site, all individuals must wear appropriate personal
+#   protective
+#   equipment (safety footwear, etc.). Contractor personnel or individuals not wearing the required
+#   safety equipment may be denied access to the site.
+#
+#   Tender Period Closing Date and Time: October 27, 2026 at 02:00 pm (Eastern Time).
+#
+#   Information requests and inquiries related to this tender process are to be directed, in
+#   writing, ONLY to the AAFC Contract Officer identified below. Bidders who contact anyone other
+#   than the AAFC Contract Officer to obtain such information during the solicitation period may,
+#   for that reason alone, be disqualified.
+#
+#   It is MANDATORY for the Firms intending to submit tenders on this project to obtain the related
+#   specifications, plans and drawings, and all other tender documents through the CanadaBuys
+#   service provider’s platform. Addenda, when issued, will be available from the CanadaBuys service
+#   provider platform.
+#
+#   AAFC reserves the right to accept any Proposal in whole or in part, without prior negotiation
+#   and reject
+#   any or all Proposals received.
+#
+#   AAFC Contract Officer:
+#
+#   [NAME]
+#   Team lead and Contracts Officer
+#   Agriculture and Agri-Food Canada
+#   E-mail: [EMAIL]
+# ==================================================================================================
+
+criteria_location: TODO   # stated_in_notice | partly_stated | see_solicitation
+gates:
+  # value: yes | no | unknown. name: the arrangement as written in the notice, or null
+  supply_arrangement_required: {value: TODO, name: null, evidence: null}
+  # value: none | canadian_only | canadian_and_trading_partners | unknown
+  supplier_origin_restriction: {value: TODO, evidence: null}
+  # corporate, personnel: none | reliability | secret | top_secret | unknown
+  clearance: {corporate: TODO, personnel: TODO, evidence: null}
+  # on_site: yes | no | unknown. place: where staff must work (title/description), or null
+  work_location: {on_site: TODO, place: null, evidence: null}
+  # value: yes | no | unknown
+  land_claims_applies: {value: TODO, evidence: null}
+  # value: yes | no | unknown. portal: as written in the notice, or null
+  documents_behind_login: {value: TODO, portal: null, evidence: null}
+unsure: false   # true only for a genuinely ambiguous case, with a one-line note
+notes: ""

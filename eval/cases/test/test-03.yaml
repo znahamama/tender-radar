@@ -1,0 +1,50 @@
+# ==================================================================================================
+# Eval case test-03. Do not edit this comment block: check_labels reads the notice
+# text from it. Guide: docs/label-guide.md
+# ==================================================================================================
+# reference: WS5467865775-Doc5532753609
+# title: F5644-250029 - RISO - Marine Grade Diesel Exhaust Fluid
+# buyer: Department of Public Works and Government Services (PSPC)
+# notice_type: Request for Standing Offer
+# procurement_categories: GD
+# regions_of_delivery: Nova Scotia; Newfoundland and Labrador
+# regions_of_opportunity:
+# trade_agreements: World Trade Organization Agreement on Government Procurement (WTO GPA); Canadian
+#   Free Trade Agreement (CFTA); Canada-Honduras Free Trade Agreement; Canada-UK Trade Continuity
+#   Agreement (Canada-UK TCA); Canada-Korea Free Trade Agreement (CKFTA); Comprehensive and
+#   Progressive Agreement for Trans-Pacific Partnership (CPTPP); Canada-Chile Free Trade Agreement
+#   (CCFTA); Canada-Panama Free Trade Agreement; Canada-European Union Comprehensive Economic and
+#   Trade Agreement (CETA); North American Free Trade Agreement (NAFTA); Canada-Peru Free Trade
+#   Agreement (CPFTA); Canada-Colombia Free Trade Agreement; Canada-Ukraine Free Trade Agreement
+#   (CUFTA)
+# closing_date: 2026-08-07T18:00:00+00:00
+# url: https://portal.us.bn.cloud.ariba.com/dashboard/public/appext/comsapsbncdiscoveryui#/RfxEvent/preview/1110015881?anId=ANONYMOUS
+# description (redacted):
+#   The Canadian Coast Guard has recieved the new Offshore Oceanographic Science vessel,  CCGS
+#   Naalak Nappaaluk, built through Canada’s National Shipbuilding Strategy.  In an effort to reduce
+#   emissions as set by the Government of Canada, this most recent vessel will be equipped with a
+#   Selective Catalytic Reduction (SCR) that requires Marine grade Diesel Exhaust Fluid (DEF) in
+#   order to limit the amount of pollutants expelled by the vessel when the engines are operative.
+#   Barring any other conditions or international sanctions, Canadian Suppliers, Suppliers of an
+#   Applicable Trading Partner and Suppliers of a Non-Trading Partner, are eligible for this
+#   solicitation of offers.
+#   Offerors may request a debriefing on the results of the solicitation of offers process.
+#   Reference the solicitation for further details.
+# ==================================================================================================
+
+criteria_location: TODO   # stated_in_notice | partly_stated | see_solicitation
+gates:
+  # value: yes | no | unknown. name: the arrangement as written in the notice, or null
+  supply_arrangement_required: {value: TODO, name: null, evidence: null}
+  # value: none | canadian_only | canadian_and_trading_partners | unknown
+  supplier_origin_restriction: {value: TODO, evidence: null}
+  # corporate, personnel: none | reliability | secret | top_secret | unknown
+  clearance: {corporate: TODO, personnel: TODO, evidence: null}
+  # on_site: yes | no | unknown. place: where staff must work (title/description), or null
+  work_location: {on_site: TODO, place: null, evidence: null}
+  # value: yes | no | unknown
+  land_claims_applies: {value: TODO, evidence: null}
+  # value: yes | no | unknown. portal: as written in the notice, or null
+  documents_behind_login: {value: TODO, portal: null, evidence: null}
+unsure: false   # true only for a genuinely ambiguous case, with a one-line note
+notes: ""

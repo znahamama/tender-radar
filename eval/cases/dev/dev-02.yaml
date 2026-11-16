@@ -1,0 +1,80 @@
+# ==================================================================================================
+# Eval case dev-02. Do not edit this comment block: check_labels reads the notice
+# text from it. Guide: docs/label-guide.md
+# ==================================================================================================
+# reference: SSC-26-00034429:T
+# title: R212392 Adobe License Renewal for RCMP
+# buyer: Shared Services Canada
+# notice_type: Request for Proposal
+# procurement_categories: GD
+# regions_of_delivery: Canada
+# regions_of_opportunity: Canada
+# trade_agreements: Canada-Colombia Free Trade Agreement; Canada-Korea Free Trade Agreement (CKFTA);
+#   Canada-Peru Free Trade Agreement (CPFTA); Canada-Honduras Free Trade Agreement; Canada-Panama
+#   Free Trade Agreement; Canada-European Union Comprehensive Economic and Trade Agreement (CETA);
+#   Canadian Free Trade Agreement (CFTA); Canada-UK Trade Continuity Agreement (Canada-UK TCA);
+#   Comprehensive and Progressive Agreement for Trans-Pacific Partnership (CPTPP); Canada-Ukraine
+#   Free Trade Agreement (CUFTA); Canada-Chile Free Trade Agreement (CCFTA)
+# closing_date: 2026-08-21T18:00:00+00:00
+# url: https://canadabuys.canada.ca/en/tender-opportunities/tender-notice/SSC-26-00034429:T
+# description (redacted):
+#   NOTICE OF PROPOSED PROCUREMENT (NPP)
+#
+#   Solicitation Number:       BPM026312 / R212392Organization Name:Royal Canadian Mounted
+#   PoliceSolicitation Date:August 07, 2026Closing Date:August 21 2026 at 14:00 Eastern Time (EST)
+#   Requirement DescriptionRoyal Canadian Mounted Police has a requirement for the procurement of
+#   Adobe Software. This Request for Quote is issued pursuant to Software Licensing Supply
+#   Arrangement (SLSA) # EN578-232335/071/SMS.Tendering Procedure: Selective tenderingThe following
+#   Supply Arrangement Holders and Class-1 Resellers have been invited to submit a proposal:1. IMP
+#   Solutions2. iFathom Corporation3. Softchoice Corporation4. CDW Canada Corp.5. Four Point
+#   Solutions Ltd6. SHI Canada ULC7. Zones Canada, Inc.8. CompuMSTR Inc.9. FoxWise Technologies
+#   Inc.10. Compugen Inc.Only suppliers who are pre-qualified and have been issued a supply
+#   arrangement are eligible to bid. Non-SA holders cannot be awarded a contract unless and until
+#   the Supply Arrangement Authority (SAA) has issued a Supply Arrangement to that supplier for the
+#   products and/or services contained in the bid. The process to qualify for a Supply Arrangement
+#   is detailed in the Request for Supply Arrangement (RFSA). Canada is not required to delay the
+#   award of a resulting contract pending the evaluation of an arrangement and issuance of a Supply
+#   Arrangement by the Supply Arrangement Authority.Requirement Details :Products and Quantity:1 -
+#   All Apps - Feature Restricted – Offline 65308570 x4122 - All Apps - Feature Restricted – Online
+#   65308571 x563 - Illustrator - Feat Rstrctd – Offline 65308541 x504 - InDesign – Feature
+#   Restricted - Offline 65308533 x31 5 - Audition – Feature Restricted - Offline 65308549 x26 -
+#   Premiere Pro - Feat Rstrctd - Offline 65308557 x477 - Premiere Pro - Feat Rstrctd - Online
+#   65308567 x38 - Captivate Feature Restricted - Offline 65321538 x699 - Captivate Feature
+#   Restricted - Online 65321536 x310 - Photoshop - Feat Rstrctd - Offline 65308564 x62911 -
+#   Photoshop - Feat Rstrctd - Online 65308569 x412 - RoboHelp Feature Rstrctd - Offline 65326889
+#   x1413 - Dreamweaver - Feat Rstrctd - Offline 65308531 x117Contract period:Initial Year:
+#   28 August 2026 to 27 August 2027Option #1:         28 August 2027 to 27 August 2028Option #2:
+#   28 August 2028 to 27 August 2029 Security Requirement
+#   None
+#   Contracting Authority
+#   Name: [CONTACT_BLOCK] Title:                             Senior Procurement
+#   OfficerDepartment/Agency:      Shared Services Canada
+#   Email:                           [EMAIL] Telephone:                    [PHONE]Inquiries
+#
+#   Inquiries regarding this requirement must be directed to the Contracting Authority named
+#   above.The RFQ document will be sent directly to the eligible SLSA SA Holder and Class 1
+#   Resellers listed for the product in Annex G of the SLSA Catalogue.Canada retains the right to
+#   negotiate with any supplier on any procurement. Bidders may submit their responses in either
+#   official language.NOTE: If you wish to find out how you can qualify to provide goods and/or
+#   services under the SA, please visit the following page: Software Licensing Supply Arrangement
+#   (SLSA) RFSA [L'arrangement en matière d'approvisionnement portant sur l'achat de licences de
+#   logiciels]
+#   SSC R212392 Adobe License Renewal for RCMP- Amendment 000
+# ==================================================================================================
+
+criteria_location: TODO   # stated_in_notice | partly_stated | see_solicitation
+gates:
+  # value: yes | no | unknown. name: the arrangement as written in the notice, or null
+  supply_arrangement_required: {value: TODO, name: null, evidence: null}
+  # value: none | canadian_only | canadian_and_trading_partners | unknown
+  supplier_origin_restriction: {value: TODO, evidence: null}
+  # corporate, personnel: none | reliability | secret | top_secret | unknown
+  clearance: {corporate: TODO, personnel: TODO, evidence: null}
+  # on_site: yes | no | unknown. place: where staff must work (title/description), or null
+  work_location: {on_site: TODO, place: null, evidence: null}
+  # value: yes | no | unknown
+  land_claims_applies: {value: TODO, evidence: null}
+  # value: yes | no | unknown. portal: as written in the notice, or null
+  documents_behind_login: {value: TODO, portal: null, evidence: null}
+unsure: false   # true only for a genuinely ambiguous case, with a one-line note
+notes: ""

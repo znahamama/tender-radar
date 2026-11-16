@@ -1,0 +1,82 @@
+# ==================================================================================================
+# Eval case test-12. Do not edit this comment block: check_labels reads the notice
+# text from it. Guide: docs/label-guide.md
+# ==================================================================================================
+# reference: cb-181-49859681
+# title: Waterline Upgrades - Prosser Rock, NL
+# buyer: Department of Fisheries and Oceans (DFO)
+# notice_type: Invitation to Qualify
+# procurement_categories: CNST
+# regions_of_delivery: St. John's; Newfoundland and Labrador
+# regions_of_opportunity: Canada
+# trade_agreements: Canadian Free Trade Agreement (CFTA)
+# closing_date: 2026-07-28T18:00:00+00:00
+# url: https://canadabuys.canada.ca/en/tender-opportunities/tender-notice/cb-181-49859681
+# description (redacted):
+#   1.0     TITLE
+#
+#   Waterline Upgrades, Prosser Rock, NL
+#
+#   2.0     DESCRIPTION
+#
+#   2.1     Scope of Work
+#
+#   The purpose of this project is to complete waterline upgrades at Prosser Rock in St. John’s, NL.
+#
+#   The Work includes, but is not limited to, the following:
+#
+#   •       Supply and installation of a heated domestic water enclosure.
+#   •       Supply and installation of a heated domestic/fire water enclosure.
+#   •       Supply and installation of a domestic water entrance at the Harbour Authority building.
+#   •       Repairs to an existing waterline section near one of the post hydrants.
+#   •       Supply and installation of concrete pads, complete with protection bollards, to support
+#   the new heated enclosures.
+#   •       Providing electrical work, including trenching and connection to existing waterlines.
+#   Placement of new granulars and asphalt will be at the
+#   Contractor’s cost.
+#   •       All associated water works required for a complete installation, including thrust
+#   blocks, valves, saddles, and piping.
+#   •       Where the existing water pipe is to be connected to the main line on the west side of
+#   the site, the contractor must conduct all work in accordance with
+#   the City of St. John’s regulations for tapping into an existing main, including the supply and
+#   installation of a curb stop, valve, and valve box adjacent to
+#   the road where required.
+#
+#   The contractor must coordinate all construction activities to minimize disruption to operations
+#   in the area and must maintain safe access around the work site at all times.
+#
+#   3.0     FAMILIARIZATION WITH THE SITE
+#
+#   Before submitting a bid, it is recommended that Contractors visit the site and its surroundings,
+#   at their own expense and schedule, to review and verify the form, nature and extent of the work,
+#   materials necessary for the completion of the works, the means of access to the site (including
+#   ferry services), severity, exposure and uncertainty of weather, soil conditions, any
+#   accommodations they may require, and in general shall obtain all necessary information as to
+#   risks, contingencies and other circumstances which may influence or affect their bid.  No
+#   allowance shall be made subsequently in this connection on account of error or negligence to
+#   properly observe and determine the conditions that will apply.
+#
+#   Take all appropriate safety measures for any visit to the site, either before or after
+#   acceptance of the bid.
+#
+#   4.0     DELIVERY
+#
+#   The completion date for all work under this project must be November 30, 2026.
+# ==================================================================================================
+
+criteria_location: TODO   # stated_in_notice | partly_stated | see_solicitation
+gates:
+  # value: yes | no | unknown. name: the arrangement as written in the notice, or null
+  supply_arrangement_required: {value: TODO, name: null, evidence: null}
+  # value: none | canadian_only | canadian_and_trading_partners | unknown
+  supplier_origin_restriction: {value: TODO, evidence: null}
+  # corporate, personnel: none | reliability | secret | top_secret | unknown
+  clearance: {corporate: TODO, personnel: TODO, evidence: null}
+  # on_site: yes | no | unknown. place: where staff must work (title/description), or null
+  work_location: {on_site: TODO, place: null, evidence: null}
+  # value: yes | no | unknown
+  land_claims_applies: {value: TODO, evidence: null}
+  # value: yes | no | unknown. portal: as written in the notice, or null
+  documents_behind_login: {value: TODO, portal: null, evidence: null}
+unsure: false   # true only for a genuinely ambiguous case, with a one-line note
+notes: ""

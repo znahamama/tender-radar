@@ -1,0 +1,162 @@
+# ==================================================================================================
+# Eval case test-01. Do not edit this comment block: check_labels reads the notice
+# text from it. Guide: docs/label-guide.md
+# ==================================================================================================
+# reference: cb-808-71346390
+# title: TBIPS - ORACLE/MS SQL Server Database Administration And Support - PSIB
+# buyer: Department of Indigenous Services (ISC)
+# notice_type: RFP against Supply Arrangement
+# procurement_categories: SRV
+# regions_of_delivery: National Capital Region (NCR); Canada
+# regions_of_opportunity: Canada
+# trade_agreements:
+# closing_date: 2026-11-05T19:00:00+00:00
+# url: https://canadabuys.canada.ca/en/tender-opportunities/tender-notice/cb-808-71346390
+# description (redacted):
+#   NOTICE OF PROPOSED PROCUREMENT (NPP) for TASK BASED INFORMATICS PROFESSIONAL SERVICES (TBIPS)
+#
+#   This requirement is for: Indigenous Services Canada
+#
+#   This bid solicitation cancels and supersedes previous bid solicitation number 1000261966 dated
+#   May 13, 2026 with a closing of July 18, 2026 at 14:00 EDT. A debriefing or feedback session will
+#   be provided upon request to bidders/offerors/suppliers who bid on the previous solicitation.
+#
+#   This requirement is open only to those TBIPS Supply Arrangement Holders under EN578-170432 who
+#   qualified under Tier 1, under the region / metropolitan area, level of expertise and for the
+#   following categories:
+#   CATEGORY
+#   LEVEL OF EXPERTISE
+#   I.2 Database Administrator                                                             Level 2
+#   I.2 Database Administrator                                                              Level 3
+#   I.3 Database Analyst /Information Management Modeller   Level 2
+#   I.3 Database Analyst /Information Management Modeller        Level 3
+#   I.4 Database Modeller                                                                  Level 2
+#   I.4 Database Modeller                                                                  Level 3
+#
+#   The requirement is intended to result in the award of one (1) contract.
+#   The following SA Holders have been invited to submit a proposal:
+#
+#   -       151191511995 Ontario Limited, iPSS inc., Epi-Use Now Inc., in JV
+#   -       Acosys Consulting Services Inc.
+#   -       ACOSYS CONSULTING SERVICES INC./ SERVICES CONSEILS ACOSYS INC., PRICEWATERHOUSECOOPERS
+#   LLP, IN JOINT VENTURE
+#   -       Adirondack Information Management Inc.
+#   -       Adirondack Information Management Inc., Entrust Security (CA) ULC, Artemp Personnel
+#   Services Inc., The AIM Group Inc., in JOINT VENTURE
+#   -       ADRM Technology Consulting Group Corp.
+#   -       ADRM Technology Consulting Group Corp. and Randstad Interim Inc
+#   -       Alika Internet Technologies Inc.
+#   -       Donna Cona Inc.
+#   -       DONNA CONA INC., IBM CANADA LIMITED IN JOINT VENTURE
+#   -       DWP Solutions Inc.
+#   -       Factr Limited, ALTIS RECRUITMENT & TECHNOLOGY INC., in Joint Venture
+#   -       GSI International Consulting Inc.
+#   -       IPSS INC.
+#   -       MAKWA Resourcing Inc.
+#   -       Makwa Resourcing Inc., TPG Technology Consulting Ltd. in JOINT VENTURE
+#   -       Malarsoft Technology Corporation
+#   -       Maplestream Inc., Cofomo Inc. IN JOINT VENTURE
+#   -       Maverin Business Services Inc.
+#   -       Maverin Inc.
+#   -       MINDWIRE SYSTEMS LTD., Akkada Professional Services inc., HubSpoke Inc., in Joint
+#   Venture
+#   -       MONZ CONSULTING INC., NEWFOUND RECRUITING CORPORATION. in Joint Venture
+#   -       Morningstar Solutions IQ Inc
+#   -       NATTIQ INC.
+#   -       Nisha Technologies Inc.
+#   -       OLAV CONSULTING CORP., MOSHWA ABORIGINAL INFORMATION TECHNOLOGY CORPORATION, IN JOINT
+#   VENTURE
+#   -       Onaki Création S.E.N.C., IBISKA TELECOM INC., in Joint Venture
+#   -       Prologic Systems Ltd.
+#   -       Prologic Systems Ltd. and Maplesoft Consulting Inc. in JV
+#   -       Skyfly Solutions Inc., iFathom Corp., EPI-USE NOW INC. in Joint Venture
+#   -       Steel River Group Ltd. Tundra Technical Solutions Inc. in Joint Venture
+#   -       Symbiotic Group Inc.
+#   -       SYMBIOTIC GROUP INC., Akkodis Canada Inc., IN JOINT VENTURE
+#   -       T.I.7 INC., Quarry Consulting Inc., in joint venture
+#   -       Tato Recruiting Inc.
+#   -       Tato Recruiting Inc., S.I. SYSTEMS ULC, in Joint Venture
+#   -       Turtle Island Staffing Inc.
+#   -       Turtle Technologies Inc.
+#   -       Versatil BPI Inc.
+#
+#
+#
+#   Description of the Requirement:
+#   Indigenous Services Canada has a requirement for ORACLE/MS SQL Server Database Administration
+#   And Support Services on an as and when required basis via Task Authorizations (TA) under the
+#   TBIPS Supply Arrangement (SA) method of supply. It is intended to result in the award of 1
+#   contract for two (2) years plus three (3) one-year irrevocable options allowing Canada to extend
+#   the term of the contract.
+#   Security:
+#   There are security requirements associated with this requirement.  Please note that SA Holders
+#   do not need to have the required clearance to submit a bid.  For additional information, consult
+#   Part 6 - Security, Financial and Other Requirements, and Part 7 – Resulting Contract Clauses.
+#   For more information on personnel and organization security screening or security clauses,
+#   Bidders should refer to the Contract Security Program of Public Works and Government Services
+#   Canada (http://www.tpsgc-pwgsc.gc.ca/esc-src/introduction-eng.html) website.
+#
+#   Level of Security Requirement:
+#   Security Requirement:                   PWGSC FILE No. PR-1000261966
+#   Minimum Corporate Security Required:            Facility Security Clearance (FSC) at the level
+#   of SECRET
+#   Minimum Resource Security Required:             Personnel security screening at the level of
+#   SECRET
+#   Document Safeguarding Security Level Required:  PROTECTED B
+#
+#   Special comments:
+#   This procurement is set aside under the Procurement Strategy for Indigenous Business (PSIB).
+#   Only Indigenous businesses that meet the PSIB eligibility requirements may submit a bid, as
+#   defined by Indigenous Services Canada's Indigenous Business Directory.
+#
+#   Applicable Trade Agreements:
+#   ?       None
+#
+#   Proposed period of contract:
+#   The proposed period of contract shall be from contract award to two years later, with three
+#   additional (3) one-year option periods to extend the term of the contract.
+#
+#   Estimated Level of Effort:
+#   The estimated level of effort of the contract will be for approximately 200 days a year per
+#   resource.
+#
+#   Contracting Authority Information:
+#   File Number:            1000261966
+#   Contracting Authority:  [NAME]
+#   Phone Number:           [PHONE]
+#   E-Mail:                 [EMAIL]
+#
+#   Inquiries:
+#   Inquiries regarding this Request for Proposal (RFP) requirement must be submitted to the
+#   Contracting Authority named above.  RFP documents will be e-mailed directly by the Contracting
+#   Authority to the Qualified Supply Arrangement Holders who are being invited to bid on this
+#   requirement. BIDDERS ARE ADVISED THAT “CANADABUYS.CANADA.CA” ” IS NOT RESPONSIBLE FOR THE
+#   DISTRIBUTION OF SOLICITATION DOCUMENTS.  The Crown retains the right to negotiate with any
+#   supplier on any procurement. Documents may be submitted in either official language.
+#
+#   Debriefings:
+#   Bidders may request a debriefing on the results of the bid solicitation process. Bidders should
+#   make the request to the Contracting Authority within 15 working days from receipt of the results
+#   of the bid solicitation process. The debriefing may be in writing, by telephone or in person.
+#
+#   NOTE: Task-Based Informatics Professional Services (TBIPS) Method of Supply is refreshed on a
+#   quarterly basis.  If you wish to find out how you can be a “Qualified SA Holder”, please contact
+#   [EMAIL]
+# ==================================================================================================
+
+criteria_location: TODO   # stated_in_notice | partly_stated | see_solicitation
+gates:
+  # value: yes | no | unknown. name: the arrangement as written in the notice, or null
+  supply_arrangement_required: {value: TODO, name: null, evidence: null}
+  # value: none | canadian_only | canadian_and_trading_partners | unknown
+  supplier_origin_restriction: {value: TODO, evidence: null}
+  # corporate, personnel: none | reliability | secret | top_secret | unknown
+  clearance: {corporate: TODO, personnel: TODO, evidence: null}
+  # on_site: yes | no | unknown. place: where staff must work (title/description), or null
+  work_location: {on_site: TODO, place: null, evidence: null}
+  # value: yes | no | unknown
+  land_claims_applies: {value: TODO, evidence: null}
+  # value: yes | no | unknown. portal: as written in the notice, or null
+  documents_behind_login: {value: TODO, portal: null, evidence: null}
+unsure: false   # true only for a genuinely ambiguous case, with a one-line note
+notes: ""

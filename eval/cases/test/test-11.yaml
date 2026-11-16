@@ -1,0 +1,134 @@
+# ==================================================================================================
+# Eval case test-11. Do not edit this comment block: check_labels reads the notice
+# text from it. Guide: docs/label-guide.md
+# ==================================================================================================
+# reference: cb-435-94227930
+# title: Access Control and Intrusion Detection Services
+# buyer: Canada Revenue Agency (CRA)
+# notice_type: Request for Proposal
+# procurement_categories: SRVTGD
+# regions_of_delivery: British Columbia; Canada; Ontario (except NCR); Saskatchewan; Alberta;
+#   Newfoundland and Labrador; Nova Scotia; National Capital Region (NCR); Prince Edward Island; New
+#   Brunswick; Quebec (except NCR); Manitoba
+# regions_of_opportunity: Canada
+# trade_agreements: World Trade Organization Agreement on Government Procurement (WTO GPA);
+#   Canada-Chile Free Trade Agreement (CCFTA); Canada-Panama Free Trade Agreement; North American
+#   Free Trade Agreement (NAFTA); Canada-Colombia Free Trade Agreement; Canada-Honduras Free Trade
+#   Agreement; Canada-Peru Free Trade Agreement (CPFTA); Comprehensive and Progressive Agreement for
+#   Trans-Pacific Partnership (CPTPP); Canada-European Union Comprehensive Economic and Trade
+#   Agreement (CETA); Canada-Korea Free Trade Agreement (CKFTA); Canada-Ukraine Free Trade Agreement
+#   (CUFTA); Canadian Free Trade Agreement (CFTA)
+# closing_date: 2026-12-07T19:00:00+00:00
+# url: https://canadabuys.canada.ca/en/tender-opportunities/tender-notice/cb-435-94227930
+# description (redacted):
+#   The Canada Revenue Agency (CRA) requires the provision of parts and labour (technical support,
+#   programming, installation, service, and maintenance) on an “as and when requested” basis for its
+#   Integrated Security System (ISS) at CRA locations across Canada.
+#
+#   The CRA is considering the conversion of up to 51 sites currently using a combination of Digital
+#   Security Controls (DSC) Intrusion Detection Systems and Kantech Access Control systems to a
+#   unified Kantech Intrusion/Access Control platform. The site counts identified below represent
+#   the CRA’s current intended conversion plans for planning and estimation purposes only and do not
+#   constitute a commitment to convert any specific number of sites.
+#
+#   The CRA requires the goods and services referenced above in the following regions:
+#   1.      National Capital Region (NCR) – up to 11 sites identified for potential conversion;
+#   2.      Ontario – up to 13 sites identified for potential conversion;
+#   3.      Quebec – up to 1 site identified for potential conversion;
+#   4.      Atlantic – up to 4 sites identified for potential conversion; and
+#   5.      Western – up to 22 sites identified for potential conversion.
+#
+#   Bidders may submit a bid for one (1) or more Regions identified in this RFP.
+#
+#   Only one (1) bid submission is required, regardless of the number of Regions for which the
+#   Bidder is submitting a bid. The Bidder's submission must clearly identify each Region for which
+#   it is proposing to provide the required goods and services. For each Region bid, the Bidder must
+#   provide all information required by this RFP, including any Region-specific technical
+#   information, resource information, and pricing, in the format prescribed in the bid solicitation
+#   documents.
+#
+#   Requirement, project experience, certification, corporate qualification, or other bid components
+#   that are not Region-specific need only be submitted once and will be evaluated for all Regions
+#   included in the Bidder's submission.
+#
+#   Bids for Multiple Regions:
+#   Requirements identified as Region-specific will be evaluated only for the applicable Region.
+#   Requirements that are not Region-specific will be evaluated once and will apply to all Regions
+#   included in the Bidder's submission.
+#
+#   The CRA will evaluate each Region independently. Where a Bidder fails to meet a Region-specific
+#   requirement, the CRA may declare the bid non-responsive for that Region only. For greater
+#   certainty, a determination that a bid is non-responsive for one (1) Region will not, in itself,
+#   render the Bidder's submission non-responsive for any other Region for which a bid has been
+#   submitted, provided all applicable requirements for those Regions are met.
+#
+#   The CRA intends to award up to five (5) contracts to fulfill this requirement. A Bidder may be
+#   awarded a contract for one (1) Region, multiple Regions, or all five (5) Regions. The period of
+#   the resulting contract(s) will be for three (3) firm years. The contract(s) will include four
+#   (4) irrevocable one-year options to extend the period of the contract(s). The contract(s) will
+#   also include provisions allowing the CRA to add, remove or modify products and sites.
+#
+#   A bid must comply with the requirements of the bid solicitation and meet all mandatory
+#   evaluation criteria to be declared responsive. For each Region, the responsive bid with the
+#   highest combined rating of technical merit and price will be recommended for award of a
+#   contract. Each Region will be evaluated separately. Where the same Bidder is ranked first for
+#   multiple Regions, the CRA will award a single contract covering the Regions for which that
+#   Bidder is the highest-ranked responsive bidder.
+#
+#   The Bid Compliance and Remedy Process (BCRP) defined in Part 4.2 will apply.
+#
+#   Proposal documents and supporting information must be submitted in either English or French.
+#
+#   Questions must be directed in writing to the contracting authority via email: [EMAIL]
+#
+#   Bids must be submitted by using the Connect service provided by the Canada Post Corporation.
+#   When responding, the proposal MUST be delivered to:
+#
+#   Canada Revenue Agency
+#   Bid Receiving Unit
+#   [EMAIL]
+#
+#   Bids will not be accepted if emailed directly to this email address. This email address must be
+#   used to request that CRA open a Connect conversation, as detailed in Standard Instructions 2003.
+#   Bidders must not use their own licensing agreement for Connect to initiate a Connect
+#   conversation with CRA.
+#
+#   The CRA reserves the right to negotiate with suppliers on any procurement.
+#
+#   There are security requirements associated with this requirement. For additional information,
+#   consult the bid solicitation document.
+#
+#   The Federal Contractors Program (FCP) for employment equity applies to this procurement.
+#
+#   This bid solicitation 1000536720/B cancels and supersedes previous bid solicitation number
+#   1000536720/A dated 2026-03-27 with a closing of 2026-05-19 02:00 PM EDT.
+#
+#   This solicitation is open only to Canadian suppliers and to Suppliers of an applicable trading
+#   partner. For additional information, consult the bid solicitation document.
+#
+#   The CRA will include the following minimum work guarantees (all applicable taxes included) over
+#   the entire period of the resulting contract(s), which includes any exercised option periods,
+#   including any extension period thereof:
+#   1.      National Capital Region (NCR) – $100,000 CAD;
+#   2.      Ontario – $100,000 CAD;
+#   3.      Quebec – $50,000 CAD;
+#   4.      Atlantic – $50,000 CAD; and
+#   5.      Western – $100,000 CAD.
+# ==================================================================================================
+
+criteria_location: TODO   # stated_in_notice | partly_stated | see_solicitation
+gates:
+  # value: yes | no | unknown. name: the arrangement as written in the notice, or null
+  supply_arrangement_required: {value: TODO, name: null, evidence: null}
+  # value: none | canadian_only | canadian_and_trading_partners | unknown
+  supplier_origin_restriction: {value: TODO, evidence: null}
+  # corporate, personnel: none | reliability | secret | top_secret | unknown
+  clearance: {corporate: TODO, personnel: TODO, evidence: null}
+  # on_site: yes | no | unknown. place: where staff must work (title/description), or null
+  work_location: {on_site: TODO, place: null, evidence: null}
+  # value: yes | no | unknown
+  land_claims_applies: {value: TODO, evidence: null}
+  # value: yes | no | unknown. portal: as written in the notice, or null
+  documents_behind_login: {value: TODO, portal: null, evidence: null}
+unsure: false   # true only for a genuinely ambiguous case, with a one-line note
+notes: ""

@@ -1,0 +1,63 @@
+# ==================================================================================================
+# Eval case dev-04. Do not edit this comment block: check_labels reads the notice
+# text from it. Guide: docs/label-guide.md
+# ==================================================================================================
+# reference: cb-181-76348100
+# title: Request for Supply Arrangement for Technical Integration Services for Conferencing and
+#   Audiovisual Solutions
+# buyer: Shared Services Canada (SSC)
+# notice_type: Request for Supply Arrangement
+# procurement_categories: SRV
+# regions_of_delivery: Canada
+# regions_of_opportunity: Canada
+# trade_agreements: Canada-Peru Free Trade Agreement (CPFTA); Please refer to Tender Description or
+#   Tender Documents; North American Free Trade Agreement (NAFTA); Canada-European Union
+#   Comprehensive Economic and Trade Agreement (CETA); World Trade Organization Agreement on
+#   Government Procurement (WTO GPA); Canada-UK Trade Continuity Agreement (Canada-UK TCA);
+#   Canada-Panama Free Trade Agreement; Canada-Colombia Free Trade Agreement; Canada-Korea Free
+#   Trade Agreement (CKFTA); Canadian Free Trade Agreement (CFTA); Canada-Ukraine Free Trade
+#   Agreement (CUFTA); Canada-Chile Free Trade Agreement (CCFTA); Canada-Honduras Free Trade
+#   Agreement; Comprehensive and Progressive Agreement for Trans-Pacific Partnership (CPTPP)
+# closing_date: 2030-01-27T19:00:00+00:00
+# url: https://canadabuys.canada.ca/en/tender-opportunities/tender-notice/cb-181-76348100
+# description (redacted):
+#   Shared Services Canada (SSC) is establishing a Supply Arrangement for the procurement of
+#   technical services related to integrated AV and conferencing technology solutions. This
+#   arrangement is intended to meet the diverse needs of the Government of Canada by providing
+#   access to skilled professionals who can deliver a full spectrum of audiovisual (AV) and
+#   conferencing technology services, encompassing everything from the initial assessment and design
+#   phase to the implementation and support stages.
+#
+#   Categories and services required:
+#
+#   A.1 Project Management
+#   A.2 Site Survey
+#   A.3 Solutions Design
+#   B.1 Installation – Level I - Installer
+#   B.2 Installation - Level II – Senior Installer
+#   B.3 Decommissioning and Removal Services
+#   C.1 Control System Programming
+#   C.2 User Training
+#   C.3 Technical Support - Tier I
+#   C.4 Technical Support - Tier II
+#
+#   This is an ongoing opportunity to qualify for the Supply Arrangement. Please refer to section
+#   6.7 of the Request for Supply Arrangement (RFSA) solicitation document.
+# ==================================================================================================
+
+criteria_location: TODO   # stated_in_notice | partly_stated | see_solicitation
+gates:
+  # value: yes | no | unknown. name: the arrangement as written in the notice, or null
+  supply_arrangement_required: {value: TODO, name: null, evidence: null}
+  # value: none | canadian_only | canadian_and_trading_partners | unknown
+  supplier_origin_restriction: {value: TODO, evidence: null}
+  # corporate, personnel: none | reliability | secret | top_secret | unknown
+  clearance: {corporate: TODO, personnel: TODO, evidence: null}
+  # on_site: yes | no | unknown. place: where staff must work (title/description), or null
+  work_location: {on_site: TODO, place: null, evidence: null}
+  # value: yes | no | unknown
+  land_claims_applies: {value: TODO, evidence: null}
+  # value: yes | no | unknown. portal: as written in the notice, or null
+  documents_behind_login: {value: TODO, portal: null, evidence: null}
+unsure: false   # true only for a genuinely ambiguous case, with a one-line note
+notes: ""

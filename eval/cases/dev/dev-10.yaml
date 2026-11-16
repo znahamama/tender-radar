@@ -1,0 +1,58 @@
+# ==================================================================================================
+# Eval case dev-10. Do not edit this comment block: check_labels reads the notice
+# text from it. Guide: docs/label-guide.md
+# ==================================================================================================
+# reference: WS5548295643-Doc5729126490
+# title: E60HL-260050-B RFSO NMSO Into-plane Aviation Fuel 2026-2028
+# buyer: Department of Public Works and Government Services (PSPC)
+# notice_type: Request for Standing Offer
+# procurement_categories: GD
+# regions_of_delivery: British Columbia; Alberta; Quebec (except NCR); Newfoundland and Labrador;
+#   Manitoba; Ontario (except NCR); Saskatchewan; National Capital Region (NCR); Yukon; Northwest
+#   Territories; Prince Edward Island; Nova Scotia; New Brunswick
+# regions_of_opportunity:
+# trade_agreements: Canada-Ukraine Free Trade Agreement (CUFTA); Canada-Korea Free Trade Agreement
+#   (CKFTA); Comprehensive and Progressive Agreement for Trans-Pacific Partnership (CPTPP); North
+#   American Free Trade Agreement (NAFTA); World Trade Organization Agreement on Government
+#   Procurement (WTO GPA); Canada-Colombia Free Trade Agreement; Canada-UK Trade Continuity
+#   Agreement (Canada-UK TCA); Canada-European Union Comprehensive Economic and Trade Agreement
+#   (CETA); Canada-Chile Free Trade Agreement (CCFTA); Canada-Honduras Free Trade Agreement;
+#   Canadian Free Trade Agreement (CFTA); Canada-Peru Free Trade Agreement (CPFTA); Canada-Panama
+#   Free Trade Agreement
+# closing_date: 2026-06-23T18:00:00+00:00
+# url: https://portal.us.bn.cloud.ariba.com/dashboard/public/appext/comsapsbncdiscoveryui#/RfxEvent/preview/1110015219?anId=ANONYMOUS
+# description (redacted):
+#   Please note that late submissions will not be considered or accepted.
+#   This request for standing offer cancels and supersedes, for the listed requirements, previous
+#   request for standing offer number E60HL-260050-A (WS5548295643, Doc5548356640) dated March 25,
+#   2026 with a closing of May 4, 2026 at 2:00 PM EDT. A debriefing or feedback session will be
+#   provided upon request to offerors who provided offers on the previous request for standing
+#   offer.
+#   National Master Standing Offers for aviation fuels (Into-Plane) in accordance with Canadian
+#   General Standards Board standards or ASTM International Standard, as applicable. Delivery to
+#   various locations in Canada or ASTM International Standard, on an as-and when-requested basis,
+#   from June 1, 2026 up to and including May 31, 2028
+#   This procurement is subject to Comprehensive Land Claim Agreements (CLCAs) as deliveries to*
+#   Chibougamau, QC are required.
+#   The applicable CLCAs are listed in the solicitation documents.
+#   * where "deliveries to" means goods delivered to and services performed in.
+#   This solicitation of offers is open only to Canadian suppliers and to Suppliers of an Applicable
+#   Trading Partner.
+# ==================================================================================================
+
+criteria_location: TODO   # stated_in_notice | partly_stated | see_solicitation
+gates:
+  # value: yes | no | unknown. name: the arrangement as written in the notice, or null
+  supply_arrangement_required: {value: TODO, name: null, evidence: null}
+  # value: none | canadian_only | canadian_and_trading_partners | unknown
+  supplier_origin_restriction: {value: TODO, evidence: null}
+  # corporate, personnel: none | reliability | secret | top_secret | unknown
+  clearance: {corporate: TODO, personnel: TODO, evidence: null}
+  # on_site: yes | no | unknown. place: where staff must work (title/description), or null
+  work_location: {on_site: TODO, place: null, evidence: null}
+  # value: yes | no | unknown
+  land_claims_applies: {value: TODO, evidence: null}
+  # value: yes | no | unknown. portal: as written in the notice, or null
+  documents_behind_login: {value: TODO, portal: null, evidence: null}
+unsure: false   # true only for a genuinely ambiguous case, with a one-line note
+notes: ""

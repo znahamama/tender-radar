@@ -1,0 +1,53 @@
+# ==================================================================================================
+# Eval case test-16. Do not edit this comment block: check_labels reads the notice
+# text from it. Guide: docs/label-guide.md
+# ==================================================================================================
+# reference: cb-181-22166699
+# title: Laser Engravers - UNSPC 27112718 - 43212105
+# buyer: Department of National Defence (DND)
+# notice_type: Request for Proposal
+# procurement_categories: GD
+# regions_of_delivery: Canada; National Capital Region (NCR); Ottawa; Montréal-Est
+# regions_of_opportunity: Montréal-Est
+# trade_agreements: Canada-Chile Free Trade Agreement (CCFTA); Canada-Colombia Free Trade Agreement;
+#   Canada-Korea Free Trade Agreement (CKFTA); Canada-Peru Free Trade Agreement (CPFTA);
+#   Canada-Honduras Free Trade Agreement; Canada-Panama Free Trade Agreement
+# closing_date: 2026-11-05T17:00:00+00:00
+# url: https://canadabuys.canada.ca/en/tender-opportunities/tender-notice/cb-181-22166699
+# description (redacted):
+#   This Request for Proposal is a reissue of the tender notice entitled “Laser Engravers – UNSPSC
+#   27112718 and 43212105 – W1985-26B051,” for which the posting period has now ended.
+#   As a required amendment could not be published before the closing date and time of the original
+#   notice, the Department of National Defence is reissuing the Request for Proposal W1985-26B056 to
+#   ensure that all interested suppliers have fair access to the revised documents and sufficient
+#   time to prepare and submit a bid.
+#   Suppliers must use only the documents attached to this notice. The documents published under the
+#   original notice are superseded by the documents included with this reissued solicitation.
+#   Bids must be submitted in accordance with the instructions and no later than the new closing
+#   date and time specified in this notice.
+#
+#   Scope
+#
+#   Acquisition, installation, commissioning, and training for two (2) laser engraving machines to
+#   produce identification plates and perform permanent marking of parts and equipment used by the
+#   Canadian Armed Forces. One machine will be delivered and installed at the 202nd Workshop Depot
+#   (202 WD) in Montréal, Quebec, and the other at the Land Engineering Support Centre (LESC) in
+#   Ottawa, Ontario.
+# ==================================================================================================
+
+criteria_location: TODO   # stated_in_notice | partly_stated | see_solicitation
+gates:
+  # value: yes | no | unknown. name: the arrangement as written in the notice, or null
+  supply_arrangement_required: {value: TODO, name: null, evidence: null}
+  # value: none | canadian_only | canadian_and_trading_partners | unknown
+  supplier_origin_restriction: {value: TODO, evidence: null}
+  # corporate, personnel: none | reliability | secret | top_secret | unknown
+  clearance: {corporate: TODO, personnel: TODO, evidence: null}
+  # on_site: yes | no | unknown. place: where staff must work (title/description), or null
+  work_location: {on_site: TODO, place: null, evidence: null}
+  # value: yes | no | unknown
+  land_claims_applies: {value: TODO, evidence: null}
+  # value: yes | no | unknown. portal: as written in the notice, or null
+  documents_behind_login: {value: TODO, portal: null, evidence: null}
+unsure: false   # true only for a genuinely ambiguous case, with a one-line note
+notes: ""

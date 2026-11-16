@@ -1,0 +1,59 @@
+# ==================================================================================================
+# Eval case test-08. Do not edit this comment block: check_labels reads the notice
+# text from it. Guide: docs/label-guide.md
+# ==================================================================================================
+# reference: SSC-26-00034395:T
+# title: Request for Information (RFI) for an Enterprise DNS, DHCP, IPAM (DDI) Solution
+# buyer: Shared Services Canada
+# notice_type: Request for Information
+# procurement_categories: GD
+# regions_of_delivery: Canada
+# regions_of_opportunity: Canada
+# trade_agreements: Canada-Ukraine Free Trade Agreement (CUFTA); Canadian Free Trade Agreement
+#   (CFTA); Canada-Korea Free Trade Agreement (CKFTA); Canada-Honduras Free Trade Agreement;
+#   Canada-Chile Free Trade Agreement (CCFTA); Canada-Peru Free Trade Agreement (CPFTA);
+#   Canada-Colombia Free Trade Agreement; Canada-UK Trade Continuity Agreement (Canada-UK TCA);
+#   World Trade Organization Agreement on Government Procurement (WTO GPA); Canada-Panama Free Trade
+#   Agreement; Comprehensive and Progressive Agreement for Trans-Pacific Partnership (CPTPP)
+# closing_date: 2026-08-28T19:00:00+00:00
+# url: https://canadabuys.canada.ca/en/tender-opportunities/tender-notice/SSC-26-00034395:T
+# description (redacted):
+#   Request for Information (RFI) – Enterprise DNS, DHCP, and IP Address Management (DDI) Solution
+#
+#   Shared Services Canada (SSC) is seeking industry feedback through this Request for Information
+#   (RFI) to support the development of a future procurement for an enterprise Domain Name System
+#   (DNS), Dynamic Host Configuration Protocol (DHCP), and IP Address Management (IPAM) (DDI)
+#   solution.
+#
+#   The objective is to establish a standardized, secure, and scalable enterprise DDI platform that
+#   will modernize and consolidate the Government of Canada's core network infrastructure, improve
+#   operational efficiency, enhance security, and support long-term network modernization
+#   initiatives.
+#
+#   This RFI is for information-gathering purposes only and is not a bid solicitation. No contract
+#   will be awarded as a result of this RFI, and participation is not a prerequisite for any future
+#   procurement. SSC anticipates that any subsequent solicitation may result in the award of one
+#   contract with a five-year initial term and options to extend for up to five additional one-year
+#   periods.
+#
+#
+#   SSC Request for Information (RFI) for an Enterprise DNS, DHCP, IPAM (DDI) Solution- Amendment
+#   001
+# ==================================================================================================
+
+criteria_location: TODO   # stated_in_notice | partly_stated | see_solicitation
+gates:
+  # value: yes | no | unknown. name: the arrangement as written in the notice, or null
+  supply_arrangement_required: {value: TODO, name: null, evidence: null}
+  # value: none | canadian_only | canadian_and_trading_partners | unknown
+  supplier_origin_restriction: {value: TODO, evidence: null}
+  # corporate, personnel: none | reliability | secret | top_secret | unknown
+  clearance: {corporate: TODO, personnel: TODO, evidence: null}
+  # on_site: yes | no | unknown. place: where staff must work (title/description), or null
+  work_location: {on_site: TODO, place: null, evidence: null}
+  # value: yes | no | unknown
+  land_claims_applies: {value: TODO, evidence: null}
+  # value: yes | no | unknown. portal: as written in the notice, or null
+  documents_behind_login: {value: TODO, portal: null, evidence: null}
+unsure: false   # true only for a genuinely ambiguous case, with a one-line note
+notes: ""

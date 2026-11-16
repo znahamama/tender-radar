@@ -1,0 +1,146 @@
+# ==================================================================================================
+# Eval case dev-06. Do not edit this comment block: check_labels reads the notice
+# text from it. Guide: docs/label-guide.md
+# ==================================================================================================
+# reference: cb-846-73690703
+# title: RF Data Fusion for Command and Control
+# buyer: Department of Public Works and Government Services (PSPC)
+# notice_type: Request for Proposal
+# procurement_categories: SRV
+# regions_of_delivery: Canada
+# regions_of_opportunity: Canada
+# trade_agreements: Canadian Free Trade Agreement (CFTA)
+# closing_date: 2026-10-29T18:00:00+00:00
+# url: https://canadabuys.canada.ca/en/tender-opportunities/tender-notice/cb-846-73690703
+# description (redacted):
+#   This Challenge notice is issued under the Innovation for Defence Excellence and Security (IDEaS)
+#   Program Call for Proposals (CFP) Call 006 (W7714-248676/A).
+#
+#   Solicitation Documents reference: See bidding details section.
+#
+#   *For additional general information on the IDEaS Program, visit:
+#   https://www.canada.ca/en/department-national-defence/programs/defence-ideas.html
+#   _____________
+#   This challenge is open to receive proposals for Component 1a, Component 1b and Component 2.
+#   Proposed solutions that fall within technology readiness levels (TRL) 1-9 can be submitted to
+#   this challenge.
+#
+#   Steps to apply:
+#
+#   Step 1: read this challenge
+#   Step 2: read the Call for Proposals : See bidding details section
+#   Step 3: propose your solution here : https://defence-innovation-portal.my.site.com/
+#   _____________
+#   Maximum Funding and Performance Period
+#
+#   Multiple contracts could result from this Challenge.
+#
+#   The individual maximum contract funding available under Component 1a (TRL 1-3) is up to $250,000
+#   CAD (excluding applicable taxes) for a maximum performance period of up to 6 months.
+#
+#   The maximum individual contract funding available under Component 1b (TRL 4-5) is up to
+#   $1,500,000 CAD (excluding applicable taxes) for a maximum performance period of 12 months.
+#
+#   The maximum individual contract funding available under Component 2 (TRL 6-9) is up to
+#   $5,000,000 CAD (excluding applicable taxes). The period of performance will be determined at the
+#   time of contract negotiation.
+#
+#   The maximum individual contractual funding and the maximum performance period offered under
+#   Component 3 will be determined by Canada at the time of contract negotiation.
+#
+#   This disclosure is made in good faith and does not commit Canada to contract for the total
+#   approximate funding.
+#   _____________
+#   Challenge Details
+#
+#   Challenge Title: W7714-248676/017 - RF Data Fusion for Command and Control
+#
+#   The Department of National Defence (DND) and the Canadian Armed Forces (CAF) are seeking
+#   innovative software-based solutions to seamlessly convert, analyze, and fuse real-time,
+#   domain-specific, content-rich data transmitted over radio frequency (RF) bearers into a secure,
+#   standardized pan-domain Command and Control (C2) format to enhance interoperability and enable
+#   timely, data-driven decision-making across all domains and levels of command.
+#
+#   Background and context
+#
+#   Radio frequency (RF) communications in military operations are inherently bandwidth-constrained
+#   and vulnerable to jamming, interference, and environmental effects, making them unreliable in
+#   contested environments. To maintain timely and effective support across all warfighting domains,
+#   data transmitted over RF bearers should be transformed into compact, structured messages, such
+#   as eXtensible Markup Language (XML)-based Message Text Formats (MTF) or other machine-readable
+#   schemas. Such messages should be optimized for transmission over tactical networks including Low
+#   Frequency (LF), Very Low Frequency (VLF), High Frequency (HF), Ultra High Frequency (UHF), and
+#   Satellite Communications (SATCOM). This approach enables resilient, standards-based
+#   communication across domains (land, air, maritime, cyber, and space) and functional services
+#   (e.g., Joint Intelligence Surveillance and Reconnaissance (JISR), medical, logistics), in line
+#   with doctrinal requirements for pan-domain operations.
+#
+#   CAF tactical messaging remains largely dependent on legacy systems. These systems are
+#   inflexible, poorly suited to machine-to-machine exchange, and increasingly misaligned with
+#   NATO’s shift toward XML-based, data-centric frameworks. CAF operators currently lack integrated,
+#   machine-readable messaging systems. As a result, they must manually convert voice, chat, and
+#   text inputs into formal military products including orders, situation reports, and Requests for
+#   Information (RFIs) to comply with command structures and coalition standards.
+#
+#   Modern, pan-domain operations require that doctrinal and technical Information Exchange
+#   Requirements (IERs) be met at the speed of operational relevance, with messaging that is
+#   interoperable, standardized, and capable of supporting real-time, data-driven decision-making in
+#   joint and coalition environments. As NATO, the U.S. Department of Defense, and other Five Eyes
+#   partners adopt XML-based, machine-readable messaging frameworks, the CAF is prioritizing
+#   alignment with these emerging data models to improve interoperability, operational agility, and
+#   mission effectiveness.
+#   The DND/CAF are seeking innovative, interoperable, and scalable solutions that will contribute
+#   to the development of a next-generation digital military RF messaging and data exchange.
+#   Innovators are invited to propose technologies, platforms, or integrated systems.
+#
+#   Essential Outcomes
+#
+#   The proposed solution must:
+#
+#   •       Be a software-based capability (e.g., standalone application, plug-in, middleware, or
+#   service).
+#   •       Support DND/CAF operations across all domains (land, air, maritime, space, cyber) and
+#   functional services (e.g., C2, intelligence, logistics).
+#   •       Implement structured, standards-compliant messaging (e.g., MTF-XML) and data exchange
+#   protocols (e.g., National Information Exchange Model (NIEM), NATO Core Data Framework (NCDF)),
+#   with documented interfaces for importing, exporting, and exchanging data using those standards.
+#   •       Be configurable and modular, supporting Character-Oriented Information Exchange (COIE)
+#   processing and designed for future extensibility (e.g., to accommodate emerging or disruptive
+#   standards).
+#   •       Provide documented interfaces and standards-based data exchange mechanisms to support
+#   system integration, including use within experimentation, simulation, and wargaming
+#   environments.
+#
+#   Desired Outcomes
+#
+#   The proposed solution should include capabilities such as, but not limited to, the following:
+#
+#   •       Operability in Denied, Degraded, Intermittent, and Low Bandwidth (DDIL) environments,
+#   with scalability to support evolving mission requirements and force structures.
+#   •       Enhanced user experience features such as intuitive interfaces, multilingual support,
+#   automation of routine workflows, and built-in decision aids.
+#   •       Standardized, documented integration interfaces (e.g., application programming
+#   interfaces (APIs)) to enable integration with at least one Service Management or Service
+#   Monitoring tools or platforms (e.g., ServiceNow, Splunk, Dynatrace, Microsoft System Center,
+#   Azure Monitor, etc.).
+#   •       Readiness for future integration of Artificial Intelligence (AI)/Machine Learning (ML)
+#   capabilities to support data fusion, intelligent message prioritization, and real-time decision
+#   support.
+# ==================================================================================================
+
+criteria_location: TODO   # stated_in_notice | partly_stated | see_solicitation
+gates:
+  # value: yes | no | unknown. name: the arrangement as written in the notice, or null
+  supply_arrangement_required: {value: TODO, name: null, evidence: null}
+  # value: none | canadian_only | canadian_and_trading_partners | unknown
+  supplier_origin_restriction: {value: TODO, evidence: null}
+  # corporate, personnel: none | reliability | secret | top_secret | unknown
+  clearance: {corporate: TODO, personnel: TODO, evidence: null}
+  # on_site: yes | no | unknown. place: where staff must work (title/description), or null
+  work_location: {on_site: TODO, place: null, evidence: null}
+  # value: yes | no | unknown
+  land_claims_applies: {value: TODO, evidence: null}
+  # value: yes | no | unknown. portal: as written in the notice, or null
+  documents_behind_login: {value: TODO, portal: null, evidence: null}
+unsure: false   # true only for a genuinely ambiguous case, with a one-line note
+notes: ""

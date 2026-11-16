@@ -1,0 +1,148 @@
+# ==================================================================================================
+# Eval case dev-05. Do not edit this comment block: check_labels reads the notice
+# text from it. Guide: docs/label-guide.md
+# ==================================================================================================
+# reference: cb-495-14096276
+# title: Secure Path to the Stars: Strengthening Cybersecurity in Hybrid Space Networks
+# buyer: Department of Public Works and Government Services (PSPC)
+# notice_type: Request for Proposal
+# procurement_categories: SRV
+# regions_of_delivery: Canada
+# regions_of_opportunity: Canada
+# trade_agreements: Canadian Free Trade Agreement (CFTA)
+# closing_date: 2026-03-10T18:00:00+00:00
+# url: https://canadabuys.canada.ca/en/tender-opportunities/tender-notice/cb-495-14096276
+# description (redacted):
+#   This Challenge notice is issued under the Innovation for Defence Excellence and Security (IDEaS)
+#   Program Call for Proposals (CFP) Call 006 (W7714-248676/A).
+#
+#   Solicitation Documents reference: See bidding details section.
+#   *For additional general information on the IDEaS Program, visit:
+#
+#   https://www.canada.ca/en/department-national-defence/programs/defence-ideas.html
+#   _____________
+#   This challenge is open to receive proposals for Component 1a, Component 1b and Component 2.
+#   Proposed solutions that fall within technology readiness levels (TRL) 1-9 can be submitted to
+#   this challenge.
+#
+#   Steps to apply:
+#   Step 1: read this challenge
+#   Step 2: read the Call for Proposals : See bidding details section
+#   Step 3: propose your solution here : https://defence-innovation-portal.my.site.com/
+#   _____________
+#   Maximum Funding and Performance Period
+#
+#   Multiple contracts could result from this Challenge.
+#
+#   The individual maximum contract funding available under Component 1a (TRL 1-3) is up to $250,000
+#   CAD (excluding applicable taxes) for a maximum performance period of up to 6 months.
+#   The maximum individual contract funding available under Component 1b (TRL 4-5) is up to
+#   $1,500,000 CAD (excluding applicable taxes) for a maximum performance period of 12 months.
+#   The maximum individual contract funding available under Component 2 (TRL 6-9) is up to
+#   $5,000,000 CAD (excluding applicable taxes). The period of performance will be determined at the
+#   time of contract negotiation.
+#   The maximum individual contractual funding and the maximum performance period offered under
+#   Component 3 will be determined by Canada at the time of contract negotiation.
+#   This disclosure is made in good faith and does not commit Canada to contract for the total
+#   approximate funding.
+#   _____________
+#   Challenge Details
+#
+#   Challenge Title: W7714-248676/011 – Secure Path to the Stars: Strengthening Cybersecurity in
+#   Hybrid Space Networks
+#
+#   The Department of National Defence (DND) and the Canadian Armed Forces (CAF) re seeking
+#   innovative research and development (R&D) solutions to support the evolution of Hybrid Space
+#   Networks (HSNs) that are secure, resilient, and able to operate in contested environments.. As
+#   these HSNs will integrate communications, sensing, and command and control capabilities, the
+#   end-to-end cybersecurity will be key in providing secure operations and information flows to,
+#   from and between space-based and ground-based nodes.
+#
+#   Background and Context
+#
+#   Modern defence operations depend on the ability to collect, process and distribute large volumes
+#   of data from diverse sources in near real time. This capability is essential to ensure domain
+#   awareness and effective command and control.
+#   Low Earth Orbit (LEO) satellite constellations are expected to play a key role in meeting these
+#   requirements by enabling HSNs with high throughput, low latency, and global coverage. These
+#   networks must be able to adapt to changing dynamic traffic demands to transport data through
+#   different segments. HSN architectural robustness and resilience under dynamic traffic load and
+#   segment failure conditions are of particular importance.
+#
+#   This challenge focuses on the creation of a laboratory-based “flatsat” platform—a ground-based
+#   satellite test system that integrates key satellite subsystems and enables controlled
+#   cybersecurity. The “flatsat” will  support the design, testing, and validation of secure
+#   satellite software and hardware architectures, as well as cyber defense mechanisms.
+#   To enable a wide range of cybersecurity experiments, the flatsat should integrate multiple and
+#   type-diverse payloads , rather than the one or two payloads typically found on operational
+#   satellites.  Examples of payloads may include:
+#
+#   •       Communication
+#   •       Remote observation
+#   •       Navigation
+#   •       Scientific measurements
+#   •       Weather and meteorology
+#   •       Any other type-specific payload or combination thereof
+#
+#   As there are a variety of strategies and methods that could be proposed in meeting this
+#   challenge, DND/CAF is providing some guidance to Offerors based on experiences with flatsats:
+#
+#   Examples of proposal types (Typical approximate budgets and timelines)
+#   A flatsat that integrates five (5) or more payloads - Up to $1,250,000 and a length of 6-12
+#   months
+#   A flatsat that integrates three (3) or four (4) payloads - Between $500,000 and $1,000,000
+#   and a length of 6-12 months
+#   A flatsat with  two (2) payloads - Between $100,000 and $400,000 and a length of 6-12 months
+#
+#   Essential Outcomes
+#
+#   Proposed solutions must deliver a flatsat platform that meets the following criteria:
+#
+#   Function criteria
+#
+#   •       Utilizes subsystems that replicate the full and proven functionality of those used in
+#   operational satellites
+#   •       Utilizes at least two (2) payloads, one of them being communications
+#
+#   Fit criteria
+#
+#   •       Will measure no more than 2.5m x 2.5m in a laboratory floor space
+#   •       Will feature a hardware layout that allows easy access for instrumentation and testing
+#
+#   Form criteria
+#
+#   •       Includes a telemetry, tracking, and command (TT&C) module accessible via a wired
+#   interface
+#   •       Includes communications payload accessible via a wired interface
+#   •       Implements a modular, reconfigurable and reprogrammable software architecture that
+#   supports software/firmware patching and hardware component replacement
+#   •       Provides administrative capabilities for health monitoring, bus input/output,
+#   configuration, and secure software updates via a wired interface
+#
+#   Desired Outcomes
+#
+#   Proposed solutions should include one or more of the following:
+#   •       Exploration of security concepts for hardening hybrid space networks.
+#   •       Development and demonstration of novel cybersecurity protection mechanisms.
+#   •       Creation of a remote-access environment to support cybersecurity competitions and
+#   training exercises
+#   •       Utilization of more than two (2) payloads. Each additional payload adds to the
+#   innovation and technical merits.
+# ==================================================================================================
+
+criteria_location: TODO   # stated_in_notice | partly_stated | see_solicitation
+gates:
+  # value: yes | no | unknown. name: the arrangement as written in the notice, or null
+  supply_arrangement_required: {value: TODO, name: null, evidence: null}
+  # value: none | canadian_only | canadian_and_trading_partners | unknown
+  supplier_origin_restriction: {value: TODO, evidence: null}
+  # corporate, personnel: none | reliability | secret | top_secret | unknown
+  clearance: {corporate: TODO, personnel: TODO, evidence: null}
+  # on_site: yes | no | unknown. place: where staff must work (title/description), or null
+  work_location: {on_site: TODO, place: null, evidence: null}
+  # value: yes | no | unknown
+  land_claims_applies: {value: TODO, evidence: null}
+  # value: yes | no | unknown. portal: as written in the notice, or null
+  documents_behind_login: {value: TODO, portal: null, evidence: null}
+unsure: false   # true only for a genuinely ambiguous case, with a one-line note
+notes: ""

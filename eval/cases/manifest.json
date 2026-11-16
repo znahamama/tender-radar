@@ -1,0 +1,484 @@
+{
+  "seed": 20261116,
+  "selected_on": "2026-11-16",
+  "selection_script": "eval/select_cases.py",
+  "pool": {
+    "rule": "kept Tender rows (any status) first seen before 2026-11-17T00:00:00+00:00, redacted description of at least 120 words and at most 30000 characters (no truncation), minus the exclusions",
+    "size": 173,
+    "fingerprint": "0c9b3cf1dd71a1256999a5d7e3a84529e9cc544d64df4a4b1be41216fd01edb3"
+  },
+  "excluded": {
+    "cb-8448-42897985": "model outputs already seen before labelling"
+  },
+  "prompt_examples": "Prompt v2's two worked examples are invented text, not real notices, so no notice is excluded for them.",
+  "quotas": {
+    "against_sa": 4,
+    "sa_or_so_request": 3,
+    "region_nl": 8,
+    "region_national": 8,
+    "text_security": 5,
+    "text_land_claims": 3,
+    "status_open": 10,
+    "status_expired": 10
+  },
+  "stratum_rules": {
+    "against_sa": "notice_kind is \"against_sa\" (code-side, from notice_type metadata)",
+    "sa_or_so_request": "notice_kind is \"sa_or_so_request\" (code-side, from metadata)",
+    "region_nl": "region_scope is \"nl\" (\"nl+national\" counts for neither region stratum)",
+    "region_national": "region_scope is \"national\"",
+    "text_security": "title or description matches \\b(security|clearance|reliability)\\b, case-insensitive",
+    "text_land_claims": "title or description matches \\bland[\\s-]+claims?\\b, case-insensitive",
+    "status_open": "tender_status is \"Open\" at selection time",
+    "status_expired": "tender_status is \"Expired\" at selection time"
+  },
+  "strata_counts": {
+    "dev": {
+      "against_sa": 1,
+      "sa_or_so_request": 3,
+      "region_nl": 4,
+      "region_national": 5,
+      "text_security": 3,
+      "text_land_claims": 1,
+      "status_open": 3,
+      "status_expired": 6
+    },
+    "test": {
+      "against_sa": 3,
+      "sa_or_so_request": 7,
+      "region_nl": 7,
+      "region_national": 9,
+      "text_security": 6,
+      "text_land_claims": 2,
+      "status_open": 7,
+      "status_expired": 13
+    },
+    "all": {
+      "against_sa": 4,
+      "sa_or_so_request": 10,
+      "region_nl": 11,
+      "region_national": 14,
+      "text_security": 9,
+      "text_land_claims": 3,
+      "status_open": 10,
+      "status_expired": 19
+    }
+  },
+  "split": {
+    "dev": [
+      "WS5548295643-Doc5938843172",
+      "SSC-26-00034429:T",
+      "cb-300-44437270",
+      "cb-181-76348100",
+      "cb-495-14096276",
+      "cb-846-73690703",
+      "cb-117-66588222",
+      "cb-777-38226073",
+      "WS3430950409-Doc5344784278",
+      "WS5548295643-Doc5729126490"
+    ],
+    "test": [
+      "cb-808-71346390",
+      "WS5120581462-Doc5145686894",
+      "WS5467865775-Doc5532753609",
+      "WS5967256651-Doc5967309031",
+      "SSC-26-00033871:T",
+      "cb-0-11990877",
+      "cb-364-13128756",
+      "SSC-26-00034395:T",
+      "WS5940666474-Doc5953314939",
+      "WS5054542893-Doc5767404666",
+      "cb-435-94227930",
+      "cb-181-49859681",
+      "WS3971158100-Doc3971158168",
+      "cb-280-13103447",
+      "cb-362-77803083",
+      "cb-181-22166699",
+      "PW-_NCS-030-11940",
+      "cb-233-12818571",
+      "cb-563-51417133",
+      "cb-673-2167068"
+    ]
+  },
+  "cases": [
+    {
+      "case": "dev-01",
+      "split": "dev",
+      "file": "dev/dev-01.yaml",
+      "reference": "WS5548295643-Doc5938843172",
+      "content_hash": "111e157cfb6c26db54202d7e8221e6746966a44d7b97e0beb7741201264c6bd3",
+      "picked_for": "fill",
+      "strata": [
+        "region_nl",
+        "sa_or_so_request",
+        "status_expired"
+      ]
+    },
+    {
+      "case": "dev-02",
+      "split": "dev",
+      "file": "dev/dev-02.yaml",
+      "reference": "SSC-26-00034429:T",
+      "content_hash": "13b3494e49a08f8744df26fdfb09ef9846833b33e84d28149279c0d423057add",
+      "picked_for": "fill",
+      "strata": [
+        "region_national",
+        "status_expired",
+        "text_security"
+      ]
+    },
+    {
+      "case": "dev-03",
+      "split": "dev",
+      "file": "dev/dev-03.yaml",
+      "reference": "cb-300-44437270",
+      "content_hash": "c5981fc9626a1eb68beeb6d3a13f138ba81c7fc62fb0f17773dcdaef0e9f6c2d",
+      "picked_for": "against_sa",
+      "strata": [
+        "against_sa",
+        "region_nl"
+      ]
+    },
+    {
+      "case": "dev-04",
+      "split": "dev",
+      "file": "dev/dev-04.yaml",
+      "reference": "cb-181-76348100",
+      "content_hash": "58580f8e50f8aa634e3fb9dc6c3597f6328041a280f86431053b56088e77fa4e",
+      "picked_for": "status_open",
+      "strata": [
+        "region_national",
+        "sa_or_so_request",
+        "status_open"
+      ]
+    },
+    {
+      "case": "dev-05",
+      "split": "dev",
+      "file": "dev/dev-05.yaml",
+      "reference": "cb-495-14096276",
+      "content_hash": "07e06727e9702496f063ddcbbe6aa2537f1208e868f7f07e33e03743363d6627",
+      "picked_for": "status_open",
+      "strata": [
+        "region_national",
+        "status_open",
+        "text_security"
+      ]
+    },
+    {
+      "case": "dev-06",
+      "split": "dev",
+      "file": "dev/dev-06.yaml",
+      "reference": "cb-846-73690703",
+      "content_hash": "6cdfacfefa8e505976916b9752db98e0772adb3f4a740c20fd157f7a4dbb7014",
+      "picked_for": "status_expired",
+      "strata": [
+        "region_national",
+        "status_expired",
+        "text_security"
+      ]
+    },
+    {
+      "case": "dev-07",
+      "split": "dev",
+      "file": "dev/dev-07.yaml",
+      "reference": "cb-117-66588222",
+      "content_hash": "d0e5d9e89ec8f21cbba4fb51509be787d0c3906c245f2aa219b5be821856ae6e",
+      "picked_for": "status_expired",
+      "strata": [
+        "status_expired"
+      ]
+    },
+    {
+      "case": "dev-08",
+      "split": "dev",
+      "file": "dev/dev-08.yaml",
+      "reference": "cb-777-38226073",
+      "content_hash": "140ca02894199a09af32dde702dd653b44fbe043b10efed115e74d0566376dab",
+      "picked_for": "region_nl",
+      "strata": [
+        "region_nl",
+        "status_expired"
+      ]
+    },
+    {
+      "case": "dev-09",
+      "split": "dev",
+      "file": "dev/dev-09.yaml",
+      "reference": "WS3430950409-Doc5344784278",
+      "content_hash": "f0ff141d412450517512dccc67818f7050a03bb24ad60f82ebb3050cc244c194",
+      "picked_for": "status_open",
+      "strata": [
+        "region_national",
+        "status_open"
+      ]
+    },
+    {
+      "case": "dev-10",
+      "split": "dev",
+      "file": "dev/dev-10.yaml",
+      "reference": "WS5548295643-Doc5729126490",
+      "content_hash": "c47b08cf184cb9ab161bf88c3216342a865eda904ec4e66cd491191dd92e2899",
+      "picked_for": "text_land_claims",
+      "strata": [
+        "region_nl",
+        "sa_or_so_request",
+        "status_expired",
+        "text_land_claims"
+      ]
+    },
+    {
+      "case": "test-01",
+      "split": "test",
+      "file": "test/test-01.yaml",
+      "reference": "cb-808-71346390",
+      "content_hash": "91775184657750bd043f7bd43c26bf148ce6da9e3b5e34231c1879435deefe9d",
+      "picked_for": "against_sa",
+      "strata": [
+        "against_sa",
+        "region_national",
+        "status_expired",
+        "text_security"
+      ]
+    },
+    {
+      "case": "test-02",
+      "split": "test",
+      "file": "test/test-02.yaml",
+      "reference": "WS5120581462-Doc5145686894",
+      "content_hash": "397ecd93614d9310371cf5e00920d2721d3c9194b9713ec03fd97854b889c5ad",
+      "picked_for": "status_open",
+      "strata": [
+        "region_nl",
+        "sa_or_so_request",
+        "status_open"
+      ]
+    },
+    {
+      "case": "test-03",
+      "split": "test",
+      "file": "test/test-03.yaml",
+      "reference": "WS5467865775-Doc5532753609",
+      "content_hash": "6df745f9a338332e253751e5d4bd62a6ec4745e5d102eb89d783c29311ccf27c",
+      "picked_for": "region_nl",
+      "strata": [
+        "region_nl",
+        "sa_or_so_request",
+        "status_expired"
+      ]
+    },
+    {
+      "case": "test-04",
+      "split": "test",
+      "file": "test/test-04.yaml",
+      "reference": "WS5967256651-Doc5967309031",
+      "content_hash": "22f96ad214c6d7ec71b26a7b821d3cbcb50c5aa52ff4c85c4c5606bba9aa463d",
+      "picked_for": "status_open",
+      "strata": [
+        "region_nl",
+        "status_open"
+      ]
+    },
+    {
+      "case": "test-05",
+      "split": "test",
+      "file": "test/test-05.yaml",
+      "reference": "SSC-26-00033871:T",
+      "content_hash": "5e31ed4cf893229fee0a45684837287d6ed49b9de2040862775717e0768934a7",
+      "picked_for": "fill",
+      "strata": [
+        "region_national",
+        "status_expired",
+        "text_security"
+      ]
+    },
+    {
+      "case": "test-06",
+      "split": "test",
+      "file": "test/test-06.yaml",
+      "reference": "cb-0-11990877",
+      "content_hash": "57bf707f8aabfc67631dbee76da303b4c388649b0dd05e3a16271acc1c5b6a07",
+      "picked_for": "fill",
+      "strata": [
+        "region_national",
+        "status_expired",
+        "text_security"
+      ]
+    },
+    {
+      "case": "test-07",
+      "split": "test",
+      "file": "test/test-07.yaml",
+      "reference": "cb-364-13128756",
+      "content_hash": "b14b5e2a9367004a22f3d983d8c3e4b4b84ff2442aa8bdb558d642984c008256",
+      "picked_for": "status_open",
+      "strata": [
+        "region_national",
+        "sa_or_so_request",
+        "status_open",
+        "text_land_claims"
+      ]
+    },
+    {
+      "case": "test-08",
+      "split": "test",
+      "file": "test/test-08.yaml",
+      "reference": "SSC-26-00034395:T",
+      "content_hash": "b27875029864633c7c388054e3305934f41744d0e56e8cc43ddaecc818536d5c",
+      "picked_for": "fill",
+      "strata": [
+        "region_national",
+        "status_expired",
+        "text_security"
+      ]
+    },
+    {
+      "case": "test-09",
+      "split": "test",
+      "file": "test/test-09.yaml",
+      "reference": "WS5940666474-Doc5953314939",
+      "content_hash": "6a8ae48b2dec6b7ddc982edfafac1a3e5c05a73afa036ad8e89a2c067762f021",
+      "picked_for": "status_open",
+      "strata": [
+        "region_national",
+        "sa_or_so_request",
+        "status_open"
+      ]
+    },
+    {
+      "case": "test-10",
+      "split": "test",
+      "file": "test/test-10.yaml",
+      "reference": "WS5054542893-Doc5767404666",
+      "content_hash": "849b5d559d0be5820f229cf203cab23ad2b5bdfa9993ce358f05c02345210571",
+      "picked_for": "region_nl",
+      "strata": [
+        "region_nl",
+        "sa_or_so_request",
+        "status_expired"
+      ]
+    },
+    {
+      "case": "test-11",
+      "split": "test",
+      "file": "test/test-11.yaml",
+      "reference": "cb-435-94227930",
+      "content_hash": "4afa19b38897fa00aa1d62b50bed9291b3db167a1196810f689f20a669f95dba",
+      "picked_for": "status_open",
+      "strata": [
+        "status_open",
+        "text_security"
+      ]
+    },
+    {
+      "case": "test-12",
+      "split": "test",
+      "file": "test/test-12.yaml",
+      "reference": "cb-181-49859681",
+      "content_hash": "37423366b6ee825bb5340a2f00d8c4e258faf9bf084329c64fd23b44d0bd7f0b",
+      "picked_for": "fill",
+      "strata": [
+        "region_nl",
+        "status_expired"
+      ]
+    },
+    {
+      "case": "test-13",
+      "split": "test",
+      "file": "test/test-13.yaml",
+      "reference": "WS3971158100-Doc3971158168",
+      "content_hash": "ae3beb8ff0d1d4ca31336d8c72a1f6e6946d14f89dfa0ade1cc78992bba368d6",
+      "picked_for": "status_open",
+      "strata": [
+        "region_national",
+        "sa_or_so_request",
+        "status_open"
+      ]
+    },
+    {
+      "case": "test-14",
+      "split": "test",
+      "file": "test/test-14.yaml",
+      "reference": "cb-280-13103447",
+      "content_hash": "60a015c95ab50cb8c0e05a46563c2835393a48fc25e2e91fc2d299953f149791",
+      "picked_for": "fill",
+      "strata": [
+        "status_expired"
+      ]
+    },
+    {
+      "case": "test-15",
+      "split": "test",
+      "file": "test/test-15.yaml",
+      "reference": "cb-362-77803083",
+      "content_hash": "4b44786edc444754f8f454e1ea6f9d72323eb20907059a2bf04936b52e8ae10b",
+      "picked_for": "fill",
+      "strata": [
+        "status_expired"
+      ]
+    },
+    {
+      "case": "test-16",
+      "split": "test",
+      "file": "test/test-16.yaml",
+      "reference": "cb-181-22166699",
+      "content_hash": "ebd96b9acf21cffa26f02d61f04833da040991d44060ccb50404e6f5f516b033",
+      "picked_for": "status_expired",
+      "strata": [
+        "region_national",
+        "status_expired"
+      ]
+    },
+    {
+      "case": "test-17",
+      "split": "test",
+      "file": "test/test-17.yaml",
+      "reference": "PW-_NCS-030-11940",
+      "content_hash": "f1e814a405b9141641564f78c5447259ba1cf8eac654449a84c5c911d2e9e13a",
+      "picked_for": "status_open",
+      "strata": [
+        "region_nl",
+        "sa_or_so_request",
+        "status_open",
+        "text_land_claims"
+      ]
+    },
+    {
+      "case": "test-18",
+      "split": "test",
+      "file": "test/test-18.yaml",
+      "reference": "cb-233-12818571",
+      "content_hash": "bade6c9028347c0fcd1109e5c179e93139cb0959881836bc9fb49f60a9b1a7f6",
+      "picked_for": "against_sa",
+      "strata": [
+        "against_sa",
+        "status_expired"
+      ]
+    },
+    {
+      "case": "test-19",
+      "split": "test",
+      "file": "test/test-19.yaml",
+      "reference": "cb-563-51417133",
+      "content_hash": "3b2e31c93401403355901ee3aa805c723b691c3a5ecf1ed6a4d3b1972bf9ae6d",
+      "picked_for": "fill",
+      "strata": [
+        "region_nl",
+        "status_expired"
+      ]
+    },
+    {
+      "case": "test-20",
+      "split": "test",
+      "file": "test/test-20.yaml",
+      "reference": "cb-673-2167068",
+      "content_hash": "bfe3951722bf8cb3fc76c090f182e056945ebbbffea919cf2c4de6bfedaf5367",
+      "picked_for": "against_sa",
+      "strata": [
+        "against_sa",
+        "region_national",
+        "status_expired",
+        "text_security"
+      ]
+    }
+  ]
+}

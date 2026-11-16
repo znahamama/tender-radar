@@ -1,0 +1,53 @@
+# ==================================================================================================
+# Eval case test-02. Do not edit this comment block: check_labels reads the notice
+# text from it. Guide: docs/label-guide.md
+# ==================================================================================================
+# reference: WS5120581462-Doc5145686894
+# title: E6HAL-250001 RMSA Plumbing Fittings and Supplies
+# buyer: Department of Public Works and Government Services (PSPC)
+# notice_type: Request for Supply Arrangement
+# procurement_categories: GD
+# regions_of_delivery: New Brunswick; Prince Edward Island; Nova Scotia; Newfoundland and Labrador
+# regions_of_opportunity:
+# trade_agreements: Comprehensive and Progressive Agreement for Trans-Pacific Partnership (CPTPP);
+#   Canada-European Union Comprehensive Economic and Trade Agreement (CETA); Canada-Ukraine Free
+#   Trade Agreement (CUFTA); Canada-Panama Free Trade Agreement; North American Free Trade Agreement
+#   (NAFTA); Canadian Free Trade Agreement (CFTA); Canada-UK Trade Continuity Agreement (Canada-UK
+#   TCA); Canada-Peru Free Trade Agreement (CPFTA); Canada-Honduras Free Trade Agreement;
+#   Canada-Korea Free Trade Agreement (CKFTA); Canada-Colombia Free Trade Agreement; Canada-Chile
+#   Free Trade Agreement (CCFTA); World Trade Organization Agreement on Government Procurement (WTO
+#   GPA)
+# closing_date: 2026-11-30T19:00:00+00:00
+# url: https://discovery.ariba.com/rfx/23131828?extsite=MjMxMzE4MjhfQU4wMTQ4NDA1MDk5Mg==
+# description (redacted):
+#   The response time deadline is 14:00 EDT
+#
+#   Public Services and Procurement Canada (PSPC), Atlantic Region, intends to establish a Regional
+#   Master Supply Arrangement (RMSA) for the supply and delivery of miscellaneous plumbing fittings
+#   and supplies on an “as and when requested” basis for a period of 5 years for use by various
+#   Federal Government Departments and agencies located in New-Brunswick, Nova Scotia, Newfoundland
+#   and Labrador and Prince Edward Island.
+#   Barring any other conditions or international sanctions, Canadian Suppliers,  Suppliers of an
+#   Applicable Trading Partner and Suppliers of a Non-Trading Partner are eligible for this
+#   solicitation of offers. Eligibility for individual Requests for Proposals against the Supply
+#   Arrangement may be limited to Canadian Suppliers and Suppliers of an Applicable Trading Partner.
+#   Offerors may request a debriefing on the results of the solicitation of offers process.
+#   Reference the solicitation for further details.
+# ==================================================================================================
+
+criteria_location: TODO   # stated_in_notice | partly_stated | see_solicitation
+gates:
+  # value: yes | no | unknown. name: the arrangement as written in the notice, or null
+  supply_arrangement_required: {value: TODO, name: null, evidence: null}
+  # value: none | canadian_only | canadian_and_trading_partners | unknown
+  supplier_origin_restriction: {value: TODO, evidence: null}
+  # corporate, personnel: none | reliability | secret | top_secret | unknown
+  clearance: {corporate: TODO, personnel: TODO, evidence: null}
+  # on_site: yes | no | unknown. place: where staff must work (title/description), or null
+  work_location: {on_site: TODO, place: null, evidence: null}
+  # value: yes | no | unknown
+  land_claims_applies: {value: TODO, evidence: null}
+  # value: yes | no | unknown. portal: as written in the notice, or null
+  documents_behind_login: {value: TODO, portal: null, evidence: null}
+unsure: false   # true only for a genuinely ambiguous case, with a one-line note
+notes: ""

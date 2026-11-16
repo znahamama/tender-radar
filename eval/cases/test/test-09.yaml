@@ -1,0 +1,48 @@
+# ==================================================================================================
+# Eval case test-09. Do not edit this comment block: check_labels reads the notice
+# text from it. Guide: docs/label-guide.md
+# ==================================================================================================
+# reference: WS5940666474-Doc5953314939
+# title: 5P466-260001 - Motorola Radio Equipment
+# buyer: Department of Public Works and Government Services (PSPC)
+# notice_type: Request for Standing Offer
+# procurement_categories: GD
+# regions_of_delivery: Canada
+# regions_of_opportunity:
+# trade_agreements: Canada-Korea Free Trade Agreement (CKFTA); Canada-European Union Comprehensive
+#   Economic and Trade Agreement (CETA); Canada-Ukraine Free Trade Agreement (CUFTA);
+#   Canada-Colombia Free Trade Agreement; Comprehensive and Progressive Agreement for Trans-Pacific
+#   Partnership (CPTPP); Canada-Chile Free Trade Agreement (CCFTA); World Trade Organization
+#   Agreement on Government Procurement (WTO GPA); Canada-Honduras Free Trade Agreement; Canada-Peru
+#   Free Trade Agreement (CPFTA); Canadian Free Trade Agreement (CFTA); Canada-Panama Free Trade
+#   Agreement; Canada-UK Trade Continuity Agreement (Canada-UK TCA)
+# closing_date: 2026-11-18T19:00:00+00:00
+# url: https://portal.us.bn.cloud.ariba.com/dashboard/public/appext/comsapsbncdiscoveryui#/RfxEvent/preview/1110029863?anId=ANONYMOUS
+# description (redacted):
+#   Notice to suppliers: This solicitation of offers is subject to the Policy on Reciprocal
+#   Procurement. This means that only Canadian Suppliers and Suppliers of an Applicable Trading
+#   Partner, as defined in the Annex Solicitation of Offers Definitions, are eligible for this
+#   solicitation of offers. Offers submitted by Suppliers of a Non-Trading Partner will be rejected.
+#   Please note that late submissions will not be considered or accepted. Parks Canada has a
+#   requirement to establish a Regional Individual Standing Offer to cover repeated, on-going
+#   Motorola VHF 2-way radio purchases for Parks Canada located in Calgary, Alberta. The Standing
+#   Offer will be limited to the part numbers listed below. The Standing Offer will be in effect
+#   from date of issuance for one year.
+# ==================================================================================================
+
+criteria_location: TODO   # stated_in_notice | partly_stated | see_solicitation
+gates:
+  # value: yes | no | unknown. name: the arrangement as written in the notice, or null
+  supply_arrangement_required: {value: TODO, name: null, evidence: null}
+  # value: none | canadian_only | canadian_and_trading_partners | unknown
+  supplier_origin_restriction: {value: TODO, evidence: null}
+  # corporate, personnel: none | reliability | secret | top_secret | unknown
+  clearance: {corporate: TODO, personnel: TODO, evidence: null}
+  # on_site: yes | no | unknown. place: where staff must work (title/description), or null
+  work_location: {on_site: TODO, place: null, evidence: null}
+  # value: yes | no | unknown
+  land_claims_applies: {value: TODO, evidence: null}
+  # value: yes | no | unknown. portal: as written in the notice, or null
+  documents_behind_login: {value: TODO, portal: null, evidence: null}
+unsure: false   # true only for a genuinely ambiguous case, with a one-line note
+notes: ""

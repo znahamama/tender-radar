@@ -1,0 +1,43 @@
+# ==================================================================================================
+# Eval case test-04. Do not edit this comment block: check_labels reads the notice
+# text from it. Guide: docs/label-guide.md
+# ==================================================================================================
+# reference: WS5967256651-Doc5967309031
+# title: RFP – Potable Water System Upgrade Design St. Anthony Airport
+# buyer: Department of Public Works and Government Services (PSPC)
+# notice_type: Request for Proposal
+# procurement_categories: SRV
+# regions_of_delivery: Newfoundland and Labrador
+# regions_of_opportunity:
+# trade_agreements: Canada-Korea Free Trade Agreement (CKFTA)
+# closing_date: 2026-11-17T19:00:00+00:00
+# url: https://canadabuys.canada.ca/en/tender-opportunities/tender-notice/WS5967256651-Doc5967309031
+# description (redacted):
+#   Project Description: Public Services and Procurement Canada (PSPC), on behalf of Transport
+#   Canada (TC), requires engineering consulting services to prepare design drawings and National
+#   Master Specifications (NMS) for upgrades to the existing water treatment system at St. Anthony
+#   Airport, Newfoundland and Labrador. This Request for Proposals (RFP) is issued under Civil
+#   Engineering Supply Arrangement EB129-192368. Invited firms: Dillon Consulting, EXP Canada, and
+#   Englobe. Debriefing: Unsuccessful bidders may request a debriefing from the Contracting
+#   Authority within fifteen (15) working days of receiving notification. General Information:
+#   Proposals must be submitted through SAP Ariba by the date and time specified in the RFP. The
+#   issuing office is Atlantic Region Acquisitions, 1713 Bedford Row, Halifax, NS B3J 1T3. Services
+#   are available in English. Proposals may be submitted in either official language of Canada.
+# ==================================================================================================
+
+criteria_location: TODO   # stated_in_notice | partly_stated | see_solicitation
+gates:
+  # value: yes | no | unknown. name: the arrangement as written in the notice, or null
+  supply_arrangement_required: {value: TODO, name: null, evidence: null}
+  # value: none | canadian_only | canadian_and_trading_partners | unknown
+  supplier_origin_restriction: {value: TODO, evidence: null}
+  # corporate, personnel: none | reliability | secret | top_secret | unknown
+  clearance: {corporate: TODO, personnel: TODO, evidence: null}
+  # on_site: yes | no | unknown. place: where staff must work (title/description), or null
+  work_location: {on_site: TODO, place: null, evidence: null}
+  # value: yes | no | unknown
+  land_claims_applies: {value: TODO, evidence: null}
+  # value: yes | no | unknown. portal: as written in the notice, or null
+  documents_behind_login: {value: TODO, portal: null, evidence: null}
+unsure: false   # true only for a genuinely ambiguous case, with a one-line note
+notes: ""

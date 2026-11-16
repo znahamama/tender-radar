@@ -1,0 +1,164 @@
+# ==================================================================================================
+# Eval case test-17. Do not edit this comment block: check_labels reads the notice
+# text from it. Guide: docs/label-guide.md
+# ==================================================================================================
+# reference: PW-_NCS-030-11940
+# title: Hazardous Waste Disposal Services
+# buyer: Public Works and Government Services Canada
+# notice_type: Request for Proposal
+# procurement_categories: SRV
+# regions_of_delivery: Northwest Territories; Nova Scotia; New Brunswick; Newfoundland and Labrador;
+#   Nunavut Territory; Yukon; British Columbia; Quebec (except NCR); Saskatchewan; Manitoba; Ontario
+#   (except NCR); National Capital Region (NCR); Prince Edward Island; Alberta
+# regions_of_opportunity:
+# trade_agreements:
+# closing_date: 2026-09-14T18:00:00+00:00
+# url: https://canadabuys.canada.ca/en/tender-opportunities/tender-notice/PW-_NCS-030-11940
+# description (redacted):
+#   Trade Agreement: CETA / WTO-AGP / CPTPP / CFTA / FTAs with Peru / Colombia / Panama / Korea
+#   Tendering Procedures: All interested suppliers may submit a bid
+#   Competitive Procurement Strategy: Subsequent/Follow-on Contracts
+#   Comprehensive Land Claim Agreement: No
+#   Nature of Requirements:
+#
+#   Hazardous Waste Disposal Services
+#
+#   EW479-162880/C
+#   [NAME]
+#   Telephone No. - [PHONE] (    )
+#   Fax No. - [PHONE] (    )
+#
+#   Hazardous Waste Disposal Services, PWGSC, National
+#
+#   This requirement is to establish multiple Supply Arrangements to provide all labour, materials,
+#   equipment, tools and supervision necessary for the identification, labelling, packaging,
+#   reparation of profile documentation sheets, loading, transportation and disposal/destruction of
+#   user-generated hazardous waste products for various Federal Government Departments and Agencies
+#   within Canada.  These Supply Arrangements are meant for the procurement of professional and
+#   commercial services under those approval authorities.
+#
+#   Suppliers must be licensed and permitted to provide hazardous waste disposal services within one
+#   or more provinces or territories.
+#
+#   The Supply Arrangements have no defined end-date and will remain valid until such time as PWGSC
+#   no longer considers it to be advantageous to use them.  They will replace the Supply
+#   Arrangements currently in place under EW479-150546 & EW479-162880/B Hazardous Waste Disposal.
+#
+#   Two streams of Supply Arrangements may be issued pursuant to this solicitation, as follows:
+#
+#   1)  Any supplier, including Indigenous suppliers, wishing to submit an arrangement not pursuant
+#   to the Procurement Strategy for Aboriginal Business (PSAB). For the purpose of the RFSA, this
+#   stream is titled ?General? or ?General Suppliers? or ?General stream.?  General Suppliers must
+#   be able to provide the services either across Canada (nationally) or in at least one region of
+#   Canada.
+#
+#   i)  Requirements in the general stream have three tiers with separate instructions, as defined
+#   in Part 6 (B), Section 2 - Bid Solicitation of this RFSA:
+#
+#   a.  For requirements estimated below $40,000.00 (applicable taxes included):
+#
+#   For bid solicitations valued at $25,000.00 or more (including applicable taxes), if, and only
+#   if, the requirement covered by the bid solicitation of any resulting supply arrangement is
+#   administered by PWGSC, the requirement will be subject to a preference for Canadian goods and/or
+#   services or will be limited to Canadian goods and/or services.
+#
+#   Otherwise, the requirement is subject to the Government Contracts Regulations (GCRs)
+#   b.  For requirements estimated at $40,000.00 to $100,000.00 (applicable taxes included):
+#
+#   If, and only if, the requirement covered by the bid solicitation of any resulting supply
+#   arrangement is administered by PWGSC, the requirement will be subject to a preference for
+#   Canadian goods and/or services or will be limited to Canadian goods and/or services.
+#
+#   Otherwise, the requirement is subject to the Government Contracts Regulations (GCRs) in a
+#   similar fashion to 2.1.i.a.
+#   c.  For requirements estimated at $100,000.00 to the departmental contracting limit of
+#   $400,000.00 (applicable taxes included)
+#
+#   The requirement may be subject to the provisions of the World Trade Organization Agreement on
+#   Government Procurement (WTO-AGP) and the Agreement on Internal Trade (AIT).  The departmental
+#   contracting limits are specified in the Treasury Board Secretariat’s Contracting Policy,
+#   Appendix ?C? - Treasury Board Contracts Directive,? Part 1 - Basic Contracting Limits, Schedule
+#   3 - Service Contracts (Excluding Architectural and Engineering Services).
+#
+#   d.  For requirements estimated above the departmental contracting limit of $400,000.00
+#   (applicable taxes included):
+#
+#   The requirement is outside the scope of the supply arrangements and the requirement must be
+#   administered separately by a PWGSC Contracting Authority.
+#
+#   i.  The proposed requirement is subject to the following Comprehensive Land Claims Agreement(s)
+#   (CLCAs) (see 2.2.ii.).  One or more of the following CLCAs may apply to the bid solicitation of
+#   any resulting supply arrangement, dependant on delivery location(s).  It is not mandatory for
+#   suppliers to identify CLCA socio-economic benefits provisions to qualify for a Supply
+#   Arrangement.  Refer to Annex ?D? - Beneficiary Involvement Report and Annex ?E? - Socio-Economic
+#   Benefits Provisions.
+#
+#   1)  Any supplier, including Indigenous suppliers, wishing to submit an arrangement pursuant to
+#   the PSAB. For the purpose of the RFSA, this stream is titled ?PSAB,? ?PSAB Suppliers? or ?PSAB
+#   stream.?  PSAB Suppliers must be able to provide the services either across Canada (nationally)
+#   or in at least one region of Canada.
+#
+#   i.  Requirements in the PSAB stream have two tiers with separate instructions:
+#
+#   a)  For requirements estimated below $40,000.00 (applicable taxes included):
+#
+#   The requirement is subject to the Government Contracts Regulations (GCRs).
+#
+#   b)  For requirements estimated at $40,000.00 to $100,000.00 (applicable taxes included)::
+#
+#   The requirement covered by the bid solicitation of any resulting supply arrangement will be
+#   subject to the set aside under the federal government Procurement Strategy for Aboriginal
+#   Business (PSAB).
+#   * For more information on Indigenous business requirements of the Set-aside Program for
+#   Indigenous Business, see Annex 9.4 of the Supply Manual.
+#   * This procurement is set aside from the international trade agreements under the provision each
+#   has for set-asides for small and minority businesses.
+#   * Further to Article 1802 of the AIT, AIT does not apply to this procurement.
+#
+#   c)  For requirements estimated above the departmental contracting limit of $400,000.00
+#   (applicable taxes included):
+#
+#   The requirement is outside the scope of the supply arrangements and the requirement must be
+#   administered separately by a PWGSC Contracting Authority.
+#
+#   The proposed requirement is subject to Comprehensive Land Claims Agreement(s) (CLCAs).  One or
+#   more CLCAs may apply to the bid solicitation of any resulting supply arrangement, dependant on
+#   delivery location(s).  It is not mandatory for suppliers to identify CLCA socio-economic
+#   benefits provisions to qualify for a Supply Arrangement.
+#
+#   Code of Conduct:
+#   "IMPORTANT NOTICE:  New measures related to Code of Conduct and certifications included in the
+#   solicitation documents requires attention."
+#
+#   Inquiries are to be directed to:  [NAME], PWGSC Procurement Officer at Fax #[PHONE] or by email
+#   to [EMAIL]
+#
+#   Delivery-date: Above-mentioned
+#
+#   The Crown retains the right to negotiate with suppliers on any procurement.
+#
+#   Documents may be submitted in either official language of Canada.
+#
+#   Delivery Date: Above-mentioned
+#
+#   The Crown retains the right to negotiate with suppliers on any procurement.
+#
+#   Documents may be submitted in either official language of Canada.
+# ==================================================================================================
+
+criteria_location: TODO   # stated_in_notice | partly_stated | see_solicitation
+gates:
+  # value: yes | no | unknown. name: the arrangement as written in the notice, or null
+  supply_arrangement_required: {value: TODO, name: null, evidence: null}
+  # value: none | canadian_only | canadian_and_trading_partners | unknown
+  supplier_origin_restriction: {value: TODO, evidence: null}
+  # corporate, personnel: none | reliability | secret | top_secret | unknown
+  clearance: {corporate: TODO, personnel: TODO, evidence: null}
+  # on_site: yes | no | unknown. place: where staff must work (title/description), or null
+  work_location: {on_site: TODO, place: null, evidence: null}
+  # value: yes | no | unknown
+  land_claims_applies: {value: TODO, evidence: null}
+  # value: yes | no | unknown. portal: as written in the notice, or null
+  documents_behind_login: {value: TODO, portal: null, evidence: null}
+unsure: false   # true only for a genuinely ambiguous case, with a one-line note
+notes: ""

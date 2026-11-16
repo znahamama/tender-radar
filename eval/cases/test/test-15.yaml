@@ -1,0 +1,65 @@
+# ==================================================================================================
+# Eval case test-15. Do not edit this comment block: check_labels reads the notice
+# text from it. Guide: docs/label-guide.md
+# ==================================================================================================
+# reference: cb-362-77803083
+# title: Wharf Repairs, Port au Choix, Newfoundland and Labrador
+# buyer: Department of Fisheries and Oceans (DFO)
+# notice_type: Invitation to Qualify
+# procurement_categories: CNST
+# regions_of_delivery: Newfoundland and Labrador; Port au Choix; Canada
+# regions_of_opportunity: Newfoundland and Labrador
+# trade_agreements: Canadian Free Trade Agreement (CFTA)
+# closing_date: 2026-09-24T18:00:00+00:00
+# url: https://canadabuys.canada.ca/en/tender-opportunities/tender-notice/cb-362-77803083
+# description (redacted):
+#   Wharf Repairs, Port au Choix, Newfoundland
+#
+#   LOCATION
+#
+#   Port au Choix, Newfoundland 50.7031° N, 57.3522° W (50°42'11"N 57°21'08"W)
+#
+#   SCOPE OF WORK
+#
+#   The work consists of the furnishing of all plant, labour, equipment and material for wharf
+#   repairs at Port Au Choix, Newfoundland, in strict accordance with specifications and
+#   accompanying drawings and subject to all terms and conditions of the Contract.
+#
+#   Work will consist of, but will not necessarily be limited to, the following:
+#
+#   •       Repairs to Structure 404 consisting of the supply, fabrication, and installation of new
+#   bent plate wale supports, steel walers and associated steel plates, wheelguards, wheelguard
+#   blocking, coping, fender systems, ladders, and deck resurfacing.
+#
+#   •       Plate repair for a hole in the pile 10C on Structure 404, as noted on the drawings.
+#
+#   •       Repairs to Structure 407 involving new fenders, ladders, D-bore fenders and wheelguard.
+#   Painting of existing wheelguard is also required.
+#
+#   FAMILARIAZATION OF SITE
+#
+#   There will be no mandatory or optional site visit. Bidders may access and view the site
+#   independently.
+#
+#   DELIVERY
+#
+#   The Contractor must perform and complete the work under this project within sixteen (18) weeks
+#   of contract award.
+# ==================================================================================================
+
+criteria_location: TODO   # stated_in_notice | partly_stated | see_solicitation
+gates:
+  # value: yes | no | unknown. name: the arrangement as written in the notice, or null
+  supply_arrangement_required: {value: TODO, name: null, evidence: null}
+  # value: none | canadian_only | canadian_and_trading_partners | unknown
+  supplier_origin_restriction: {value: TODO, evidence: null}
+  # corporate, personnel: none | reliability | secret | top_secret | unknown
+  clearance: {corporate: TODO, personnel: TODO, evidence: null}
+  # on_site: yes | no | unknown. place: where staff must work (title/description), or null
+  work_location: {on_site: TODO, place: null, evidence: null}
+  # value: yes | no | unknown
+  land_claims_applies: {value: TODO, evidence: null}
+  # value: yes | no | unknown. portal: as written in the notice, or null
+  documents_behind_login: {value: TODO, portal: null, evidence: null}
+unsure: false   # true only for a genuinely ambiguous case, with a one-line note
+notes: ""
