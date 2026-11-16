@@ -2,4 +2,4 @@
 
 # false until one manual {"task":"daily"} run succeeds (runbook step h). Every apply uses
 # this value, so flip it here, not with -var, or the next deploy turns the schedule off.
-schedule_enabled = false
+schedule_enabled = true
