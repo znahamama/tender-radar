@@ -14,7 +14,10 @@ terraform {
 
 provider "aws" {
   region = var.region
-  # Credentials: AWS_PROFILE=tender-radar. No profile here so CI can validate without one.
+  # Credentials: AWS_PROFILE=tender-radar-tf, a bridge profile whose credential_process
+  # exports the `aws login` session of profile tender-radar (the Go SDK Terraform uses
+  # can't read login sessions itself; see infra/README.md). No profile here so CI can
+  # validate without one.
   default_tags {
     tags = { Project = "tender-radar" }
   }

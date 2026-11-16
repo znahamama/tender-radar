@@ -1,6 +1,7 @@
 # tender-radar infra runbook
 
-Region `us-east-2`, profile `tender-radar`. Everything is tagged `Project=tender-radar`.
+Region `us-east-2`. Profiles: `tender-radar` for the AWS CLI and `tender-radar-tf` for
+Terraform (see below). Everything is tagged `Project=tender-radar`.
 
 ```
 infra/bootstrap/   S3 bucket for Terraform state (local state, gitignored)
@@ -23,11 +24,34 @@ values never reach state.
 | Logs | `/aws/lambda/tender-radar-{api,worker}`, `/aws/apigateway/tender-radar`, 14-day retention |
 | IAM | api-role, worker-role: own log group + `ssm:GetParameter` on `/tender-radar/prod/*`. scheduler-role: invoke the worker only |
 
+## AWS profiles: `tender-radar` and the `tender-radar-tf` bridge
+
+`tender-radar` is an `aws login` profile, so its config holds a `login_session` and no
+keys. The AWS CLI and `build_push.sh` read it directly. Terraform's AWS provider is built
+on the Go SDK, which can't read `aws login` sessions and fails with "no valid credential
+sources". So Terraform uses a second profile, `tender-radar-tf`, that has no credentials of
+its own. Its `credential_process` asks the CLI to export the current login session's
+short-lived credentials, and the Go SDK accepts those. Add this to `~/.aws/config`:
+
+```ini
+[profile tender-radar-tf]
+credential_process = aws configure export-credentials --profile tender-radar --format process
+region = us-east-2
+```
+
+Check it with `aws sts get-caller-identity --profile tender-radar-tf`: it should show the
+same ARN as `--profile tender-radar`. Nothing is written to disk. The exported credentials
+last only as long as the login session. When that session expires, run `aws login --profile
+tender-radar` again; the bridge profile needs no changes. Don't put a profile in the
+`provider` blocks: CI validates without one.
+
 All commands run from the repo root unless a `cd` says otherwise. Set these once per shell:
 
 ```sh
-export AWS_PROFILE=tender-radar
+export AWS_PROFILE=tender-radar      # aws CLI and build_push.sh
 export AWS_REGION=us-east-2
+# Every terraform command (including the ones inside $(...)) goes through the bridge:
+terraform() { AWS_PROFILE=tender-radar-tf command terraform "$@"; }
 ```
 
 ## First deploy
