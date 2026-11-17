@@ -62,19 +62,19 @@
 #   SSC R212392 Adobe License Renewal for RCMP- Amendment 000
 # ==================================================================================================
 
-criteria_location: TODO   # stated_in_notice | partly_stated | see_solicitation
+criteria_location: see_solicitation   # stated_in_notice | partly_stated | see_solicitation
 gates:
   # value: yes | no | unknown. name: the arrangement as written in the notice, or null
-  supply_arrangement_required: {value: TODO, name: null, evidence: null}
+  supply_arrangement_required: {value: yes, name: "Software Licensing Supply Arrangement (SLSA)", evidence: "Only suppliers who are pre-qualified and have been issued a supply arrangement are eligible to bid"}
   # value: none | canadian_only | canadian_and_trading_partners | unknown
-  supplier_origin_restriction: {value: TODO, evidence: null}
+  supplier_origin_restriction: {value: unknown, evidence: null}
   # corporate, personnel: none | reliability | secret | top_secret | unknown
-  clearance: {corporate: TODO, personnel: TODO, evidence: null}
+  clearance: {corporate: none, personnel: none, evidence: "Security Requirement None"}
   # on_site: yes | no | unknown. place: where staff must work (title/description), or null
-  work_location: {on_site: TODO, place: null, evidence: null}
+  work_location: {on_site: no, place: null, evidence: "GD"}
   # value: yes | no | unknown
-  land_claims_applies: {value: TODO, evidence: null}
+  land_claims_applies: {value: unknown, evidence: null}
   # value: yes | no | unknown. portal: as written in the notice, or null
-  documents_behind_login: {value: TODO, portal: null, evidence: null}
+  documents_behind_login: {value: no, portal: null, evidence: "The RFQ document will be sent directly to the eligible SLSA SA Holder and Class 1 Resellers"}
 unsure: false   # true only for a genuinely ambiguous case, with a one-line note
 notes: ""

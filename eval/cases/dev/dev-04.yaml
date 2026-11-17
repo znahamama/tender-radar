@@ -45,19 +45,19 @@
 #   6.7 of the Request for Supply Arrangement (RFSA) solicitation document.
 # ==================================================================================================
 
-criteria_location: TODO   # stated_in_notice | partly_stated | see_solicitation
+criteria_location: see_solicitation   # stated_in_notice | partly_stated | see_solicitation
 gates:
   # value: yes | no | unknown. name: the arrangement as written in the notice, or null
-  supply_arrangement_required: {value: TODO, name: null, evidence: null}
+  supply_arrangement_required: {value: no, name: null, evidence: "Request for Supply Arrangement"}
   # value: none | canadian_only | canadian_and_trading_partners | unknown
-  supplier_origin_restriction: {value: TODO, evidence: null}
+  supplier_origin_restriction: {value: unknown, evidence: null}
   # corporate, personnel: none | reliability | secret | top_secret | unknown
-  clearance: {corporate: TODO, personnel: TODO, evidence: null}
+  clearance: {corporate: unknown, personnel: unknown, evidence: null}
   # on_site: yes | no | unknown. place: where staff must work (title/description), or null
-  work_location: {on_site: TODO, place: null, evidence: null}
+  work_location: {on_site: unknown, place: null, evidence: null}
   # value: yes | no | unknown
-  land_claims_applies: {value: TODO, evidence: null}
+  land_claims_applies: {value: unknown, evidence: null}
   # value: yes | no | unknown. portal: as written in the notice, or null
-  documents_behind_login: {value: TODO, portal: null, evidence: null}
-unsure: false   # true only for a genuinely ambiguous case, with a one-line note
-notes: ""
+  documents_behind_login: {value: unknown, portal: null, evidence: null}
+unsure: true   # true only for a genuinely ambiguous case, with a one-line note
+notes: "SA setup: installation, site survey and removal imply on-site work under future call-ups, but no on-site requirement or place is stated"

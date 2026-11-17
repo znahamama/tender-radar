@@ -69,19 +69,19 @@
 #   E-mail: [EMAIL]
 # ==================================================================================================
 
-criteria_location: TODO   # stated_in_notice | partly_stated | see_solicitation
+criteria_location: see_solicitation   # stated_in_notice | partly_stated | see_solicitation
 gates:
   # value: yes | no | unknown. name: the arrangement as written in the notice, or null
-  supply_arrangement_required: {value: TODO, name: null, evidence: null}
+  supply_arrangement_required: {value: unknown, name: null, evidence: null}
   # value: none | canadian_only | canadian_and_trading_partners | unknown
-  supplier_origin_restriction: {value: TODO, evidence: null}
+  supplier_origin_restriction: {value: unknown, evidence: null}
   # corporate, personnel: none | reliability | secret | top_secret | unknown
-  clearance: {corporate: TODO, personnel: TODO, evidence: null}
+  clearance: {corporate: unknown, personnel: unknown, evidence: null}
   # on_site: yes | no | unknown. place: where staff must work (title/description), or null
-  work_location: {on_site: TODO, place: null, evidence: null}
+  work_location: {on_site: yes, place: "St.John’s Research and Development Centre", evidence: "provide snow clearing services at the St.John’s Research and Development Centre"}
   # value: yes | no | unknown
-  land_claims_applies: {value: TODO, evidence: null}
+  land_claims_applies: {value: unknown, evidence: null}
   # value: yes | no | unknown. portal: as written in the notice, or null
-  documents_behind_login: {value: TODO, portal: null, evidence: null}
+  documents_behind_login: {value: yes, portal: "CanadaBuys", evidence: "It is MANDATORY for the Firms intending to submit tenders on this project to obtain the related specifications, plans and drawings, and all other tender documents through the CanadaBuys service provider’s platform"}
 unsure: false   # true only for a genuinely ambiguous case, with a one-line note
 notes: ""
