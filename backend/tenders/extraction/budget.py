@@ -64,6 +64,7 @@ class CallMeter:
     input_tokens: int = 0
     output_tokens: int = 0
     cost: Decimal = Decimal(0)
+    purpose: str = "extract"  # LlmCall.purpose; "eval" for the eval harness's repeat runs
 
     def check(self) -> None:
         if self.calls >= self.max_calls:
@@ -82,7 +83,7 @@ class CallMeter:
         self.output_tokens += output_tokens
         self.cost += cost
         return LlmCall.objects.create(
-            purpose="extract", tender=tender, model_id=model_id, prompt_version=prompt_version,
+            purpose=self.purpose, tender=tender, model_id=model_id, prompt_version=prompt_version,
             input_tokens=input_tokens, output_tokens=output_tokens, cost_usd=cost,
             latency_ms=latency_ms, status=status, request_id=request_id or "",
             estimated=estimated,

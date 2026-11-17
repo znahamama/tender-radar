@@ -63,3 +63,12 @@ name, and never let it overwrite a frozen version's result.
    back to unknown because of them.
 4. **Redaction audit count:** contact-info leaks the independent redaction audit finds in the
    30 cases. Target 0.
+
+## Harness
+
+`python backend/manage.py run_eval --split dev [--repeats N]` writes
+`eval/reports/<split>-<date>.md` and `.json` (same data). It uses the cached LLM extraction for
+the frozen config (extracting it through the normal path and caps if missing) and the keyword
+baseline, both compared after post-validation. `--repeats N` adds N uncached LLM runs per case,
+stored as `EvalExtraction` rows under the run's tag (LlmCall purpose `eval`), never as an
+`Extraction`, so the site never shows them. Scoring: `tenders/evals/scoring.py`.

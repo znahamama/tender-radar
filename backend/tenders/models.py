@@ -101,6 +101,36 @@ class Extraction(models.Model):
         return f"{self.tender_id} {self.model_id} {self.prompt_version} {self.status}"
 
 
+class EvalExtraction(models.Model):
+    """One extra LLM run on an eval case (run_eval --repeats), to measure run-to-run
+    consistency. Bypasses the Extraction cache and never replaces a cached Extraction, so
+    the site never shows it. ``raw_output`` is stored as returned; scoring re-runs
+    post-validation on it, as the site does for an Extraction."""
+
+    run_tag = models.CharField(max_length=64, db_index=True)
+    tender = models.ForeignKey(Tender, on_delete=models.CASCADE, related_name="eval_extractions")
+    repeat = models.PositiveSmallIntegerField(help_text="1..N within the run.")
+    model_id = models.CharField(max_length=100)
+    prompt_version = models.CharField(max_length=20)
+    schema_version = models.CharField(max_length=20)
+    config_fingerprint = models.CharField(max_length=64)
+    input_hash = models.CharField(max_length=64)
+    status = models.CharField(max_length=10, choices=Extraction.Status.choices)
+    raw_output = models.JSONField(null=True, blank=True)
+    call_flags = models.JSONField(default=list, blank=True)
+    error = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = (
+            models.UniqueConstraint(fields=["run_tag", "tender", "repeat"],
+                                    name="eval_extraction_per_run_repeat"),
+        )
+
+    def __str__(self) -> str:
+        return f"{self.run_tag} {self.tender_id} #{self.repeat} {self.status}"
+
+
 class LlmCall(models.Model):
     """One API attempt (the SDK does no hidden retries). Drives the daily cost cap."""
 
