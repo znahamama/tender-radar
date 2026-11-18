@@ -128,15 +128,14 @@ def test_hash_ignores_status_but_tracks_text(make_tender):
 
 
 def test_v2_prompt_has_gate_definitions_and_fake_examples():
-    from tenders.extraction.prompt import PROMPT_VERSION
-    assert PROMPT_VERSION == "v2"
+    from tenders.extraction.prompt import PROMPTS
     for phrase in ('"RFP against Supply Arrangement"', "TBIPS, TSPS, ProServices",
                    "name is optional", "Request for Supply Arrangement",
                    "Designated Organization Screening (DOS)", "Reliability Status",
                    '"Security requirement: none"', "physically work at a",
                    "goods-only notice", "never take it from the regions_of_delivery",
                    "Their notices are invented"):
-        assert phrase in SYSTEM_PROMPT, phrase
+        assert phrase in PROMPTS["v2"], phrase
 
 
 def test_v3_prompt_keeps_v2_and_adds_the_dev_traced_changes():

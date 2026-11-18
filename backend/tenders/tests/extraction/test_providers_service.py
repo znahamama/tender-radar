@@ -311,7 +311,8 @@ def test_raw_output_stored_and_postvalidation_applied(make_tender, meter):
     assert x.flags == ["ungrounded:eligibility.supply_arrangement_required",
                        "sa_metadata_disagrees"]
     assert x.call_flags == [] and x.input_hash == build_notice(t).content_hash
-    assert (x.model_id, x.prompt_version, x.schema_version) == ("claude-haiku-5-5", "v2", "1")
+    assert (x.model_id, x.prompt_version, x.schema_version) == (
+        "claude-haiku-5-5", PROMPT_VERSION, "1")
 
 
 def test_changed_validation_rule_applies_to_cached_row(make_tender, meter, monkeypatch):
@@ -463,10 +464,14 @@ def test_prompt_version_selects_a_pinned_prompt_and_is_recorded(make_tender, met
     assert v3.extract(build_notice(t), meter, tender=t).status == "ok"
     assert client.calls[0]["system"] == PROMPTS["v3"]
     assert LlmCall.objects.get().prompt_version == "v3"
-    # The default is the site's prompt, with the same fingerprint (cache key) as before v3.
-    v2 = AnthropicExtractor(client, retry_wait_s=0)
-    assert v2.prompt_version == PROMPT_VERSION == "v2" and v2.system_prompt == SYSTEM_PROMPT
-    assert v2.fingerprint == AnthropicExtractor(client, system_prompt=SYSTEM_PROMPT).fingerprint
+    # The default is the site's prompt (v3 since 2026-11-18).
+    site = AnthropicExtractor(client, retry_wait_s=0)
+    assert site.prompt_version == PROMPT_VERSION == "v3" and site.system_prompt == SYSTEM_PROMPT
+    assert site.fingerprint == v3.fingerprint
+    # v2 stays selectable, with the same fingerprint (cache key) its cached rows were made with.
+    v2 = AnthropicExtractor(client, retry_wait_s=0, prompt_version="v2")
+    assert v2.system_prompt == PROMPTS["v2"]
+    assert v2.fingerprint == AnthropicExtractor(client, system_prompt=PROMPTS["v2"]).fingerprint
     assert v3.fingerprint != v2.fingerprint
     with pytest.raises(ImproperlyConfigured, match="Unknown prompt version"):
         AnthropicExtractor(client, prompt_version="v9")

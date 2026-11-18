@@ -22,9 +22,9 @@ if TYPE_CHECKING:
 # restriction, land-claims "no", documents sent directly. Each change and its provenance:
 # docs/eval-protocol.md, "Prompt v3 changes".
 #
-# PROMPT_VERSION is the default the site and extract_tenders use. It stays v2 until v3 has
-# been scored on the test split.
-PROMPT_VERSION = "v2"
+# PROMPT_VERSION is the default the site and extract_tenders use. Switched from v2 to v3 on
+# 2026-11-18, after the single test run (docs/eval-protocol.md).
+PROMPT_VERSION = "v3"
 
 SYSTEM_PROMPT_V2 = """\
 You extract structured facts from one Canadian public tender notice for a small IT firm \

@@ -38,12 +38,12 @@ def test_prompt_v3_is_frozen():
     assert sha256(PROMPTS["v3"]) == FROZEN[("prompt", "v3")]
 
 
-def test_every_prompt_is_pinned_and_the_site_still_uses_v2():
+def test_every_prompt_is_pinned_and_the_site_uses_v3():
     # A new prompt needs a pin above before it exists; the eval scores only pinned ones.
     assert set(PROMPTS) == {v for kind, v in FROZEN if kind == "prompt"}
     assert set(PINNED_PROMPTS) == set(PROMPTS)
-    # The site's default moves to v3 only after v3 has been scored on the test split.
-    assert PROMPT_VERSION == "v2" and SYSTEM_PROMPT is PROMPTS["v2"]
+    # The site switched to v3 on 2026-11-18, after the single test run. v2 stays pinned.
+    assert PROMPT_VERSION == "v3" and SYSTEM_PROMPT is PROMPTS["v3"]
 
 
 def test_schema_is_frozen():

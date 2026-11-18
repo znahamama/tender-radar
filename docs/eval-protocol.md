@@ -26,6 +26,8 @@ scoring, after the "Invitation to Qualify" wording was removed (change 6 below).
 pinned and selectable; the site keeps using v2 (`PROMPT_VERSION`) until v3 has been
 scored on the test split. The final test run scores v2, v3 and the baseline together.
 
+Site switched to prompt v3 on 2026-11-18, after the single test run.
+
 `tenders/tests/extraction/test_frozen.py` pins the full hashes, so any change fails CI.
 `places.py` is part of the baseline fingerprint and of the rules hash: changing the gazetteer
 changes both.

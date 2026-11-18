@@ -10,6 +10,7 @@ from tenders.evals import harness, report
 from tenders.evals.labels import BODY, render
 from tenders.extraction.budget import CallMeter
 from tenders.extraction.keyword import KeywordExtractor
+from tenders.extraction.prompt import PROMPT_VERSION
 from tenders.extraction.providers import FakeExtractor
 from tenders.models import EvalExtraction, Extraction, LlmCall
 from tenders.tests.evals.test_labels import DESCRIPTION, FILLED, META
@@ -33,12 +34,21 @@ def cases_dir(tmp_path):
     return tmp_path
 
 
+class FakeV2(FakeExtractor):
+    prompt_version = "v2"
+
+
 class FakeV3(FakeExtractor):
     prompt_version = "v3"
 
 
 def fakes():
-    return {"v2": FakeExtractor(), "v3": FakeV3()}
+    return {"v2": FakeV2(), "v3": FakeV3()}
+
+
+# The site's prompt goes through the cached Extraction path; the other runs eval-only.
+SITE = PROMPT_VERSION
+OTHER = next(p for p in harness.PINNED_PROMPTS if p != SITE)
 
 
 def test_run_eval_scores_and_stores_repeats_apart(make_tender, cases_dir, tmp_path):  # noqa: F811
@@ -48,14 +58,14 @@ def test_run_eval_scores_and_stores_repeats_apart(make_tender, cases_dir, tmp_pa
     run = harness.run_eval("dev", 2, prompts=("v2", "v3"), cases_dir=cases_dir, llms=fakes(),
                            baseline=KeywordExtractor(), echo=lambda *_: None)
 
-    # Only the site's prompt (v2) and the baseline get a cached Extraction. v3 never does
-    # (the site would show it): its primary run is an EvalExtraction with repeat 0.
+    # Only the site's prompt and the baseline get a cached Extraction. The other prompt never
+    # does (the site would show it): its primary run is an EvalExtraction with repeat 0.
     assert Extraction.objects.filter(tender=tender, model_id="fake").count() == 1
-    assert Extraction.objects.get(tender=tender, model_id="fake").prompt_version == "v2"
+    assert Extraction.objects.get(tender=tender, model_id="fake").prompt_version == SITE
     assert Extraction.objects.filter(tender=tender, model_id="keyword-baseline").count() == 1
     rows = EvalExtraction.objects.filter(run_tag__startswith=run["run_tag"], tender=tender)
-    assert rows.count() == 1 + 2 * 2  # v3 primary + 2 repeats for each prompt
-    assert rows.get(repeat=0).prompt_version == "v3"
+    assert rows.count() == 1 + 2 * 2  # eval-only primary + 2 repeats for each prompt
+    assert rows.get(repeat=0).prompt_version == OTHER
     for p in ("v2", "v3"):  # one tag per prompt keeps (run_tag, tender, repeat) unique
         assert set(rows.filter(prompt_version=p).values_list("run_tag", flat=True)) == {
             harness.eval_tag(run["run_tag"], p)}
@@ -64,7 +74,7 @@ def test_run_eval_scores_and_stores_repeats_apart(make_tender, cases_dir, tmp_pa
     assert run["systems"] == ["llm_v2", "llm_v3", "baseline"]
     case = run["cases"][0]
     assert list(case["systems"]) == run["systems"]
-    assert case["systems"]["llm_v3"]["outcome"] == "ok"
+    assert case["systems"][harness.llm_system(OTHER)]["outcome"] == "ok"
     # Labels block (SA required by metadata, profile holds none): expected "blocked".
     assert case["label"]["status"] == "blocked"
     assert case["label"]["fields"]["supply_arrangement_required"] == "yes"
@@ -98,12 +108,15 @@ def test_run_eval_scores_and_stores_repeats_apart(make_tender, cases_dir, tmp_pa
     text3 = md3.read_text()
     assert "## Across all runs" in text3 and "side by side" in text3 and "Re-rendered" in text3
 
-    # A second run reuses the v3 primary run (like the v2 cache) instead of re-rolling it.
+    # A second run reuses the eval-only primary run (like the site cache) instead of
+    # re-rolling it.
     stored = EvalExtraction.objects.count()
     again = harness.run_eval("dev", 0, prompts=("v2", "v3"), cases_dir=cases_dir,
                              llms=fakes(), baseline=KeywordExtractor(), echo=lambda *_: None)
-    v3 = again["cases"][0]["systems"]["llm_v3"]
-    assert v3["outcome"] == "cache_hit" and v3["eval_extraction_id"] == rows.get(repeat=0).id
+    other = again["cases"][0]["systems"][harness.llm_system(OTHER)]
+    assert other["outcome"] == "cache_hit"
+    assert other["eval_extraction_id"] == rows.get(repeat=0).id
+    assert again["cases"][0]["systems"][harness.llm_system(SITE)]["outcome"] == "cache_hit"
     assert EvalExtraction.objects.count() == stored
 
 
@@ -111,7 +124,7 @@ def test_run_eval_scores_and_stores_repeats_apart(make_tender, cases_dir, tmp_pa
 @pytest.mark.parametrize("prompts, llms, match", [
     (("v9",), None, "not pinned prompt versions"),
     ((), None, "not pinned prompt versions"),
-    (("v3",), {"v3": FakeExtractor()}, "has prompt_version v2"),
+    (("v3",), {"v3": FakeV2()}, "has prompt_version v2"),
 ])
 def test_run_eval_refuses_unpinned_or_mismatched_prompts(cases_dir, prompts, llms, match):
     with pytest.raises(harness.EvalError, match=match):
