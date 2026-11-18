@@ -95,8 +95,11 @@ post-validation.
 - `--repeats N` adds N uncached runs per case and prompt, stored as `EvalExtraction` rows
   tagged `<run tag>-<prompt>` (LlmCall purpose `eval`).
 
-The report compares all systems: per-field table, error types, status confusion table,
-the primary-run answers that changed between v2 and v3, consistency and grounding.
+The report compares all systems: per-field table, accuracy across all runs (mean and
+range), error types, status confusion table, the primary-run answers that changed between v2
+and v3, consistency and grounding. `python backend/manage.py render_eval <report.json>
+[--compare <other.json>]` re-scores a stored run and rewrites its report in place without any
+API call; `--compare` adds a side-by-side view (e.g. dev next to test).
 Scoring: `tenders/evals/scoring.py`.
 
 ## Prompt v3 changes
@@ -161,3 +164,22 @@ Seen on dev with v3 (recorded, not acted on; any fix would be a v4):
   Supply Arrangement", so its SA `yes` was reset and the block missed.
 - Change 7 mostly holds: 1 of 6 dev-05/dev-08 repeats answered SA `no` quoting "Request for
   Proposal" (4 of 6 in the first v3 run).
+
+## Test split scored once
+
+Test split scored once on 2026-11-18, at commit `3cce2a90ec24cbec2948dafe363b7ef8d0326cff`.
+No prompt, baseline, rules or label changes after this point are evaluated on these 20 cases.
+
+- Run `eval-test-20261118T051712Z`: `run_eval --split test --prompts v2,v3 --repeats 3
+  --report-tag final`, `LLM_MAX_CALLS_PER_RUN=150` for that command only. Checks before the
+  run: clean working tree, v2/v3/baseline pins matched `test_frozen.py`, `check_labels`
+  30/30.
+- Report: `eval/reports/test-final-2026-11-18.md` and `.json`.
+- The call cap stopped the repeats 3 calls short: 13 test notices had no cached v2 site
+  extraction, so 13 extract calls came out of the 150. Missing: repeat 3 of test-19 (v3) and
+  test-20 (v2 and v3). Every case has its scored run from all three systems; those two cases
+  have 3 runs instead of 4 in the consistency and mean/range tables. The run was not repeated
+  or topped up.
+- The report was then re-rendered from the stored run JSON (`render_eval`, no API call) to
+  add the across-runs mean and range and the dev/test side-by-side view requested for this
+  report. Every score from the original rendering is unchanged (checked field by field).

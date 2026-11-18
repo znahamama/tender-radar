@@ -26,8 +26,10 @@ def llm_systems(systems: list[str]) -> list[str]:
     return [s for s in systems if s != BASELINE]
 
 
-def score(run: dict) -> dict:
-    """Add every computed table to the harness output under "scores"."""
+def score(run: dict, compare: dict | None = None) -> dict:
+    """Add every computed table to the harness output under "scores".
+
+    ``compare``: another scored run (e.g. dev next to test) for the side-by-side view."""
     cases, systems = run["cases"], run["systems"]
     llms = llm_systems(systems)
     sure = [c for c in cases if not c["unsure"]]
@@ -37,12 +39,21 @@ def score(run: dict) -> dict:
         "status": {s: scoring.confusion(cases, s) for s in systems},
         "status_excluding_unsure": {s: scoring.confusion(sure, s) for s in systems},
         "consistency": {s: scoring.consistency(cases, s) for s in llms},
+        "runs": {s: scoring.run_accuracy(cases, s) for s in systems},
+        "split_summary": scoring.split_summary(cases, systems),
+        "compare": _compare(compare, systems) if compare else None,
         "changes": {s: scoring.changes(cases, llms[0], s) for s in llms[1:]},
         "grounding": grounding(cases, systems),
         "calls": call_stats(run["calls"]),
         "n": len(cases), "n_unsure": len(cases) - len(sure),
         "unsure_cases": [c["case"] for c in cases if c["unsure"]],
     }}
+
+
+def _compare(other: dict, systems: list[str]) -> dict:
+    shared = [s for s in systems if s in other["systems"]]
+    return {"split": other["split"], "run_tag": other["run_tag"], "n": len(other["cases"]),
+            "systems": shared, "summary": scoring.split_summary(other["cases"], shared)}
 
 
 def grounding(cases: list[dict], systems: list[str]) -> dict:
@@ -131,7 +142,14 @@ def _protocol(r: dict) -> list[str]:
                 "Wilson intervals below are wide and mostly overlap. Use this split to read "
                 "errors, not to rank systems."), ""]
     if r["stopped"]:
-        out += [f"> **Repeats stopped early:** {r['stopped']}", ""]
+        out += [(f"> **Repeats stopped early:** {r['stopped']}. Cases with fewer runs are "
+                 "listed under Consistency; every case has its scored (primary) run."), ""]
+    if r.get("rendered"):
+        g = r["rendered"]["git"]
+        out += [(f"> **Re-rendered** from the stored run data on {r['rendered']['at'][:10]} "
+                 f"with report code at commit `{g['commit'][:10]}`"
+                 f"{' (uncommitted changes)' if g['dirty'] else ''}: no API call, no new "
+                 "extraction, the scored values are those of the run above."), ""]
     changed = [c["case"] for c in r["cases"] if c["text_changed_since_selection"]]
     if changed:
         out += [(f"> **Text changed since selection:** {', '.join(changed)} (labels were made "
@@ -166,6 +184,85 @@ def _summary(r: dict) -> list[str]:
     out.append(_row(cells + [total(f_sure[sys]) for sys in systems]))
     pooled = "_Pooled “all fields” counts are not independent (8 fields × the same cases)._"
     return [*out, "", pooled, ""]
+
+
+def _pct_or(x) -> str:
+    return "-" if x is None else f"{100 * x:.0f}%"
+
+
+def _across_runs(r: dict) -> list[str]:
+    runs, s = r["scores"]["runs"], r["scores"]
+    llms = llm_systems(r["systems"])
+    if not any(len(runs[sys]["runs"]) > 1 for sys in llms):
+        return []
+    n = s["n"]
+    counts = "; ".join(f"{display(sys)}: " + ", ".join(f"{x['run']} {x['n']}"
+                                                       for x in runs[sys]["runs"])
+                       for sys in llms)
+    out = ["## Across all runs (scored run, mean and range)", "",
+           ("Scored = the primary run (the one every other table uses), as correct/n with its "
+            "95% Wilson interval. Mean (min–max) = accuracy over every run of the system "
+            "(primary + repeats), each run over the cases it covers. The baseline is "
+            f"deterministic (one run). Cases per run: {counts}."), ""]
+    head = ["Field"]
+    for sys in r["systems"]:
+        head += [f"{display(sys)} scored", "95% CI"]
+        if sys in llms:
+            head.append(f"{display(sys)} mean (min–max)")
+    out += [_row(head), _sep(len(head))]
+    f_all = s["fields"]
+    for name in (*FIELDS, "all_fields", "status"):
+        label = {"all_fields": "**All fields**", "status": "**Status**"}.get(name, name)
+        cells = [label]
+        for sys in r["systems"]:
+            if name in FIELDS:
+                t = f_all[sys][name]
+                cells += [_frac(t), _ci(t["ci95"])]
+            elif name == "status":
+                c = s["status"][sys]
+                cells += [f"{c['agree']}/{c['n']}", _ci(c["ci95"])]
+            else:
+                k = sum(f_all[sys][f]["correct"] for f in FIELDS)
+                cells += [f"{k}/{n * len(FIELDS)}", ""]
+            if sys in llms:
+                a = runs[sys]["fields"][name]
+                cells.append(f"{_pct_or(a['mean'])} ({_pct_or(a['min'])}–{_pct_or(a['max'])})")
+        out.append(_row(cells))
+    return out + [""]
+
+
+def _side_by_side(r: dict) -> list[str]:
+    cmp = r["scores"].get("compare")
+    if not cmp:
+        return []
+    here, there = r["scores"]["split_summary"], cmp["summary"]
+    a, b = cmp["split"], r["split"]
+    systems = cmp["systems"]
+    out = [f"## {a.capitalize()} (n={cmp['n']}) and {b} (n={r['scores']['n']}) side by side", "",
+           (f"Scored runs only. {a}: run `{cmp['run_tag']}`; {b}: run `{r['run_tag']}`. "
+            f"{a.capitalize()} was used to design prompt v3; {b} was not."), ""]
+    head = ["Field", *(f"{display(s)} {x}" for s in systems for x in (a, b))]
+    out += [_row(head), _sep(len(head))]
+
+    def frac(d):
+        return f"{d['correct']}/{d['n']}"
+    for f in FIELDS:
+        out.append(_row([f, *(frac(side[s]["fields"][f]) for s in systems
+                              for side in (there, here))]))
+
+    def pooled(side, s):
+        k = sum(side[s]["fields"][f]["correct"] for f in FIELDS)
+        m = sum(side[s]["fields"][f]["n"] for f in FIELDS)
+        return f"**{k}/{m}** ({_pct(k / m if m else None)})"
+    out.append(_row(["**All fields**", *(pooled(side, s) for s in systems
+                                          for side in (there, here))]))
+    for e in ("wrong", "missed", "overclaimed"):
+        out.append(_row([f"_{e} (total)_", *(side[s]["errors"][e] for s in systems
+                                              for side in (there, here))]))
+    out.append(_row(["**Status agrees**", *(f"{side[s]['status']['agree']}/"
+                                            f"{side[s]['status']['n']}"
+                                            for s in systems for side in (there, here))]))
+    return out + [""]
 
 
 def _error_types(r: dict) -> list[str]:
@@ -349,10 +446,32 @@ def _cases(r: dict) -> list[str]:
 
 def render(r: dict) -> str:
     out = [f"# Eval report: {r['split']} split, {r['date']}", ""]
-    for part in (_protocol, _summary, _error_types, _status, _changes, _consistency,
-                 _grounding, _costs, _cases):
+    for part in (_protocol, _summary, _across_runs, _side_by_side, _error_types, _status,
+                 _changes, _consistency, _grounding, _costs, _cases):
         out += part(r)
     return "\n".join(out).rstrip() + "\n"
+
+
+def rerender(json_path: Path, compare_path: Path | None = None) -> tuple[Path, Path]:
+    """Re-score a stored run and rewrite its .md and .json in place. No API call: the run's
+    cases (labels, every run's values, evidence, flags, statuses) are taken as stored."""
+    from datetime import UTC, datetime
+
+    from django.conf import settings
+
+    from .harness import git_state
+    run = json.loads(json_path.read_text(encoding="utf-8"))
+    run.pop("scores", None)
+    run["rendered"] = {"at": datetime.now(UTC).isoformat(),
+                       "git": git_state(settings.BASE_DIR.parent),
+                       "compare": str(compare_path) if compare_path else None}
+    compare = json.loads(compare_path.read_text(encoding="utf-8")) if compare_path else None
+    scored = score(run, compare)
+    md = json_path.with_suffix(".md")
+    md.write_text(render(scored), encoding="utf-8")
+    json_path.write_text(json.dumps(scored, indent=2, ensure_ascii=False) + "\n",
+                         encoding="utf-8")
+    return md, json_path
 
 
 def check_tag(tag: str) -> None:

@@ -255,3 +255,49 @@ def changes(cases: list[dict], before: str, after: str) -> dict:
     counts = Counter(r["change"] for r in rows if r["field"] != "status")
     return {"before": before, "after": after, "rows": rows,
             "fields": {k: counts.get(k, 0) for k in ("fixed", "broken", "other")}}
+
+
+def run_accuracy(cases: list[dict], system: str) -> dict:
+    """Accuracy of each run of one system (primary, then repeat 1..N), per field, for all
+    fields pooled and for the status, with the mean, min and max over the runs.
+
+    A run's accuracy is over the cases that have that run (a capped repeat may cover fewer),
+    so runs stay comparable as proportions. A failed run counts as stating nothing."""
+    n_rep = max((len(c.get("repeats", {}).get(system, [])) for c in cases), default=0)
+    runs = []
+    for i in range(n_rep + 1):
+        if i == 0:
+            sel = [(c, c["systems"][system]) for c in cases]
+        else:
+            sel = [(c, c["repeats"][system][i - 1]) for c in cases
+                   if len(c.get("repeats", {}).get(system, [])) >= i]
+        runs.append(sel)
+    out = {"runs": [{"run": "primary" if i == 0 else f"repeat {i}", "n": len(sel)}
+                    for i, sel in enumerate(runs)], "fields": {}}
+    for name in (*FIELDS, "all_fields", "status"):
+        acc = []
+        for sel in runs:
+            if name == "status":
+                k, n = sum(r["status"] == c["label"]["status"] for c, r in sel), len(sel)
+            else:
+                names = FIELDS if name == "all_fields" else (name,)
+                k = sum(classify(c["label"]["fields"][f], r["fields"][f]) == "correct"
+                        for c, r in sel for f in names)
+                n = len(sel) * len(names)
+            acc.append(k / n if n else None)
+        vals = [a for a in acc if a is not None]
+        out["fields"][name] = {"per_run": acc,
+                               "mean": sum(vals) / len(vals) if vals else None,
+                               "min": min(vals, default=None), "max": max(vals, default=None)}
+    return out
+
+
+def split_summary(cases: list[dict], systems: list[str]) -> dict:
+    """Per system: correct per field, pooled, error totals and status agreement (scored run)."""
+    out = {}
+    for s in systems:
+        t = {f: tally(cases, s, f) for f in FIELDS}
+        out[s] = {"fields": {f: {"correct": t[f]["correct"], "n": t[f]["n"]} for f in FIELDS},
+                  "errors": {e: sum(t[f][e] for f in FIELDS) for e in ERROR_TYPES},
+                  "status": {k: confusion(cases, s)[k] for k in ("agree", "n")}}
+    return out

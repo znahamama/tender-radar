@@ -238,3 +238,30 @@ def test_changes_counts_fixed_broken_and_other_between_two_systems():
     assert by_field["status"]["change"] == "fixed"
     assert ch["fields"] == {"fixed": 1, "broken": 1, "other": 1}  # status not counted
     assert "criteria_location" not in by_field  # unchanged answers are not listed
+
+
+def test_run_accuracy_is_per_run_over_the_cases_each_run_covers():
+    run = lambda f, status="no_blockers_stated", ok=True: (
+        {"ok": ok, "fields": f, "status": status})
+    lab = fields(land_claims_applies="no")
+    cases = [
+        case("a", lab, lab, repeats=[run(lab), run(fields())]),
+        case("b", lab, fields(), repeats=[run(lab)]),  # capped: no second repeat
+    ]
+    acc = scoring.run_accuracy(cases, "llm")
+    assert [r["n"] for r in acc["runs"]] == [2, 2, 1]
+    land = acc["fields"]["land_claims_applies"]
+    assert land["per_run"] == [0.5, 1.0, 0.0]
+    assert land["mean"] == 0.5 and (land["min"], land["max"]) == (0.0, 1.0)
+    assert acc["fields"]["status"]["per_run"] == [1.0, 1.0, 1.0]
+    # No repeats (the baseline): one run, mean equals the scored run.
+    base = scoring.run_accuracy(cases, "baseline")
+    assert len(base["runs"]) == 1
+    assert base["fields"]["all_fields"]["mean"] == base["fields"]["all_fields"]["per_run"][0]
+
+
+def test_split_summary_counts_scored_run_errors_and_status():
+    c = case("c1", fields(land_claims_applies="unknown"), fields(land_claims_applies="no"))
+    s = scoring.split_summary([c], ["llm"])["llm"]
+    assert s["fields"]["land_claims_applies"] == {"correct": 0, "n": 1}
+    assert s["errors"]["overclaimed"] == 1 and s["status"] == {"agree": 1, "n": 1}

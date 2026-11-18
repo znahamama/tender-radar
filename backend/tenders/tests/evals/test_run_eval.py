@@ -88,6 +88,16 @@ def test_run_eval_scores_and_stores_repeats_apart(make_tender, cases_dir, tmp_pa
     md2, _ = report.write(scored, tmp_path / "reports", tag="v3")  # never overwrites
     assert md2 != md and md.exists()
 
+    # Re-rendering from the stored JSON keeps every score and adds the extra views.
+    md3, js3 = report.rerender(js, compare_path=js)
+    again_scored = json.loads(js3.read_text())
+    for key, value in scored["scores"].items():
+        if key not in ("runs", "split_summary", "compare"):
+            assert again_scored["scores"][key] == json.loads(json.dumps(value)), key
+    assert again_scored["rendered"]["compare"] == str(js)
+    text3 = md3.read_text()
+    assert "## Across all runs" in text3 and "side by side" in text3 and "Re-rendered" in text3
+
     # A second run reuses the v3 primary run (like the v2 cache) instead of re-rolling it.
     stored = EvalExtraction.objects.count()
     again = harness.run_eval("dev", 0, prompts=("v2", "v3"), cases_dir=cases_dir,
