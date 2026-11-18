@@ -41,7 +41,7 @@ def case(name, label_fields, llm_fields, baseline_fields=None, *, expected="no_b
                       "status": expected},
             "systems": {"llm": system(llm_fields, llm_status),
                         "baseline": system(baseline_fields or fields(), baseline_status)},
-            "repeats": list(repeats)}
+            "repeats": {"llm": list(repeats)}}
 
 
 # --- error types -------------------------------------------------------------------------
@@ -198,7 +198,7 @@ def test_consistency_counts_stable_cases_and_lists_flips():
         case("failed", fields(), same, repeats=[run(dict.fromkeys(FIELDS), ok=False)]),
         case("no_repeats", fields(), same),
     ]
-    con = scoring.consistency(cases)
+    con = scoring.consistency(cases, "llm")
     assert con["cases"] == 3
     assert con["runs_per_case"] == {"stable": 3, "flips": 3, "failed": 2}
     land = con["fields"]["land_claims_applies"]
@@ -214,7 +214,27 @@ def test_disagreements_lists_only_fields_where_a_system_differs():
     lab = fields(documents_behind_login="yes")
     c = case("c1", lab, fields(documents_behind_login="yes"),
              fields(documents_behind_login="unknown", land_claims_applies="yes"))
-    rows = scoring.disagreements(c)
+    rows = scoring.disagreements(c, ["llm", "baseline"])
     assert [r["field"] for r in rows] == ["land_claims_applies", "documents_behind_login"]
     assert rows[0]["llm"]["kind"] == "correct" and rows[0]["baseline"]["kind"] == "overclaimed"
     assert rows[1]["baseline"]["kind"] == "missed"
+
+
+def test_changes_counts_fixed_broken_and_other_between_two_systems():
+    lab = fields(supply_arrangement_required="no", land_claims_applies="unknown",
+                 documents_behind_login="yes")
+    before = fields(supply_arrangement_required="unknown", land_claims_applies="unknown",
+                    documents_behind_login="unknown")
+    after = fields(supply_arrangement_required="no", land_claims_applies="no",
+                   documents_behind_login="no")
+    c = case("c1", lab, before, after, expected="blocked", llm_status="check_solicitation",
+             baseline_status="blocked")
+    ch = scoring.changes([c], "llm", "baseline")
+    by_field = {r["field"]: r for r in ch["rows"]}
+    assert by_field["supply_arrangement_required"]["change"] == "fixed"
+    assert by_field["land_claims_applies"]["change"] == "broken"
+    assert by_field["land_claims_applies"]["after"]["kind"] == "overclaimed"
+    assert by_field["documents_behind_login"]["change"] == "other"  # missed -> wrong
+    assert by_field["status"]["change"] == "fixed"
+    assert ch["fields"] == {"fixed": 1, "broken": 1, "other": 1}  # status not counted
+    assert "criteria_location" not in by_field  # unchanged answers are not listed

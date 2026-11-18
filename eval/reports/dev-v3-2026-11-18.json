@@ -1,0 +1,5314 @@
+{
+  "split": "dev",
+  "run_tag": "eval-dev-20261118T050705Z",
+  "date": "2026-11-18",
+  "started_at": "2026-11-18T05:07:05.927001+00:00",
+  "finished_at": "2026-11-18T05:11:19.603097+00:00",
+  "systems": [
+    "llm_v2",
+    "llm_v3",
+    "baseline"
+  ],
+  "repeats_requested": 3,
+  "stopped": "",
+  "protocol": {
+    "versions": {
+      "schema_version": "1",
+      "baseline_version": "rules-v1",
+      "eligibility_version": "3",
+      "llm": {
+        "model_id": "claude-haiku-5-5",
+        "effort": "low",
+        "max_tokens": 2000
+      },
+      "prompts": {
+        "v2": {
+          "sha256": "def2a6603f1cef760a60be80877a6625772f6f2bb8780d5a95344805bc9d3038",
+          "site_default": true
+        },
+        "v3": {
+          "sha256": "12c49a099a676105545196d36881831b0b31e8ec1e02b488900d2ca0bf129039",
+          "site_default": false
+        }
+      },
+      "schema_sha256": "4fab443b3ee8a8fe91e28637fb68762324c50751c78531fd4abc57531898e83e",
+      "baseline_fingerprint": "04590c85d129cbcff3b584289eac8437938d76677ee1ad58b40444a4a9f76441",
+      "eligibility_sha256": "69f130cd4bb6823d0a30e49b570fe5249513c039be1fd683ea0e5721a1f02b63"
+    },
+    "seed": 20261116,
+    "selected_on": "2026-11-16",
+    "manifest_pool_fingerprint": "0c9b3cf1dd71a1256999a5d7e3a84529e9cc544d64df4a4b1be41216fd01edb3",
+    "labels": "hand-labelled blind (no model output seen), checked by check_labels",
+    "profile": {
+      "name": "Harbourline Software (fictional)",
+      "supply_arrangements": [],
+      "corporate_clearance": "none",
+      "personnel_clearance": "none"
+    },
+    "git": {
+      "commit": "3338df2a9af1bbbec2494d2a40a11fe882ae83b5",
+      "dirty": true
+    }
+  },
+  "cases": [
+    {
+      "case": "dev-01",
+      "reference": "WS5548295643-Doc5938843172",
+      "file": "dev/dev-01.yaml",
+      "strata": [
+        "region_nl",
+        "sa_or_so_request",
+        "status_expired"
+      ],
+      "text_changed_since_selection": false,
+      "notice_kind": "sa_or_so_request",
+      "sa_required_from_metadata": null,
+      "unsure": true,
+      "notes": "Into-plane fuelling may mean supplier staff work at airports; labelled goods-only per guide.",
+      "label": {
+        "fields": {
+          "criteria_location": "see_solicitation",
+          "supply_arrangement_required": "no",
+          "supplier_origin_restriction": "canadian_and_trading_partners",
+          "clearance.corporate": "unknown",
+          "clearance.personnel": "unknown",
+          "work_location.on_site": "no",
+          "land_claims_applies": "unknown",
+          "documents_behind_login": "unknown"
+        },
+        "evidence": {
+          "criteria_location": null,
+          "supply_arrangement_required": "Request for Standing Offer",
+          "supplier_origin_restriction": "This solicitation of offers is open only to Canadian suppliers and to Suppliers of an Applicable Trading Partner.",
+          "clearance.corporate": null,
+          "clearance.personnel": null,
+          "work_location.on_site": "GD",
+          "land_claims_applies": null,
+          "documents_behind_login": null
+        },
+        "status": "check_solicitation"
+      },
+      "systems": {
+        "llm_v2": {
+          "ok": true,
+          "extraction_id": 176,
+          "created_at": "2026-11-17T20:02:59.562026+00:00",
+          "fields": {
+            "criteria_location": "see_solicitation",
+            "supply_arrangement_required": "unknown",
+            "supplier_origin_restriction": "canadian_and_trading_partners",
+            "clearance.corporate": "unknown",
+            "clearance.personnel": "unknown",
+            "work_location.on_site": "no",
+            "land_claims_applies": "unknown",
+            "documents_behind_login": "unknown"
+          },
+          "evidence": {
+            "criteria_location": null,
+            "supply_arrangement_required": null,
+            "supplier_origin_restriction": "This solicitation of offers is open only to Canadian suppliers and to Suppliers of an Applicable Trading Partner.",
+            "clearance.corporate": null,
+            "clearance.personnel": null,
+            "work_location.on_site": "National Master Standing Offers for aviation fuels (Into-Plane)",
+            "land_claims_applies": null,
+            "documents_behind_login": null
+          },
+          "status": "check_solicitation",
+          "flags": [],
+          "error": "",
+          "outcome": "cache_hit"
+        },
+        "llm_v3": {
+          "eval_extraction_id": 101,
+          "ok": true,
+          "fields": {
+            "criteria_location": "see_solicitation",
+            "supply_arrangement_required": "no",
+            "supplier_origin_restriction": "canadian_and_trading_partners",
+            "clearance.corporate": "unknown",
+            "clearance.personnel": "unknown",
+            "work_location.on_site": "no",
+            "land_claims_applies": "unknown",
+            "documents_behind_login": "unknown"
+          },
+          "evidence": {
+            "criteria_location": null,
+            "supply_arrangement_required": "Request for Standing Offer",
+            "supplier_origin_restriction": "This solicitation of offers is open only to Canadian suppliers and to Suppliers of an Applicable Trading Partner.",
+            "clearance.corporate": null,
+            "clearance.personnel": null,
+            "work_location.on_site": "Delivery to various locations in Canada",
+            "land_claims_applies": null,
+            "documents_behind_login": null
+          },
+          "status": "check_solicitation",
+          "flags": [],
+          "error": "",
+          "outcome": "ok",
+          "created_at": "2026-11-18T05:07:09.906493+00:00",
+          "run_tag": "eval-dev-20261118T050705Z-v3"
+        },
+        "baseline": {
+          "ok": true,
+          "extraction_id": 177,
+          "created_at": "2026-11-17T20:03:00.672365+00:00",
+          "fields": {
+            "criteria_location": "see_solicitation",
+            "supply_arrangement_required": "no",
+            "supplier_origin_restriction": "canadian_and_trading_partners",
+            "clearance.corporate": "unknown",
+            "clearance.personnel": "unknown",
+            "work_location.on_site": "no",
+            "land_claims_applies": "unknown",
+            "documents_behind_login": "unknown"
+          },
+          "evidence": {
+            "criteria_location": null,
+            "supply_arrangement_required": "Request for Standing Offer",
+            "supplier_origin_restriction": "This solicitation of offers is open only to Canadian suppliers and to Suppliers of an Applicable Trading Partner.",
+            "clearance.corporate": null,
+            "clearance.personnel": null,
+            "work_location.on_site": "GD",
+            "land_claims_applies": null,
+            "documents_behind_login": null
+          },
+          "status": "check_solicitation",
+          "flags": [],
+          "error": "",
+          "outcome": "cache_hit"
+        }
+      },
+      "repeats": {
+        "llm_v2": [
+          {
+            "repeat": 1,
+            "eval_extraction_id": 111,
+            "ok": true,
+            "fields": {
+              "criteria_location": "see_solicitation",
+              "supply_arrangement_required": "unknown",
+              "supplier_origin_restriction": "canadian_and_trading_partners",
+              "clearance.corporate": "unknown",
+              "clearance.personnel": "unknown",
+              "work_location.on_site": "unknown",
+              "land_claims_applies": "unknown",
+              "documents_behind_login": "unknown"
+            },
+            "evidence": {
+              "criteria_location": null,
+              "supply_arrangement_required": null,
+              "supplier_origin_restriction": "This solicitation of offers is open only to Canadian suppliers and to Suppliers of an Applicable Trading Partner.",
+              "clearance.corporate": null,
+              "clearance.personnel": null,
+              "work_location.on_site": null,
+              "land_claims_applies": null,
+              "documents_behind_login": null
+            },
+            "status": "check_solicitation",
+            "flags": [
+              "ungrounded:eligibility.supply_arrangement_required",
+              "ungrounded:eligibility.work_location"
+            ],
+            "error": ""
+          },
+          {
+            "repeat": 2,
+            "eval_extraction_id": 131,
+            "ok": true,
+            "fields": {
+              "criteria_location": "see_solicitation",
+              "supply_arrangement_required": "unknown",
+              "supplier_origin_restriction": "canadian_and_trading_partners",
+              "clearance.corporate": "unknown",
+              "clearance.personnel": "unknown",
+              "work_location.on_site": "no",
+              "land_claims_applies": "unknown",
+              "documents_behind_login": "unknown"
+            },
+            "evidence": {
+              "criteria_location": null,
+              "supply_arrangement_required": null,
+              "supplier_origin_restriction": "This solicitation of offers is open only to Canadian suppliers and to Suppliers of an Applicable Trading Partner.",
+              "clearance.corporate": null,
+              "clearance.personnel": null,
+              "work_location.on_site": "Delivery to various locations in Canada or ASTM International Standard",
+              "land_claims_applies": null,
+              "documents_behind_login": null
+            },
+            "status": "check_solicitation",
+            "flags": [
+              "ungrounded:eligibility.supply_arrangement_required"
+            ],
+            "error": ""
+          },
+          {
+            "repeat": 3,
+            "eval_extraction_id": 151,
+            "ok": true,
+            "fields": {
+              "criteria_location": "see_solicitation",
+              "supply_arrangement_required": "unknown",
+              "supplier_origin_restriction": "canadian_and_trading_partners",
+              "clearance.corporate": "unknown",
+              "clearance.personnel": "unknown",
+              "work_location.on_site": "no",
+              "land_claims_applies": "unknown",
+              "documents_behind_login": "unknown"
+            },
+            "evidence": {
+              "criteria_location": null,
+              "supply_arrangement_required": null,
+              "supplier_origin_restriction": "This solicitation of offers is open only to Canadian suppliers and to Suppliers of an Applicable Trading Partner.",
+              "clearance.corporate": null,
+              "clearance.personnel": null,
+              "work_location.on_site": "procurement_categories: GD",
+              "land_claims_applies": null,
+              "documents_behind_login": null
+            },
+            "status": "check_solicitation",
+            "flags": [
+              "ungrounded:eligibility.supply_arrangement_required"
+            ],
+            "error": ""
+          }
+        ],
+        "llm_v3": [
+          {
+            "repeat": 1,
+            "eval_extraction_id": 112,
+            "ok": true,
+            "fields": {
+              "criteria_location": "see_solicitation",
+              "supply_arrangement_required": "no",
+              "supplier_origin_restriction": "canadian_and_trading_partners",
+              "clearance.corporate": "unknown",
+              "clearance.personnel": "unknown",
+              "work_location.on_site": "no",
+              "land_claims_applies": "unknown",
+              "documents_behind_login": "unknown"
+            },
+            "evidence": {
+              "criteria_location": null,
+              "supply_arrangement_required": "Request for Standing Offer",
+              "supplier_origin_restriction": "This solicitation of offers is open only to Canadian suppliers and to Suppliers of an Applicable Trading Partner.",
+              "clearance.corporate": null,
+              "clearance.personnel": null,
+              "work_location.on_site": "Delivery to various locations in Canada",
+              "land_claims_applies": null,
+              "documents_behind_login": null
+            },
+            "status": "check_solicitation",
+            "flags": [],
+            "error": ""
+          },
+          {
+            "repeat": 2,
+            "eval_extraction_id": 132,
+            "ok": true,
+            "fields": {
+              "criteria_location": "see_solicitation",
+              "supply_arrangement_required": "no",
+              "supplier_origin_restriction": "canadian_and_trading_partners",
+              "clearance.corporate": "unknown",
+              "clearance.personnel": "unknown",
+              "work_location.on_site": "no",
+              "land_claims_applies": "unknown",
+              "documents_behind_login": "unknown"
+            },
+            "evidence": {
+              "criteria_location": null,
+              "supply_arrangement_required": "Request for Standing Offer",
+              "supplier_origin_restriction": "This solicitation of offers is open only to Canadian suppliers and to Suppliers of an Applicable Trading Partner.",
+              "clearance.corporate": null,
+              "clearance.personnel": null,
+              "work_location.on_site": "procurement_categories: GD",
+              "land_claims_applies": null,
+              "documents_behind_login": null
+            },
+            "status": "check_solicitation",
+            "flags": [],
+            "error": ""
+          },
+          {
+            "repeat": 3,
+            "eval_extraction_id": 152,
+            "ok": true,
+            "fields": {
+              "criteria_location": "see_solicitation",
+              "supply_arrangement_required": "no",
+              "supplier_origin_restriction": "canadian_and_trading_partners",
+              "clearance.corporate": "unknown",
+              "clearance.personnel": "unknown",
+              "work_location.on_site": "no",
+              "land_claims_applies": "unknown",
+              "documents_behind_login": "unknown"
+            },
+            "evidence": {
+              "criteria_location": null,
+              "supply_arrangement_required": "Request for Standing Offer",
+              "supplier_origin_restriction": "This solicitation of offers is open only to Canadian suppliers and to Suppliers of an Applicable Trading Partner.",
+              "clearance.corporate": null,
+              "clearance.personnel": null,
+              "work_location.on_site": "procurement_categories: GD",
+              "land_claims_applies": null,
+              "documents_behind_login": null
+            },
+            "status": "check_solicitation",
+            "flags": [],
+            "error": ""
+          }
+        ]
+      }
+    },
+    {
+      "case": "dev-02",
+      "reference": "SSC-26-00034429:T",
+      "file": "dev/dev-02.yaml",
+      "strata": [
+        "region_national",
+        "status_expired",
+        "text_security"
+      ],
+      "text_changed_since_selection": false,
+      "notice_kind": "regular",
+      "sa_required_from_metadata": null,
+      "unsure": false,
+      "notes": "",
+      "label": {
+        "fields": {
+          "criteria_location": "see_solicitation",
+          "supply_arrangement_required": "yes",
+          "supplier_origin_restriction": "unknown",
+          "clearance.corporate": "none",
+          "clearance.personnel": "none",
+          "work_location.on_site": "no",
+          "land_claims_applies": "unknown",
+          "documents_behind_login": "no"
+        },
+        "evidence": {
+          "criteria_location": null,
+          "supply_arrangement_required": "Only suppliers who are pre-qualified and have been issued a supply arrangement are eligible to bid",
+          "supplier_origin_restriction": null,
+          "clearance.corporate": "Security Requirement None",
+          "clearance.personnel": "Security Requirement None",
+          "work_location.on_site": "GD",
+          "land_claims_applies": null,
+          "documents_behind_login": "The RFQ document will be sent directly to the eligible SLSA SA Holder and Class 1 Resellers"
+        },
+        "status": "blocked"
+      },
+      "systems": {
+        "llm_v2": {
+          "ok": true,
+          "extraction_id": 178,
+          "created_at": "2026-11-17T20:03:05.914918+00:00",
+          "fields": {
+            "criteria_location": "see_solicitation",
+            "supply_arrangement_required": "unknown",
+            "supplier_origin_restriction": "unknown",
+            "clearance.corporate": "none",
+            "clearance.personnel": "none",
+            "work_location.on_site": "no",
+            "land_claims_applies": "unknown",
+            "documents_behind_login": "unknown"
+          },
+          "evidence": {
+            "criteria_location": null,
+            "supply_arrangement_required": null,
+            "supplier_origin_restriction": null,
+            "clearance.corporate": "Security Requirement None",
+            "clearance.personnel": "Security Requirement None",
+            "work_location.on_site": "Products and Quantity:1 - All Apps - Feature Restricted",
+            "land_claims_applies": null,
+            "documents_behind_login": null
+          },
+          "status": "check_solicitation",
+          "flags": [
+            "ungrounded:eligibility.supply_arrangement_required"
+          ],
+          "error": "",
+          "outcome": "cache_hit"
+        },
+        "llm_v3": {
+          "eval_extraction_id": 102,
+          "ok": true,
+          "fields": {
+            "criteria_location": "see_solicitation",
+            "supply_arrangement_required": "unknown",
+            "supplier_origin_restriction": "unknown",
+            "clearance.corporate": "unknown",
+            "clearance.personnel": "unknown",
+            "work_location.on_site": "unknown",
+            "land_claims_applies": "unknown",
+            "documents_behind_login": "no"
+          },
+          "evidence": {
+            "criteria_location": null,
+            "supply_arrangement_required": null,
+            "supplier_origin_restriction": null,
+            "clearance.corporate": null,
+            "clearance.personnel": null,
+            "work_location.on_site": null,
+            "land_claims_applies": null,
+            "documents_behind_login": "The RFQ document will be sent directly to the eligible SLSA SA Holder and Class 1 Resellers"
+          },
+          "status": "check_solicitation",
+          "flags": [
+            "ungrounded:eligibility.supply_arrangement_required",
+            "ungrounded:eligibility.clearance",
+            "ungrounded:eligibility.work_location"
+          ],
+          "error": "",
+          "outcome": "ok",
+          "created_at": "2026-11-18T05:07:14.009603+00:00",
+          "run_tag": "eval-dev-20261118T050705Z-v3"
+        },
+        "baseline": {
+          "ok": true,
+          "extraction_id": 179,
+          "created_at": "2026-11-17T20:03:06.906471+00:00",
+          "fields": {
+            "criteria_location": "see_solicitation",
+            "supply_arrangement_required": "yes",
+            "supplier_origin_restriction": "canadian_and_trading_partners",
+            "clearance.corporate": "unknown",
+            "clearance.personnel": "unknown",
+            "work_location.on_site": "no",
+            "land_claims_applies": "unknown",
+            "documents_behind_login": "unknown"
+          },
+          "evidence": {
+            "criteria_location": null,
+            "supply_arrangement_required": "This Request for Quote is issued pursuant to Software Licensing Supply Arrangement (SLSA) # EN578-232335/071/SMS.Tendering Procedure: Selective tenderingThe following Supply Arrangement Holders and Class-1 Resellers have been invited to submit a proposal:1.",
+            "supplier_origin_restriction": "Canada-Colombia Free Trade Agreement",
+            "clearance.corporate": null,
+            "clearance.personnel": null,
+            "work_location.on_site": "GD",
+            "land_claims_applies": null,
+            "documents_behind_login": null
+          },
+          "status": "blocked",
+          "flags": [],
+          "error": "",
+          "outcome": "cache_hit"
+        }
+      },
+      "repeats": {
+        "llm_v2": [
+          {
+            "repeat": 1,
+            "eval_extraction_id": 113,
+            "ok": true,
+            "fields": {
+              "criteria_location": "see_solicitation",
+              "supply_arrangement_required": "unknown",
+              "supplier_origin_restriction": "unknown",
+              "clearance.corporate": "none",
+              "clearance.personnel": "none",
+              "work_location.on_site": "unknown",
+              "land_claims_applies": "unknown",
+              "documents_behind_login": "no"
+            },
+            "evidence": {
+              "criteria_location": null,
+              "supply_arrangement_required": null,
+              "supplier_origin_restriction": null,
+              "clearance.corporate": "Security Requirement\nNone",
+              "clearance.personnel": "Security Requirement\nNone",
+              "work_location.on_site": null,
+              "land_claims_applies": null,
+              "documents_behind_login": "The RFQ document will be sent directly to the eligible SLSA SA Holder and Class 1 Resellers"
+            },
+            "status": "check_solicitation",
+            "flags": [
+              "ungrounded:eligibility.supply_arrangement_required",
+              "ungrounded:eligibility.work_location"
+            ],
+            "error": ""
+          },
+          {
+            "repeat": 2,
+            "eval_extraction_id": 133,
+            "ok": true,
+            "fields": {
+              "criteria_location": "see_solicitation",
+              "supply_arrangement_required": "yes",
+              "supplier_origin_restriction": "unknown",
+              "clearance.corporate": "none",
+              "clearance.personnel": "none",
+              "work_location.on_site": "unknown",
+              "land_claims_applies": "unknown",
+              "documents_behind_login": "unknown"
+            },
+            "evidence": {
+              "criteria_location": null,
+              "supply_arrangement_required": "This Request for Quote is issued pursuant to Software Licensing Supply Arrangement (SLSA)",
+              "supplier_origin_restriction": null,
+              "clearance.corporate": "Security Requirement\nNone",
+              "clearance.personnel": "Security Requirement\nNone",
+              "work_location.on_site": null,
+              "land_claims_applies": null,
+              "documents_behind_login": null
+            },
+            "status": "blocked",
+            "flags": [
+              "ungrounded:eligibility.work_location"
+            ],
+            "error": ""
+          },
+          {
+            "repeat": 3,
+            "eval_extraction_id": 153,
+            "ok": true,
+            "fields": {
+              "criteria_location": "see_solicitation",
+              "supply_arrangement_required": "unknown",
+              "supplier_origin_restriction": "unknown",
+              "clearance.corporate": "none",
+              "clearance.personnel": "none",
+              "work_location.on_site": "unknown",
+              "land_claims_applies": "unknown",
+              "documents_behind_login": "unknown"
+            },
+            "evidence": {
+              "criteria_location": null,
+              "supply_arrangement_required": null,
+              "supplier_origin_restriction": null,
+              "clearance.corporate": "Security Requirement None",
+              "clearance.personnel": "Security Requirement None",
+              "work_location.on_site": null,
+              "land_claims_applies": null,
+              "documents_behind_login": null
+            },
+            "status": "check_solicitation",
+            "flags": [
+              "ungrounded:eligibility.supply_arrangement_required",
+              "ungrounded:eligibility.work_location",
+              "ungrounded:deliverables[0]"
+            ],
+            "error": ""
+          }
+        ],
+        "llm_v3": [
+          {
+            "repeat": 1,
+            "eval_extraction_id": 114,
+            "ok": true,
+            "fields": {
+              "criteria_location": "see_solicitation",
+              "supply_arrangement_required": "yes",
+              "supplier_origin_restriction": "unknown",
+              "clearance.corporate": "none",
+              "clearance.personnel": "none",
+              "work_location.on_site": "unknown",
+              "land_claims_applies": "unknown",
+              "documents_behind_login": "no"
+            },
+            "evidence": {
+              "criteria_location": null,
+              "supply_arrangement_required": "Only suppliers who are pre-qualified and have been issued a supply arrangement are eligible to bid.",
+              "supplier_origin_restriction": null,
+              "clearance.corporate": "Security Requirement\nNone",
+              "clearance.personnel": "Security Requirement\nNone",
+              "work_location.on_site": null,
+              "land_claims_applies": null,
+              "documents_behind_login": "The RFQ document will be sent directly to the eligible SLSA SA Holder and Class 1 Resellers"
+            },
+            "status": "blocked",
+            "flags": [
+              "ungrounded:eligibility.work_location"
+            ],
+            "error": ""
+          },
+          {
+            "repeat": 2,
+            "eval_extraction_id": 134,
+            "ok": true,
+            "fields": {
+              "criteria_location": "see_solicitation",
+              "supply_arrangement_required": "unknown",
+              "supplier_origin_restriction": "unknown",
+              "clearance.corporate": "none",
+              "clearance.personnel": "none",
+              "work_location.on_site": "unknown",
+              "land_claims_applies": "unknown",
+              "documents_behind_login": "no"
+            },
+            "evidence": {
+              "criteria_location": null,
+              "supply_arrangement_required": null,
+              "supplier_origin_restriction": null,
+              "clearance.corporate": "Security Requirement\nNone",
+              "clearance.personnel": "Security Requirement\nNone",
+              "work_location.on_site": null,
+              "land_claims_applies": null,
+              "documents_behind_login": "The RFQ document will be sent directly to the eligible SLSA SA Holder and Class 1 Resellers"
+            },
+            "status": "check_solicitation",
+            "flags": [
+              "ungrounded:eligibility.supply_arrangement_required"
+            ],
+            "error": ""
+          },
+          {
+            "repeat": 3,
+            "eval_extraction_id": 154,
+            "ok": true,
+            "fields": {
+              "criteria_location": "see_solicitation",
+              "supply_arrangement_required": "yes",
+              "supplier_origin_restriction": "unknown",
+              "clearance.corporate": "none",
+              "clearance.personnel": "none",
+              "work_location.on_site": "unknown",
+              "land_claims_applies": "unknown",
+              "documents_behind_login": "no"
+            },
+            "evidence": {
+              "criteria_location": null,
+              "supply_arrangement_required": "Only suppliers who are pre-qualified and have been issued a supply arrangement are eligible to bid.",
+              "supplier_origin_restriction": null,
+              "clearance.corporate": "Security Requirement\nNone",
+              "clearance.personnel": "Security Requirement\nNone",
+              "work_location.on_site": null,
+              "land_claims_applies": null,
+              "documents_behind_login": "The RFQ document will be sent directly to the eligible SLSA SA Holder and Class 1 Resellers"
+            },
+            "status": "blocked",
+            "flags": [
+              "ungrounded:eligibility.work_location"
+            ],
+            "error": ""
+          }
+        ]
+      }
+    },
+    {
+      "case": "dev-03",
+      "reference": "cb-300-44437270",
+      "file": "dev/dev-03.yaml",
+      "strata": [
+        "against_sa",
+        "region_nl"
+      ],
+      "text_changed_since_selection": false,
+      "notice_kind": "against_sa",
+      "sa_required_from_metadata": true,
+      "unsure": false,
+      "notes": "",
+      "label": {
+        "fields": {
+          "criteria_location": "see_solicitation",
+          "supply_arrangement_required": "yes",
+          "supplier_origin_restriction": "unknown",
+          "clearance.corporate": "unknown",
+          "clearance.personnel": "unknown",
+          "work_location.on_site": "yes",
+          "land_claims_applies": "unknown",
+          "documents_behind_login": "unknown"
+        },
+        "evidence": {
+          "criteria_location": null,
+          "supply_arrangement_required": "RFP against Supply Arrangement",
+          "supplier_origin_restriction": null,
+          "clearance.corporate": null,
+          "clearance.personnel": null,
+          "work_location.on_site": "purchase, delivery and installation of office furniture to Gander, Newfoundland",
+          "land_claims_applies": null,
+          "documents_behind_login": null
+        },
+        "status": "blocked"
+      },
+      "systems": {
+        "llm_v2": {
+          "ok": true,
+          "extraction_id": 180,
+          "created_at": "2026-11-17T20:03:11.932255+00:00",
+          "fields": {
+            "criteria_location": "see_solicitation",
+            "supply_arrangement_required": "yes",
+            "supplier_origin_restriction": "unknown",
+            "clearance.corporate": "unknown",
+            "clearance.personnel": "unknown",
+            "work_location.on_site": "yes",
+            "land_claims_applies": "unknown",
+            "documents_behind_login": "unknown"
+          },
+          "evidence": {
+            "criteria_location": null,
+            "supply_arrangement_required": "RFP against Supply Arrangement",
+            "supplier_origin_restriction": null,
+            "clearance.corporate": null,
+            "clearance.personnel": null,
+            "work_location.on_site": "Office furniture is required for a new Military Family Resource Centre in Gander, NL.",
+            "land_claims_applies": null,
+            "documents_behind_login": null
+          },
+          "status": "blocked",
+          "flags": [
+            "ungrounded_detail:eligibility.supply_arrangement_required.name"
+          ],
+          "error": "",
+          "outcome": "cache_hit"
+        },
+        "llm_v3": {
+          "eval_extraction_id": 103,
+          "ok": true,
+          "fields": {
+            "criteria_location": "see_solicitation",
+            "supply_arrangement_required": "yes",
+            "supplier_origin_restriction": "unknown",
+            "clearance.corporate": "unknown",
+            "clearance.personnel": "unknown",
+            "work_location.on_site": "unknown",
+            "land_claims_applies": "unknown",
+            "documents_behind_login": "unknown"
+          },
+          "evidence": {
+            "criteria_location": null,
+            "supply_arrangement_required": "RFP against Supply Arrangement",
+            "supplier_origin_restriction": null,
+            "clearance.corporate": null,
+            "clearance.personnel": null,
+            "work_location.on_site": null,
+            "land_claims_applies": null,
+            "documents_behind_login": null
+          },
+          "status": "blocked",
+          "flags": [
+            "ungrounded:eligibility.work_location"
+          ],
+          "error": "",
+          "outcome": "ok",
+          "created_at": "2026-11-18T05:07:17.685626+00:00",
+          "run_tag": "eval-dev-20261118T050705Z-v3"
+        },
+        "baseline": {
+          "ok": true,
+          "extraction_id": 181,
+          "created_at": "2026-11-17T20:03:12.974316+00:00",
+          "fields": {
+            "criteria_location": "see_solicitation",
+            "supply_arrangement_required": "yes",
+            "supplier_origin_restriction": "unknown",
+            "clearance.corporate": "unknown",
+            "clearance.personnel": "unknown",
+            "work_location.on_site": "unknown",
+            "land_claims_applies": "unknown",
+            "documents_behind_login": "unknown"
+          },
+          "evidence": {
+            "criteria_location": null,
+            "supply_arrangement_required": "RFP against Supply Arrangement",
+            "supplier_origin_restriction": null,
+            "clearance.corporate": null,
+            "clearance.personnel": null,
+            "work_location.on_site": null,
+            "land_claims_applies": null,
+            "documents_behind_login": null
+          },
+          "status": "blocked",
+          "flags": [],
+          "error": "",
+          "outcome": "cache_hit"
+        }
+      },
+      "repeats": {
+        "llm_v2": [
+          {
+            "repeat": 1,
+            "eval_extraction_id": 115,
+            "ok": true,
+            "fields": {
+              "criteria_location": "see_solicitation",
+              "supply_arrangement_required": "yes",
+              "supplier_origin_restriction": "unknown",
+              "clearance.corporate": "unknown",
+              "clearance.personnel": "unknown",
+              "work_location.on_site": "yes",
+              "land_claims_applies": "unknown",
+              "documents_behind_login": "unknown"
+            },
+            "evidence": {
+              "criteria_location": null,
+              "supply_arrangement_required": "This NPP is issued pursuant to PWGSC Supply Arrangement (SA) # E60PQ-140003/D",
+              "supplier_origin_restriction": null,
+              "clearance.corporate": null,
+              "clearance.personnel": null,
+              "work_location.on_site": "The furniture will need to be in place by July 30, 2026.",
+              "land_claims_applies": null,
+              "documents_behind_login": null
+            },
+            "status": "blocked",
+            "flags": [],
+            "error": ""
+          },
+          {
+            "repeat": 2,
+            "eval_extraction_id": 135,
+            "ok": true,
+            "fields": {
+              "criteria_location": "see_solicitation",
+              "supply_arrangement_required": "yes",
+              "supplier_origin_restriction": "unknown",
+              "clearance.corporate": "unknown",
+              "clearance.personnel": "unknown",
+              "work_location.on_site": "yes",
+              "land_claims_applies": "unknown",
+              "documents_behind_login": "unknown"
+            },
+            "evidence": {
+              "criteria_location": null,
+              "supply_arrangement_required": "RFP against Supply Arrangement",
+              "supplier_origin_restriction": null,
+              "clearance.corporate": null,
+              "clearance.personnel": null,
+              "work_location.on_site": "the provision of furniture as indicated in the builders (attached), delivery and installation",
+              "land_claims_applies": null,
+              "documents_behind_login": null
+            },
+            "status": "blocked",
+            "flags": [
+              "ungrounded_detail:eligibility.supply_arrangement_required.name"
+            ],
+            "error": ""
+          },
+          {
+            "repeat": 3,
+            "eval_extraction_id": 155,
+            "ok": true,
+            "fields": {
+              "criteria_location": "see_solicitation",
+              "supply_arrangement_required": "yes",
+              "supplier_origin_restriction": "unknown",
+              "clearance.corporate": "unknown",
+              "clearance.personnel": "unknown",
+              "work_location.on_site": "yes",
+              "land_claims_applies": "unknown",
+              "documents_behind_login": "unknown"
+            },
+            "evidence": {
+              "criteria_location": null,
+              "supply_arrangement_required": "RFP against Supply Arrangement",
+              "supplier_origin_restriction": null,
+              "clearance.corporate": null,
+              "clearance.personnel": null,
+              "work_location.on_site": "the purchase, delivery and installation of office furniture to Gander, Newfoundland by 30 July 2026",
+              "land_claims_applies": null,
+              "documents_behind_login": null
+            },
+            "status": "blocked",
+            "flags": [],
+            "error": ""
+          }
+        ],
+        "llm_v3": [
+          {
+            "repeat": 1,
+            "eval_extraction_id": 116,
+            "ok": true,
+            "fields": {
+              "criteria_location": "see_solicitation",
+              "supply_arrangement_required": "yes",
+              "supplier_origin_restriction": "unknown",
+              "clearance.corporate": "unknown",
+              "clearance.personnel": "unknown",
+              "work_location.on_site": "yes",
+              "land_claims_applies": "unknown",
+              "documents_behind_login": "unknown"
+            },
+            "evidence": {
+              "criteria_location": null,
+              "supply_arrangement_required": "RFP against Supply Arrangement",
+              "supplier_origin_restriction": null,
+              "clearance.corporate": null,
+              "clearance.personnel": null,
+              "work_location.on_site": "Office furniture is required for a new Military Family Resource Centre in Gander, NL.",
+              "land_claims_applies": null,
+              "documents_behind_login": null
+            },
+            "status": "blocked",
+            "flags": [
+              "ungrounded_detail:eligibility.supply_arrangement_required.name"
+            ],
+            "error": ""
+          },
+          {
+            "repeat": 2,
+            "eval_extraction_id": 136,
+            "ok": true,
+            "fields": {
+              "criteria_location": "see_solicitation",
+              "supply_arrangement_required": "yes",
+              "supplier_origin_restriction": "unknown",
+              "clearance.corporate": "unknown",
+              "clearance.personnel": "unknown",
+              "work_location.on_site": "yes",
+              "land_claims_applies": "unknown",
+              "documents_behind_login": "unknown"
+            },
+            "evidence": {
+              "criteria_location": null,
+              "supply_arrangement_required": "RFP against Supply Arrangement",
+              "supplier_origin_restriction": null,
+              "clearance.corporate": null,
+              "clearance.personnel": null,
+              "work_location.on_site": "delivery and installation of office furniture to Gander, Newfoundland",
+              "land_claims_applies": null,
+              "documents_behind_login": null
+            },
+            "status": "blocked",
+            "flags": [],
+            "error": ""
+          },
+          {
+            "repeat": 3,
+            "eval_extraction_id": 156,
+            "ok": true,
+            "fields": {
+              "criteria_location": "see_solicitation",
+              "supply_arrangement_required": "yes",
+              "supplier_origin_restriction": "unknown",
+              "clearance.corporate": "unknown",
+              "clearance.personnel": "unknown",
+              "work_location.on_site": "yes",
+              "land_claims_applies": "unknown",
+              "documents_behind_login": "unknown"
+            },
+            "evidence": {
+              "criteria_location": null,
+              "supply_arrangement_required": "RFP against Supply Arrangement",
+              "supplier_origin_restriction": null,
+              "clearance.corporate": null,
+              "clearance.personnel": null,
+              "work_location.on_site": "the purchase, delivery and installation of office furniture to Gander, Newfoundland",
+              "land_claims_applies": null,
+              "documents_behind_login": null
+            },
+            "status": "blocked",
+            "flags": [],
+            "error": ""
+          }
+        ]
+      }
+    },
+    {
+      "case": "dev-04",
+      "reference": "cb-181-76348100",
+      "file": "dev/dev-04.yaml",
+      "strata": [
+        "region_national",
+        "sa_or_so_request",
+        "status_open"
+      ],
+      "text_changed_since_selection": false,
+      "notice_kind": "sa_or_so_request",
+      "sa_required_from_metadata": null,
+      "unsure": true,
+      "notes": "SA setup: installation, site survey and removal imply on-site work under future call-ups, but no on-site requirement or place is stated",
+      "label": {
+        "fields": {
+          "criteria_location": "see_solicitation",
+          "supply_arrangement_required": "no",
+          "supplier_origin_restriction": "unknown",
+          "clearance.corporate": "unknown",
+          "clearance.personnel": "unknown",
+          "work_location.on_site": "unknown",
+          "land_claims_applies": "unknown",
+          "documents_behind_login": "unknown"
+        },
+        "evidence": {
+          "criteria_location": null,
+          "supply_arrangement_required": "Request for Supply Arrangement",
+          "supplier_origin_restriction": null,
+          "clearance.corporate": null,
+          "clearance.personnel": null,
+          "work_location.on_site": null,
+          "land_claims_applies": null,
+          "documents_behind_login": null
+        },
+        "status": "check_solicitation"
+      },
+      "systems": {
+        "llm_v2": {
+          "ok": true,
+          "extraction_id": 82,
+          "created_at": "2026-11-11T04:41:43.464902+00:00",
+          "fields": {
+            "criteria_location": "see_solicitation",
+            "supply_arrangement_required": "unknown",
+            "supplier_origin_restriction": "unknown",
+            "clearance.corporate": "unknown",
+            "clearance.personnel": "unknown",
+            "work_location.on_site": "unknown",
+            "land_claims_applies": "unknown",
+            "documents_behind_login": "unknown"
+          },
+          "evidence": {
+            "criteria_location": null,
+            "supply_arrangement_required": null,
+            "supplier_origin_restriction": null,
+            "clearance.corporate": null,
+            "clearance.personnel": null,
+            "work_location.on_site": null,
+            "land_claims_applies": null,
+            "documents_behind_login": null
+          },
+          "status": "check_solicitation",
+          "flags": [
+            "ungrounded:eligibility.supply_arrangement_required"
+          ],
+          "error": "",
+          "outcome": "cache_hit"
+        },
+        "llm_v3": {
+          "eval_extraction_id": 104,
+          "ok": true,
+          "fields": {
+            "criteria_location": "see_solicitation",
+            "supply_arrangement_required": "no",
+            "supplier_origin_restriction": "unknown",
+            "clearance.corporate": "unknown",
+            "clearance.personnel": "unknown",
+            "work_location.on_site": "unknown",
+            "land_claims_applies": "unknown",
+            "documents_behind_login": "unknown"
+          },
+          "evidence": {
+            "criteria_location": null,
+            "supply_arrangement_required": "Request for Supply Arrangement",
+            "supplier_origin_restriction": null,
+            "clearance.corporate": null,
+            "clearance.personnel": null,
+            "work_location.on_site": null,
+            "land_claims_applies": null,
+            "documents_behind_login": null
+          },
+          "status": "check_solicitation",
+          "flags": [],
+          "error": "",
+          "outcome": "ok",
+          "created_at": "2026-11-18T05:07:20.845412+00:00",
+          "run_tag": "eval-dev-20261118T050705Z-v3"
+        },
+        "baseline": {
+          "ok": true,
+          "extraction_id": 167,
+          "created_at": "2026-11-11T04:43:40.372637+00:00",
+          "fields": {
+            "criteria_location": "see_solicitation",
+            "supply_arrangement_required": "no",
+            "supplier_origin_restriction": "canadian_and_trading_partners",
+            "clearance.corporate": "unknown",
+            "clearance.personnel": "unknown",
+            "work_location.on_site": "unknown",
+            "land_claims_applies": "unknown",
+            "documents_behind_login": "unknown"
+          },
+          "evidence": {
+            "criteria_location": null,
+            "supply_arrangement_required": "Request for Supply Arrangement",
+            "supplier_origin_restriction": "Canada-Peru Free Trade Agreement (CPFTA)",
+            "clearance.corporate": null,
+            "clearance.personnel": null,
+            "work_location.on_site": null,
+            "land_claims_applies": null,
+            "documents_behind_login": null
+          },
+          "status": "check_solicitation",
+          "flags": [],
+          "error": "",
+          "outcome": "cache_hit"
+        }
+      },
+      "repeats": {
+        "llm_v2": [
+          {
+            "repeat": 1,
+            "eval_extraction_id": 117,
+            "ok": true,
+            "fields": {
+              "criteria_location": "see_solicitation",
+              "supply_arrangement_required": "unknown",
+              "supplier_origin_restriction": "unknown",
+              "clearance.corporate": "unknown",
+              "clearance.personnel": "unknown",
+              "work_location.on_site": "unknown",
+              "land_claims_applies": "unknown",
+              "documents_behind_login": "unknown"
+            },
+            "evidence": {
+              "criteria_location": null,
+              "supply_arrangement_required": null,
+              "supplier_origin_restriction": null,
+              "clearance.corporate": null,
+              "clearance.personnel": null,
+              "work_location.on_site": null,
+              "land_claims_applies": null,
+              "documents_behind_login": null
+            },
+            "status": "check_solicitation",
+            "flags": [
+              "ungrounded:eligibility.supply_arrangement_required"
+            ],
+            "error": ""
+          },
+          {
+            "repeat": 2,
+            "eval_extraction_id": 137,
+            "ok": true,
+            "fields": {
+              "criteria_location": "see_solicitation",
+              "supply_arrangement_required": "unknown",
+              "supplier_origin_restriction": "unknown",
+              "clearance.corporate": "unknown",
+              "clearance.personnel": "unknown",
+              "work_location.on_site": "unknown",
+              "land_claims_applies": "unknown",
+              "documents_behind_login": "unknown"
+            },
+            "evidence": {
+              "criteria_location": null,
+              "supply_arrangement_required": null,
+              "supplier_origin_restriction": null,
+              "clearance.corporate": null,
+              "clearance.personnel": null,
+              "work_location.on_site": null,
+              "land_claims_applies": null,
+              "documents_behind_login": null
+            },
+            "status": "check_solicitation",
+            "flags": [
+              "ungrounded:eligibility.supply_arrangement_required"
+            ],
+            "error": ""
+          },
+          {
+            "repeat": 3,
+            "eval_extraction_id": 157,
+            "ok": true,
+            "fields": {
+              "criteria_location": "see_solicitation",
+              "supply_arrangement_required": "unknown",
+              "supplier_origin_restriction": "unknown",
+              "clearance.corporate": "unknown",
+              "clearance.personnel": "unknown",
+              "work_location.on_site": "unknown",
+              "land_claims_applies": "unknown",
+              "documents_behind_login": "unknown"
+            },
+            "evidence": {
+              "criteria_location": null,
+              "supply_arrangement_required": null,
+              "supplier_origin_restriction": null,
+              "clearance.corporate": null,
+              "clearance.personnel": null,
+              "work_location.on_site": null,
+              "land_claims_applies": null,
+              "documents_behind_login": null
+            },
+            "status": "check_solicitation",
+            "flags": [
+              "ungrounded:eligibility.supply_arrangement_required"
+            ],
+            "error": ""
+          }
+        ],
+        "llm_v3": [
+          {
+            "repeat": 1,
+            "eval_extraction_id": 118,
+            "ok": true,
+            "fields": {
+              "criteria_location": "see_solicitation",
+              "supply_arrangement_required": "no",
+              "supplier_origin_restriction": "unknown",
+              "clearance.corporate": "unknown",
+              "clearance.personnel": "unknown",
+              "work_location.on_site": "unknown",
+              "land_claims_applies": "unknown",
+              "documents_behind_login": "unknown"
+            },
+            "evidence": {
+              "criteria_location": null,
+              "supply_arrangement_required": "Request for Supply Arrangement",
+              "supplier_origin_restriction": null,
+              "clearance.corporate": null,
+              "clearance.personnel": null,
+              "work_location.on_site": null,
+              "land_claims_applies": null,
+              "documents_behind_login": null
+            },
+            "status": "check_solicitation",
+            "flags": [],
+            "error": ""
+          },
+          {
+            "repeat": 2,
+            "eval_extraction_id": 138,
+            "ok": true,
+            "fields": {
+              "criteria_location": "see_solicitation",
+              "supply_arrangement_required": "no",
+              "supplier_origin_restriction": "unknown",
+              "clearance.corporate": "unknown",
+              "clearance.personnel": "unknown",
+              "work_location.on_site": "unknown",
+              "land_claims_applies": "unknown",
+              "documents_behind_login": "unknown"
+            },
+            "evidence": {
+              "criteria_location": null,
+              "supply_arrangement_required": "Request for Supply Arrangement",
+              "supplier_origin_restriction": null,
+              "clearance.corporate": null,
+              "clearance.personnel": null,
+              "work_location.on_site": null,
+              "land_claims_applies": null,
+              "documents_behind_login": null
+            },
+            "status": "check_solicitation",
+            "flags": [],
+            "error": ""
+          },
+          {
+            "repeat": 3,
+            "eval_extraction_id": 158,
+            "ok": true,
+            "fields": {
+              "criteria_location": "see_solicitation",
+              "supply_arrangement_required": "no",
+              "supplier_origin_restriction": "unknown",
+              "clearance.corporate": "unknown",
+              "clearance.personnel": "unknown",
+              "work_location.on_site": "unknown",
+              "land_claims_applies": "unknown",
+              "documents_behind_login": "unknown"
+            },
+            "evidence": {
+              "criteria_location": null,
+              "supply_arrangement_required": "Request for Supply Arrangement",
+              "supplier_origin_restriction": null,
+              "clearance.corporate": null,
+              "clearance.personnel": null,
+              "work_location.on_site": null,
+              "land_claims_applies": null,
+              "documents_behind_login": null
+            },
+            "status": "check_solicitation",
+            "flags": [],
+            "error": ""
+          }
+        ]
+      }
+    },
+    {
+      "case": "dev-05",
+      "reference": "cb-495-14096276",
+      "file": "dev/dev-05.yaml",
+      "strata": [
+        "region_national",
+        "status_open",
+        "text_security"
+      ],
+      "text_changed_since_selection": false,
+      "notice_kind": "regular",
+      "sa_required_from_metadata": null,
+      "unsure": false,
+      "notes": "",
+      "label": {
+        "fields": {
+          "criteria_location": "partly_stated",
+          "supply_arrangement_required": "unknown",
+          "supplier_origin_restriction": "unknown",
+          "clearance.corporate": "unknown",
+          "clearance.personnel": "unknown",
+          "work_location.on_site": "unknown",
+          "land_claims_applies": "unknown",
+          "documents_behind_login": "unknown"
+        },
+        "evidence": {
+          "criteria_location": null,
+          "supply_arrangement_required": null,
+          "supplier_origin_restriction": null,
+          "clearance.corporate": null,
+          "clearance.personnel": null,
+          "work_location.on_site": null,
+          "land_claims_applies": null,
+          "documents_behind_login": null
+        },
+        "status": "no_blockers_stated"
+      },
+      "systems": {
+        "llm_v2": {
+          "ok": true,
+          "extraction_id": 12,
+          "created_at": "2026-11-11T04:36:55.390759+00:00",
+          "fields": {
+            "criteria_location": "stated_in_notice",
+            "supply_arrangement_required": "unknown",
+            "supplier_origin_restriction": "unknown",
+            "clearance.corporate": "unknown",
+            "clearance.personnel": "unknown",
+            "work_location.on_site": "unknown",
+            "land_claims_applies": "unknown",
+            "documents_behind_login": "unknown"
+          },
+          "evidence": {
+            "criteria_location": null,
+            "supply_arrangement_required": null,
+            "supplier_origin_restriction": null,
+            "clearance.corporate": null,
+            "clearance.personnel": null,
+            "work_location.on_site": null,
+            "land_claims_applies": null,
+            "documents_behind_login": null
+          },
+          "status": "no_blockers_stated",
+          "flags": [],
+          "error": "",
+          "outcome": "cache_hit"
+        },
+        "llm_v3": {
+          "eval_extraction_id": 105,
+          "ok": true,
+          "fields": {
+            "criteria_location": "stated_in_notice",
+            "supply_arrangement_required": "unknown",
+            "supplier_origin_restriction": "unknown",
+            "clearance.corporate": "unknown",
+            "clearance.personnel": "unknown",
+            "work_location.on_site": "unknown",
+            "land_claims_applies": "unknown",
+            "documents_behind_login": "unknown"
+          },
+          "evidence": {
+            "criteria_location": null,
+            "supply_arrangement_required": null,
+            "supplier_origin_restriction": null,
+            "clearance.corporate": null,
+            "clearance.personnel": null,
+            "work_location.on_site": null,
+            "land_claims_applies": null,
+            "documents_behind_login": null
+          },
+          "status": "no_blockers_stated",
+          "flags": [],
+          "error": "",
+          "outcome": "ok",
+          "created_at": "2026-11-18T05:07:24.911235+00:00",
+          "run_tag": "eval-dev-20261118T050705Z-v3"
+        },
+        "baseline": {
+          "ok": true,
+          "extraction_id": 97,
+          "created_at": "2026-11-11T04:42:30.641917+00:00",
+          "fields": {
+            "criteria_location": "see_solicitation",
+            "supply_arrangement_required": "unknown",
+            "supplier_origin_restriction": "unknown",
+            "clearance.corporate": "unknown",
+            "clearance.personnel": "unknown",
+            "work_location.on_site": "unknown",
+            "land_claims_applies": "unknown",
+            "documents_behind_login": "unknown"
+          },
+          "evidence": {
+            "criteria_location": null,
+            "supply_arrangement_required": null,
+            "supplier_origin_restriction": null,
+            "clearance.corporate": null,
+            "clearance.personnel": null,
+            "work_location.on_site": null,
+            "land_claims_applies": null,
+            "documents_behind_login": null
+          },
+          "status": "check_solicitation",
+          "flags": [],
+          "error": "",
+          "outcome": "cache_hit"
+        }
+      },
+      "repeats": {
+        "llm_v2": [
+          {
+            "repeat": 1,
+            "eval_extraction_id": 119,
+            "ok": true,
+            "fields": {
+              "criteria_location": "partly_stated",
+              "supply_arrangement_required": "unknown",
+              "supplier_origin_restriction": "unknown",
+              "clearance.corporate": "unknown",
+              "clearance.personnel": "unknown",
+              "work_location.on_site": "unknown",
+              "land_claims_applies": "unknown",
+              "documents_behind_login": "unknown"
+            },
+            "evidence": {
+              "criteria_location": null,
+              "supply_arrangement_required": null,
+              "supplier_origin_restriction": null,
+              "clearance.corporate": null,
+              "clearance.personnel": null,
+              "work_location.on_site": null,
+              "land_claims_applies": null,
+              "documents_behind_login": null
+            },
+            "status": "no_blockers_stated",
+            "flags": [
+              "ungrounded:eligibility.supply_arrangement_required"
+            ],
+            "error": ""
+          },
+          {
+            "repeat": 2,
+            "eval_extraction_id": 139,
+            "ok": true,
+            "fields": {
+              "criteria_location": "see_solicitation",
+              "supply_arrangement_required": "unknown",
+              "supplier_origin_restriction": "unknown",
+              "clearance.corporate": "unknown",
+              "clearance.personnel": "unknown",
+              "work_location.on_site": "unknown",
+              "land_claims_applies": "unknown",
+              "documents_behind_login": "unknown"
+            },
+            "evidence": {
+              "criteria_location": null,
+              "supply_arrangement_required": null,
+              "supplier_origin_restriction": null,
+              "clearance.corporate": null,
+              "clearance.personnel": null,
+              "work_location.on_site": null,
+              "land_claims_applies": null,
+              "documents_behind_login": null
+            },
+            "status": "check_solicitation",
+            "flags": [],
+            "error": ""
+          },
+          {
+            "repeat": 3,
+            "eval_extraction_id": 159,
+            "ok": true,
+            "fields": {
+              "criteria_location": "stated_in_notice",
+              "supply_arrangement_required": "no",
+              "supplier_origin_restriction": "unknown",
+              "clearance.corporate": "unknown",
+              "clearance.personnel": "unknown",
+              "work_location.on_site": "unknown",
+              "land_claims_applies": "unknown",
+              "documents_behind_login": "unknown"
+            },
+            "evidence": {
+              "criteria_location": null,
+              "supply_arrangement_required": "Request for Proposal",
+              "supplier_origin_restriction": null,
+              "clearance.corporate": null,
+              "clearance.personnel": null,
+              "work_location.on_site": null,
+              "land_claims_applies": null,
+              "documents_behind_login": null
+            },
+            "status": "no_blockers_stated",
+            "flags": [],
+            "error": ""
+          }
+        ],
+        "llm_v3": [
+          {
+            "repeat": 1,
+            "eval_extraction_id": 120,
+            "ok": true,
+            "fields": {
+              "criteria_location": "see_solicitation",
+              "supply_arrangement_required": "unknown",
+              "supplier_origin_restriction": "unknown",
+              "clearance.corporate": "unknown",
+              "clearance.personnel": "unknown",
+              "work_location.on_site": "unknown",
+              "land_claims_applies": "unknown",
+              "documents_behind_login": "unknown"
+            },
+            "evidence": {
+              "criteria_location": null,
+              "supply_arrangement_required": null,
+              "supplier_origin_restriction": null,
+              "clearance.corporate": null,
+              "clearance.personnel": null,
+              "work_location.on_site": null,
+              "land_claims_applies": null,
+              "documents_behind_login": null
+            },
+            "status": "check_solicitation",
+            "flags": [],
+            "error": ""
+          },
+          {
+            "repeat": 2,
+            "eval_extraction_id": 140,
+            "ok": true,
+            "fields": {
+              "criteria_location": "stated_in_notice",
+              "supply_arrangement_required": "unknown",
+              "supplier_origin_restriction": "unknown",
+              "clearance.corporate": "unknown",
+              "clearance.personnel": "unknown",
+              "work_location.on_site": "unknown",
+              "land_claims_applies": "unknown",
+              "documents_behind_login": "unknown"
+            },
+            "evidence": {
+              "criteria_location": null,
+              "supply_arrangement_required": null,
+              "supplier_origin_restriction": null,
+              "clearance.corporate": null,
+              "clearance.personnel": null,
+              "work_location.on_site": null,
+              "land_claims_applies": null,
+              "documents_behind_login": null
+            },
+            "status": "no_blockers_stated",
+            "flags": [],
+            "error": ""
+          },
+          {
+            "repeat": 3,
+            "eval_extraction_id": 160,
+            "ok": true,
+            "fields": {
+              "criteria_location": "stated_in_notice",
+              "supply_arrangement_required": "no",
+              "supplier_origin_restriction": "unknown",
+              "clearance.corporate": "unknown",
+              "clearance.personnel": "unknown",
+              "work_location.on_site": "unknown",
+              "land_claims_applies": "unknown",
+              "documents_behind_login": "unknown"
+            },
+            "evidence": {
+              "criteria_location": null,
+              "supply_arrangement_required": "Request for Proposal",
+              "supplier_origin_restriction": null,
+              "clearance.corporate": null,
+              "clearance.personnel": null,
+              "work_location.on_site": null,
+              "land_claims_applies": null,
+              "documents_behind_login": null
+            },
+            "status": "no_blockers_stated",
+            "flags": [],
+            "error": ""
+          }
+        ]
+      }
+    },
+    {
+      "case": "dev-06",
+      "reference": "cb-846-73690703",
+      "file": "dev/dev-06.yaml",
+      "strata": [
+        "region_national",
+        "status_expired",
+        "text_security"
+      ],
+      "text_changed_since_selection": false,
+      "notice_kind": "regular",
+      "sa_required_from_metadata": null,
+      "unsure": false,
+      "notes": "",
+      "label": {
+        "fields": {
+          "criteria_location": "partly_stated",
+          "supply_arrangement_required": "unknown",
+          "supplier_origin_restriction": "unknown",
+          "clearance.corporate": "unknown",
+          "clearance.personnel": "unknown",
+          "work_location.on_site": "unknown",
+          "land_claims_applies": "unknown",
+          "documents_behind_login": "unknown"
+        },
+        "evidence": {
+          "criteria_location": null,
+          "supply_arrangement_required": null,
+          "supplier_origin_restriction": null,
+          "clearance.corporate": null,
+          "clearance.personnel": null,
+          "work_location.on_site": null,
+          "land_claims_applies": null,
+          "documents_behind_login": null
+        },
+        "status": "no_blockers_stated"
+      },
+      "systems": {
+        "llm_v2": {
+          "ok": true,
+          "extraction_id": 182,
+          "created_at": "2026-11-17T20:03:19.206276+00:00",
+          "fields": {
+            "criteria_location": "see_solicitation",
+            "supply_arrangement_required": "unknown",
+            "supplier_origin_restriction": "unknown",
+            "clearance.corporate": "unknown",
+            "clearance.personnel": "unknown",
+            "work_location.on_site": "unknown",
+            "land_claims_applies": "unknown",
+            "documents_behind_login": "unknown"
+          },
+          "evidence": {
+            "criteria_location": null,
+            "supply_arrangement_required": null,
+            "supplier_origin_restriction": null,
+            "clearance.corporate": null,
+            "clearance.personnel": null,
+            "work_location.on_site": null,
+            "land_claims_applies": null,
+            "documents_behind_login": null
+          },
+          "status": "check_solicitation",
+          "flags": [],
+          "error": "",
+          "outcome": "cache_hit"
+        },
+        "llm_v3": {
+          "eval_extraction_id": 106,
+          "ok": true,
+          "fields": {
+            "criteria_location": "see_solicitation",
+            "supply_arrangement_required": "unknown",
+            "supplier_origin_restriction": "unknown",
+            "clearance.corporate": "unknown",
+            "clearance.personnel": "unknown",
+            "work_location.on_site": "unknown",
+            "land_claims_applies": "unknown",
+            "documents_behind_login": "unknown"
+          },
+          "evidence": {
+            "criteria_location": null,
+            "supply_arrangement_required": null,
+            "supplier_origin_restriction": null,
+            "clearance.corporate": null,
+            "clearance.personnel": null,
+            "work_location.on_site": null,
+            "land_claims_applies": null,
+            "documents_behind_login": null
+          },
+          "status": "check_solicitation",
+          "flags": [],
+          "error": "",
+          "outcome": "ok",
+          "created_at": "2026-11-18T05:07:29.032552+00:00",
+          "run_tag": "eval-dev-20261118T050705Z-v3"
+        },
+        "baseline": {
+          "ok": true,
+          "extraction_id": 183,
+          "created_at": "2026-11-17T20:03:20.316005+00:00",
+          "fields": {
+            "criteria_location": "see_solicitation",
+            "supply_arrangement_required": "unknown",
+            "supplier_origin_restriction": "unknown",
+            "clearance.corporate": "unknown",
+            "clearance.personnel": "unknown",
+            "work_location.on_site": "unknown",
+            "land_claims_applies": "unknown",
+            "documents_behind_login": "unknown"
+          },
+          "evidence": {
+            "criteria_location": null,
+            "supply_arrangement_required": null,
+            "supplier_origin_restriction": null,
+            "clearance.corporate": null,
+            "clearance.personnel": null,
+            "work_location.on_site": null,
+            "land_claims_applies": null,
+            "documents_behind_login": null
+          },
+          "status": "check_solicitation",
+          "flags": [],
+          "error": "",
+          "outcome": "cache_hit"
+        }
+      },
+      "repeats": {
+        "llm_v2": [
+          {
+            "repeat": 1,
+            "eval_extraction_id": 121,
+            "ok": true,
+            "fields": {
+              "criteria_location": "see_solicitation",
+              "supply_arrangement_required": "unknown",
+              "supplier_origin_restriction": "unknown",
+              "clearance.corporate": "unknown",
+              "clearance.personnel": "unknown",
+              "work_location.on_site": "unknown",
+              "land_claims_applies": "no",
+              "documents_behind_login": "unknown"
+            },
+            "evidence": {
+              "criteria_location": null,
+              "supply_arrangement_required": null,
+              "supplier_origin_restriction": null,
+              "clearance.corporate": null,
+              "clearance.personnel": null,
+              "work_location.on_site": null,
+              "land_claims_applies": "trade_agreements: Canadian Free Trade Agreement (CFTA)",
+              "documents_behind_login": null
+            },
+            "status": "check_solicitation",
+            "flags": [
+              "ungrounded:eligibility.supply_arrangement_required"
+            ],
+            "error": ""
+          },
+          {
+            "repeat": 2,
+            "eval_extraction_id": 141,
+            "ok": true,
+            "fields": {
+              "criteria_location": "see_solicitation",
+              "supply_arrangement_required": "unknown",
+              "supplier_origin_restriction": "unknown",
+              "clearance.corporate": "unknown",
+              "clearance.personnel": "unknown",
+              "work_location.on_site": "unknown",
+              "land_claims_applies": "unknown",
+              "documents_behind_login": "unknown"
+            },
+            "evidence": {
+              "criteria_location": null,
+              "supply_arrangement_required": null,
+              "supplier_origin_restriction": null,
+              "clearance.corporate": null,
+              "clearance.personnel": null,
+              "work_location.on_site": null,
+              "land_claims_applies": null,
+              "documents_behind_login": null
+            },
+            "status": "check_solicitation",
+            "flags": [
+              "ungrounded:eligibility.supply_arrangement_required"
+            ],
+            "error": ""
+          },
+          {
+            "repeat": 3,
+            "eval_extraction_id": 161,
+            "ok": true,
+            "fields": {
+              "criteria_location": "see_solicitation",
+              "supply_arrangement_required": "unknown",
+              "supplier_origin_restriction": "unknown",
+              "clearance.corporate": "unknown",
+              "clearance.personnel": "unknown",
+              "work_location.on_site": "unknown",
+              "land_claims_applies": "unknown",
+              "documents_behind_login": "unknown"
+            },
+            "evidence": {
+              "criteria_location": null,
+              "supply_arrangement_required": null,
+              "supplier_origin_restriction": null,
+              "clearance.corporate": null,
+              "clearance.personnel": null,
+              "work_location.on_site": null,
+              "land_claims_applies": null,
+              "documents_behind_login": null
+            },
+            "status": "check_solicitation",
+            "flags": [],
+            "error": ""
+          }
+        ],
+        "llm_v3": [
+          {
+            "repeat": 1,
+            "eval_extraction_id": 122,
+            "ok": true,
+            "fields": {
+              "criteria_location": "see_solicitation",
+              "supply_arrangement_required": "unknown",
+              "supplier_origin_restriction": "unknown",
+              "clearance.corporate": "unknown",
+              "clearance.personnel": "unknown",
+              "work_location.on_site": "unknown",
+              "land_claims_applies": "unknown",
+              "documents_behind_login": "unknown"
+            },
+            "evidence": {
+              "criteria_location": null,
+              "supply_arrangement_required": null,
+              "supplier_origin_restriction": null,
+              "clearance.corporate": null,
+              "clearance.personnel": null,
+              "work_location.on_site": null,
+              "land_claims_applies": null,
+              "documents_behind_login": null
+            },
+            "status": "check_solicitation",
+            "flags": [],
+            "error": ""
+          },
+          {
+            "repeat": 2,
+            "eval_extraction_id": 142,
+            "ok": true,
+            "fields": {
+              "criteria_location": "see_solicitation",
+              "supply_arrangement_required": "unknown",
+              "supplier_origin_restriction": "unknown",
+              "clearance.corporate": "unknown",
+              "clearance.personnel": "unknown",
+              "work_location.on_site": "unknown",
+              "land_claims_applies": "unknown",
+              "documents_behind_login": "unknown"
+            },
+            "evidence": {
+              "criteria_location": null,
+              "supply_arrangement_required": null,
+              "supplier_origin_restriction": null,
+              "clearance.corporate": null,
+              "clearance.personnel": null,
+              "work_location.on_site": null,
+              "land_claims_applies": null,
+              "documents_behind_login": null
+            },
+            "status": "check_solicitation",
+            "flags": [],
+            "error": ""
+          },
+          {
+            "repeat": 3,
+            "eval_extraction_id": 162,
+            "ok": true,
+            "fields": {
+              "criteria_location": "see_solicitation",
+              "supply_arrangement_required": "unknown",
+              "supplier_origin_restriction": "unknown",
+              "clearance.corporate": "unknown",
+              "clearance.personnel": "unknown",
+              "work_location.on_site": "unknown",
+              "land_claims_applies": "unknown",
+              "documents_behind_login": "unknown"
+            },
+            "evidence": {
+              "criteria_location": null,
+              "supply_arrangement_required": null,
+              "supplier_origin_restriction": null,
+              "clearance.corporate": null,
+              "clearance.personnel": null,
+              "work_location.on_site": null,
+              "land_claims_applies": null,
+              "documents_behind_login": null
+            },
+            "status": "check_solicitation",
+            "flags": [],
+            "error": ""
+          }
+        ]
+      }
+    },
+    {
+      "case": "dev-07",
+      "reference": "cb-117-66588222",
+      "file": "dev/dev-07.yaml",
+      "strata": [
+        "status_expired"
+      ],
+      "text_changed_since_selection": false,
+      "notice_kind": "regular",
+      "sa_required_from_metadata": null,
+      "unsure": true,
+      "notes": "Docs: other sources allowed at own risk, so not portal-only. Land claims: Indigenous Participation Plan stated, but no CLCA named.",
+      "label": {
+        "fields": {
+          "criteria_location": "see_solicitation",
+          "supply_arrangement_required": "unknown",
+          "supplier_origin_restriction": "unknown",
+          "clearance.corporate": "unknown",
+          "clearance.personnel": "unknown",
+          "work_location.on_site": "yes",
+          "land_claims_applies": "unknown",
+          "documents_behind_login": "no"
+        },
+        "evidence": {
+          "criteria_location": null,
+          "supply_arrangement_required": null,
+          "supplier_origin_restriction": null,
+          "clearance.corporate": null,
+          "clearance.personnel": null,
+          "work_location.on_site": "the supply and install of a new signal mast atop of Cabot Tower",
+          "land_claims_applies": null,
+          "documents_behind_login": "Bidders that elect to base their bids on documents obtained from other sources do so at their own risk"
+        },
+        "status": "check_solicitation"
+      },
+      "systems": {
+        "llm_v2": {
+          "ok": true,
+          "extraction_id": 184,
+          "created_at": "2026-11-17T20:03:25.926467+00:00",
+          "fields": {
+            "criteria_location": "see_solicitation",
+            "supply_arrangement_required": "unknown",
+            "supplier_origin_restriction": "unknown",
+            "clearance.corporate": "unknown",
+            "clearance.personnel": "unknown",
+            "work_location.on_site": "yes",
+            "land_claims_applies": "unknown",
+            "documents_behind_login": "unknown"
+          },
+          "evidence": {
+            "criteria_location": null,
+            "supply_arrangement_required": null,
+            "supplier_origin_restriction": null,
+            "clearance.corporate": null,
+            "clearance.personnel": null,
+            "work_location.on_site": "Parks Canada requires the removal of the existing signal mast, and the supply and install of a new signal mast atop of Cabot Tower.",
+            "land_claims_applies": null,
+            "documents_behind_login": null
+          },
+          "status": "check_solicitation",
+          "flags": [
+            "ungrounded:eligibility.supply_arrangement_required",
+            "ungrounded_detail:eligibility.work_location.place",
+            "ungrounded:eligibility.documents_behind_login"
+          ],
+          "error": "",
+          "outcome": "cache_hit"
+        },
+        "llm_v3": {
+          "eval_extraction_id": 107,
+          "ok": true,
+          "fields": {
+            "criteria_location": "see_solicitation",
+            "supply_arrangement_required": "unknown",
+            "supplier_origin_restriction": "unknown",
+            "clearance.corporate": "unknown",
+            "clearance.personnel": "unknown",
+            "work_location.on_site": "yes",
+            "land_claims_applies": "unknown",
+            "documents_behind_login": "no"
+          },
+          "evidence": {
+            "criteria_location": null,
+            "supply_arrangement_required": null,
+            "supplier_origin_restriction": null,
+            "clearance.corporate": null,
+            "clearance.personnel": null,
+            "work_location.on_site": "Arrangements have been made for the site visit to be held at at the entrance door for Cabot Tower",
+            "land_claims_applies": null,
+            "documents_behind_login": "Bidders that consider themselves qualified to provide this Work and intend to submit bids on this project should obtain documents from the Government Electronic Tendering Service"
+          },
+          "status": "check_solicitation",
+          "flags": [
+            "ungrounded_detail:eligibility.work_location.place"
+          ],
+          "error": "",
+          "outcome": "ok",
+          "created_at": "2026-11-18T05:07:33.743184+00:00",
+          "run_tag": "eval-dev-20261118T050705Z-v3"
+        },
+        "baseline": {
+          "ok": true,
+          "extraction_id": 185,
+          "created_at": "2026-11-17T20:03:26.856460+00:00",
+          "fields": {
+            "criteria_location": "see_solicitation",
+            "supply_arrangement_required": "unknown",
+            "supplier_origin_restriction": "unknown",
+            "clearance.corporate": "unknown",
+            "clearance.personnel": "unknown",
+            "work_location.on_site": "unknown",
+            "land_claims_applies": "unknown",
+            "documents_behind_login": "yes"
+          },
+          "evidence": {
+            "criteria_location": null,
+            "supply_arrangement_required": null,
+            "supplier_origin_restriction": null,
+            "clearance.corporate": null,
+            "clearance.personnel": null,
+            "work_location.on_site": null,
+            "land_claims_applies": null,
+            "documents_behind_login": "PARKS CANADA IS NOT CURRENTLY ACCEPTING BIDS VIA SAP ARIBA, YOU MUST SUBMIT YOUR BID VIA FAX OR EMAIL AS INDICATED IN THE SOLICITATION DOCUMENT."
+          },
+          "status": "check_solicitation",
+          "flags": [],
+          "error": "",
+          "outcome": "cache_hit"
+        }
+      },
+      "repeats": {
+        "llm_v2": [
+          {
+            "repeat": 1,
+            "eval_extraction_id": 123,
+            "ok": true,
+            "fields": {
+              "criteria_location": "see_solicitation",
+              "supply_arrangement_required": "unknown",
+              "supplier_origin_restriction": "unknown",
+              "clearance.corporate": "unknown",
+              "clearance.personnel": "unknown",
+              "work_location.on_site": "yes",
+              "land_claims_applies": "unknown",
+              "documents_behind_login": "no"
+            },
+            "evidence": {
+              "criteria_location": null,
+              "supply_arrangement_required": null,
+              "supplier_origin_restriction": null,
+              "clearance.corporate": null,
+              "clearance.personnel": null,
+              "work_location.on_site": "Arrangements have been made for the site visit to be held at at the entrance door for Cabot Tower",
+              "land_claims_applies": null,
+              "documents_behind_login": "Bidders that consider themselves qualified to provide this Work and intend to submit bids on this project should obtain documents from the Government Electronic Tendering Service"
+            },
+            "status": "check_solicitation",
+            "flags": [
+              "ungrounded_detail:eligibility.work_location.place"
+            ],
+            "error": ""
+          },
+          {
+            "repeat": 2,
+            "eval_extraction_id": 143,
+            "ok": true,
+            "fields": {
+              "criteria_location": "see_solicitation",
+              "supply_arrangement_required": "unknown",
+              "supplier_origin_restriction": "unknown",
+              "clearance.corporate": "unknown",
+              "clearance.personnel": "unknown",
+              "work_location.on_site": "yes",
+              "land_claims_applies": "unknown",
+              "documents_behind_login": "unknown"
+            },
+            "evidence": {
+              "criteria_location": null,
+              "supply_arrangement_required": null,
+              "supplier_origin_restriction": null,
+              "clearance.corporate": null,
+              "clearance.personnel": null,
+              "work_location.on_site": "Arrangements have been made for the site visit to be held at at the entrance door for Cabot Tower, located at 230 Signal Hill Rd, St. John's, NL A1C 5M",
+              "land_claims_applies": null,
+              "documents_behind_login": null
+            },
+            "status": "check_solicitation",
+            "flags": [
+              "ungrounded:eligibility.supply_arrangement_required",
+              "ungrounded:eligibility.documents_behind_login"
+            ],
+            "error": ""
+          },
+          {
+            "repeat": 3,
+            "eval_extraction_id": 163,
+            "ok": true,
+            "fields": {
+              "criteria_location": "see_solicitation",
+              "supply_arrangement_required": "unknown",
+              "supplier_origin_restriction": "unknown",
+              "clearance.corporate": "unknown",
+              "clearance.personnel": "unknown",
+              "work_location.on_site": "yes",
+              "land_claims_applies": "unknown",
+              "documents_behind_login": "no"
+            },
+            "evidence": {
+              "criteria_location": null,
+              "supply_arrangement_required": null,
+              "supplier_origin_restriction": null,
+              "clearance.corporate": null,
+              "clearance.personnel": null,
+              "work_location.on_site": "Parks Canada requires the removal of the existing signal mast, and the supply and install of a new signal mast atop of Cabot Tower.",
+              "land_claims_applies": null,
+              "documents_behind_login": "Bidders that consider themselves qualified to provide this Work and intend to submit bids on this project should obtain documents from the Government Electronic Tendering Service"
+            },
+            "status": "check_solicitation",
+            "flags": [],
+            "error": ""
+          }
+        ],
+        "llm_v3": [
+          {
+            "repeat": 1,
+            "eval_extraction_id": 124,
+            "ok": true,
+            "fields": {
+              "criteria_location": "see_solicitation",
+              "supply_arrangement_required": "unknown",
+              "supplier_origin_restriction": "unknown",
+              "clearance.corporate": "unknown",
+              "clearance.personnel": "unknown",
+              "work_location.on_site": "yes",
+              "land_claims_applies": "unknown",
+              "documents_behind_login": "no"
+            },
+            "evidence": {
+              "criteria_location": null,
+              "supply_arrangement_required": null,
+              "supplier_origin_restriction": null,
+              "clearance.corporate": null,
+              "clearance.personnel": null,
+              "work_location.on_site": "Arrangements have been made for the site visit to be held at at the entrance door for Cabot Tower",
+              "land_claims_applies": null,
+              "documents_behind_login": "Bidders that consider themselves qualified to provide this Work and intend to submit bids on this project should obtain documents from the Government Electronic Tendering Service"
+            },
+            "status": "check_solicitation",
+            "flags": [],
+            "error": ""
+          },
+          {
+            "repeat": 2,
+            "eval_extraction_id": 144,
+            "ok": true,
+            "fields": {
+              "criteria_location": "see_solicitation",
+              "supply_arrangement_required": "unknown",
+              "supplier_origin_restriction": "unknown",
+              "clearance.corporate": "unknown",
+              "clearance.personnel": "unknown",
+              "work_location.on_site": "yes",
+              "land_claims_applies": "unknown",
+              "documents_behind_login": "no"
+            },
+            "evidence": {
+              "criteria_location": null,
+              "supply_arrangement_required": null,
+              "supplier_origin_restriction": null,
+              "clearance.corporate": null,
+              "clearance.personnel": null,
+              "work_location.on_site": "Arrangements have been made for the site visit to be held at at the entrance door for Cabot Tower",
+              "land_claims_applies": null,
+              "documents_behind_login": "Bidders that consider themselves qualified to provide this Work and intend to submit bids on this project should obtain documents from the Government Electronic Tendering Service"
+            },
+            "status": "check_solicitation",
+            "flags": [],
+            "error": ""
+          },
+          {
+            "repeat": 3,
+            "eval_extraction_id": 164,
+            "ok": true,
+            "fields": {
+              "criteria_location": "see_solicitation",
+              "supply_arrangement_required": "unknown",
+              "supplier_origin_restriction": "unknown",
+              "clearance.corporate": "unknown",
+              "clearance.personnel": "unknown",
+              "work_location.on_site": "yes",
+              "land_claims_applies": "unknown",
+              "documents_behind_login": "no"
+            },
+            "evidence": {
+              "criteria_location": null,
+              "supply_arrangement_required": null,
+              "supplier_origin_restriction": null,
+              "clearance.corporate": null,
+              "clearance.personnel": null,
+              "work_location.on_site": "Arrangements have been made for the site visit to be held at at the entrance door for Cabot Tower",
+              "land_claims_applies": null,
+              "documents_behind_login": "Bidders that consider themselves qualified to provide this Work and intend to submit bids on this project should obtain documents from the Government Electronic Tendering Service through the Government of Canada tendering service"
+            },
+            "status": "check_solicitation",
+            "flags": [
+              "ungrounded_detail:eligibility.work_location.place"
+            ],
+            "error": ""
+          }
+        ]
+      }
+    },
+    {
+      "case": "dev-08",
+      "reference": "cb-777-38226073",
+      "file": "dev/dev-08.yaml",
+      "strata": [
+        "region_nl",
+        "status_expired"
+      ],
+      "text_changed_since_selection": false,
+      "notice_kind": "regular",
+      "sa_required_from_metadata": null,
+      "unsure": false,
+      "notes": "",
+      "label": {
+        "fields": {
+          "criteria_location": "see_solicitation",
+          "supply_arrangement_required": "unknown",
+          "supplier_origin_restriction": "unknown",
+          "clearance.corporate": "unknown",
+          "clearance.personnel": "unknown",
+          "work_location.on_site": "yes",
+          "land_claims_applies": "unknown",
+          "documents_behind_login": "yes"
+        },
+        "evidence": {
+          "criteria_location": null,
+          "supply_arrangement_required": null,
+          "supplier_origin_restriction": null,
+          "clearance.corporate": null,
+          "clearance.personnel": null,
+          "work_location.on_site": "provide snow clearing services at the St.John’s Research and Development Centre",
+          "land_claims_applies": null,
+          "documents_behind_login": "It is MANDATORY for the Firms intending to submit tenders on this project to obtain the related specifications, plans and drawings, and all other tender documents through the CanadaBuys service provider’s platform"
+        },
+        "status": "check_solicitation"
+      },
+      "systems": {
+        "llm_v2": {
+          "ok": true,
+          "extraction_id": 186,
+          "created_at": "2026-11-17T20:03:32.056031+00:00",
+          "fields": {
+            "criteria_location": "see_solicitation",
+            "supply_arrangement_required": "no",
+            "supplier_origin_restriction": "unknown",
+            "clearance.corporate": "unknown",
+            "clearance.personnel": "unknown",
+            "work_location.on_site": "yes",
+            "land_claims_applies": "unknown",
+            "documents_behind_login": "yes"
+          },
+          "evidence": {
+            "criteria_location": null,
+            "supply_arrangement_required": "notice_type: Request for Proposal",
+            "supplier_origin_restriction": null,
+            "clearance.corporate": null,
+            "clearance.personnel": null,
+            "work_location.on_site": "requires the services of a contractor to provide snow clearing services at the St.John’s Research and Development Centre",
+            "land_claims_applies": null,
+            "documents_behind_login": "It is MANDATORY for the Firms intending to submit tenders on this project to obtain the related specifications, plans and drawings, and all other tender documents through the CanadaBuys service provider’s platform."
+          },
+          "status": "check_solicitation",
+          "flags": [
+            "ungrounded:eligibility.supplier_origin_restriction"
+          ],
+          "error": "",
+          "outcome": "cache_hit"
+        },
+        "llm_v3": {
+          "eval_extraction_id": 108,
+          "ok": true,
+          "fields": {
+            "criteria_location": "see_solicitation",
+            "supply_arrangement_required": "unknown",
+            "supplier_origin_restriction": "unknown",
+            "clearance.corporate": "unknown",
+            "clearance.personnel": "unknown",
+            "work_location.on_site": "yes",
+            "land_claims_applies": "unknown",
+            "documents_behind_login": "yes"
+          },
+          "evidence": {
+            "criteria_location": null,
+            "supply_arrangement_required": null,
+            "supplier_origin_restriction": null,
+            "clearance.corporate": null,
+            "clearance.personnel": null,
+            "work_location.on_site": "Interested bidders must present themselves at our St.John’s Research Centre",
+            "land_claims_applies": null,
+            "documents_behind_login": "It is MANDATORY for the Firms intending to submit tenders on this project to obtain the related specifications, plans and drawings, and all other tender documents through the CanadaBuys service provider’s platform."
+          },
+          "status": "check_solicitation",
+          "flags": [],
+          "error": "",
+          "outcome": "ok",
+          "created_at": "2026-11-18T05:07:37.941866+00:00",
+          "run_tag": "eval-dev-20261118T050705Z-v3"
+        },
+        "baseline": {
+          "ok": true,
+          "extraction_id": 187,
+          "created_at": "2026-11-17T20:03:32.977587+00:00",
+          "fields": {
+            "criteria_location": "see_solicitation",
+            "supply_arrangement_required": "unknown",
+            "supplier_origin_restriction": "canadian_and_trading_partners",
+            "clearance.corporate": "unknown",
+            "clearance.personnel": "unknown",
+            "work_location.on_site": "unknown",
+            "land_claims_applies": "unknown",
+            "documents_behind_login": "unknown"
+          },
+          "evidence": {
+            "criteria_location": null,
+            "supply_arrangement_required": null,
+            "supplier_origin_restriction": "Comprehensive and Progressive Agreement for Trans-Pacific Partnership (CPTPP)",
+            "clearance.corporate": null,
+            "clearance.personnel": null,
+            "work_location.on_site": null,
+            "land_claims_applies": null,
+            "documents_behind_login": null
+          },
+          "status": "check_solicitation",
+          "flags": [],
+          "error": "",
+          "outcome": "cache_hit"
+        }
+      },
+      "repeats": {
+        "llm_v2": [
+          {
+            "repeat": 1,
+            "eval_extraction_id": 125,
+            "ok": true,
+            "fields": {
+              "criteria_location": "see_solicitation",
+              "supply_arrangement_required": "unknown",
+              "supplier_origin_restriction": "unknown",
+              "clearance.corporate": "unknown",
+              "clearance.personnel": "unknown",
+              "work_location.on_site": "yes",
+              "land_claims_applies": "unknown",
+              "documents_behind_login": "yes"
+            },
+            "evidence": {
+              "criteria_location": null,
+              "supply_arrangement_required": null,
+              "supplier_origin_restriction": null,
+              "clearance.corporate": null,
+              "clearance.personnel": null,
+              "work_location.on_site": "requires the services of a contractor to provide snow clearing services at the St.John’s Research and Development Centre",
+              "land_claims_applies": null,
+              "documents_behind_login": "It is MANDATORY for the Firms intending to submit tenders on this project to obtain the related specifications, plans and drawings, and all other tender documents through the CanadaBuys service provider’s platform."
+            },
+            "status": "check_solicitation",
+            "flags": [
+              "ungrounded:eligibility.supplier_origin_restriction"
+            ],
+            "error": ""
+          },
+          {
+            "repeat": 2,
+            "eval_extraction_id": 145,
+            "ok": true,
+            "fields": {
+              "criteria_location": "see_solicitation",
+              "supply_arrangement_required": "no",
+              "supplier_origin_restriction": "unknown",
+              "clearance.corporate": "unknown",
+              "clearance.personnel": "unknown",
+              "work_location.on_site": "yes",
+              "land_claims_applies": "unknown",
+              "documents_behind_login": "yes"
+            },
+            "evidence": {
+              "criteria_location": null,
+              "supply_arrangement_required": "Tenders for the project indicated above, will be accepted at the following address",
+              "supplier_origin_restriction": null,
+              "clearance.corporate": null,
+              "clearance.personnel": null,
+              "work_location.on_site": "requires the services of a contractor to provide snow clearing services at the St.John’s Research and Development Centre.",
+              "land_claims_applies": null,
+              "documents_behind_login": "It is MANDATORY for the Firms intending to submit tenders on this project to obtain the related specifications, plans and drawings, and all other tender documents through the CanadaBuys service provider’s platform."
+            },
+            "status": "check_solicitation",
+            "flags": [
+              "ungrounded:eligibility.supplier_origin_restriction"
+            ],
+            "error": ""
+          },
+          {
+            "repeat": 3,
+            "eval_extraction_id": 165,
+            "ok": true,
+            "fields": {
+              "criteria_location": "see_solicitation",
+              "supply_arrangement_required": "no",
+              "supplier_origin_restriction": "unknown",
+              "clearance.corporate": "unknown",
+              "clearance.personnel": "unknown",
+              "work_location.on_site": "yes",
+              "land_claims_applies": "unknown",
+              "documents_behind_login": "yes"
+            },
+            "evidence": {
+              "criteria_location": null,
+              "supply_arrangement_required": "notice_type: Request for Proposal",
+              "supplier_origin_restriction": null,
+              "clearance.corporate": null,
+              "clearance.personnel": null,
+              "work_location.on_site": "requires the services of a contractor to provide snow clearing services at the St.John's Research and Development Centre",
+              "land_claims_applies": null,
+              "documents_behind_login": "It is MANDATORY for the Firms intending to submit tenders on this project to obtain the related specifications, plans and drawings, and all other tender documents through the CanadaBuys service provider’s platform"
+            },
+            "status": "check_solicitation",
+            "flags": [
+              "ungrounded:eligibility.supplier_origin_restriction",
+              "ungrounded:eligibility.clearance",
+              "ungrounded_detail:eligibility.work_location.place"
+            ],
+            "error": ""
+          }
+        ],
+        "llm_v3": [
+          {
+            "repeat": 1,
+            "eval_extraction_id": 126,
+            "ok": true,
+            "fields": {
+              "criteria_location": "see_solicitation",
+              "supply_arrangement_required": "unknown",
+              "supplier_origin_restriction": "unknown",
+              "clearance.corporate": "unknown",
+              "clearance.personnel": "unknown",
+              "work_location.on_site": "yes",
+              "land_claims_applies": "unknown",
+              "documents_behind_login": "yes"
+            },
+            "evidence": {
+              "criteria_location": null,
+              "supply_arrangement_required": null,
+              "supplier_origin_restriction": null,
+              "clearance.corporate": null,
+              "clearance.personnel": null,
+              "work_location.on_site": "requires the services of a contractor to provide snow clearing services at the St.John’s Research and Development Centre",
+              "land_claims_applies": null,
+              "documents_behind_login": "It is MANDATORY for the Firms intending to submit tenders on this project to obtain the related specifications, plans and drawings, and all other tender documents through the CanadaBuys service provider’s platform"
+            },
+            "status": "check_solicitation",
+            "flags": [
+              "ungrounded_detail:eligibility.work_location.place"
+            ],
+            "error": ""
+          },
+          {
+            "repeat": 2,
+            "eval_extraction_id": 146,
+            "ok": true,
+            "fields": {
+              "criteria_location": "see_solicitation",
+              "supply_arrangement_required": "unknown",
+              "supplier_origin_restriction": "unknown",
+              "clearance.corporate": "unknown",
+              "clearance.personnel": "unknown",
+              "work_location.on_site": "yes",
+              "land_claims_applies": "unknown",
+              "documents_behind_login": "yes"
+            },
+            "evidence": {
+              "criteria_location": null,
+              "supply_arrangement_required": null,
+              "supplier_origin_restriction": null,
+              "clearance.corporate": null,
+              "clearance.personnel": null,
+              "work_location.on_site": "requires the services of a contractor to provide snow clearing services at the St.John’s Research and Development Centre",
+              "land_claims_applies": null,
+              "documents_behind_login": "It is MANDATORY for the Firms intending to submit tenders on this project to obtain the related specifications, plans and drawings, and all other tender documents through the CanadaBuys service provider’s platform."
+            },
+            "status": "check_solicitation",
+            "flags": [
+              "ungrounded_detail:eligibility.work_location.place"
+            ],
+            "error": ""
+          },
+          {
+            "repeat": 3,
+            "eval_extraction_id": 166,
+            "ok": true,
+            "fields": {
+              "criteria_location": "see_solicitation",
+              "supply_arrangement_required": "unknown",
+              "supplier_origin_restriction": "unknown",
+              "clearance.corporate": "unknown",
+              "clearance.personnel": "unknown",
+              "work_location.on_site": "yes",
+              "land_claims_applies": "unknown",
+              "documents_behind_login": "yes"
+            },
+            "evidence": {
+              "criteria_location": null,
+              "supply_arrangement_required": null,
+              "supplier_origin_restriction": null,
+              "clearance.corporate": null,
+              "clearance.personnel": null,
+              "work_location.on_site": "Interested bidders must present themselves at our St.John’s Research Centre",
+              "land_claims_applies": null,
+              "documents_behind_login": "It is MANDATORY for the Firms intending to submit tenders on this project to obtain the related specifications, plans and drawings, and all other tender documents through the CanadaBuys service provider’s platform."
+            },
+            "status": "check_solicitation",
+            "flags": [],
+            "error": ""
+          }
+        ]
+      }
+    },
+    {
+      "case": "dev-09",
+      "reference": "WS3430950409-Doc5344784278",
+      "file": "dev/dev-09.yaml",
+      "strata": [
+        "region_national",
+        "status_open"
+      ],
+      "text_changed_since_selection": false,
+      "notice_kind": "regular",
+      "sa_required_from_metadata": null,
+      "unsure": true,
+      "notes": "ITQ results notice, not a solicitation: future phases limited to qualified suppliers read as a pre-qualified method; no criteria_location value fits",
+      "label": {
+        "fields": {
+          "criteria_location": "see_solicitation",
+          "supply_arrangement_required": "yes",
+          "supplier_origin_restriction": "unknown",
+          "clearance.corporate": "unknown",
+          "clearance.personnel": "unknown",
+          "work_location.on_site": "unknown",
+          "land_claims_applies": "unknown",
+          "documents_behind_login": "no"
+        },
+        "evidence": {
+          "criteria_location": null,
+          "supply_arrangement_required": "only these QSs are eligible to participate in any future phases of the procurement",
+          "supplier_origin_restriction": null,
+          "clearance.corporate": null,
+          "clearance.personnel": null,
+          "work_location.on_site": null,
+          "land_claims_applies": null,
+          "documents_behind_login": "No solicitation document is associated with this notice"
+        },
+        "status": "blocked"
+      },
+      "systems": {
+        "llm_v2": {
+          "ok": true,
+          "extraction_id": 74,
+          "created_at": "2026-11-11T04:41:13.670086+00:00",
+          "fields": {
+            "criteria_location": "see_solicitation",
+            "supply_arrangement_required": "unknown",
+            "supplier_origin_restriction": "canadian_and_trading_partners",
+            "clearance.corporate": "unknown",
+            "clearance.personnel": "unknown",
+            "work_location.on_site": "unknown",
+            "land_claims_applies": "unknown",
+            "documents_behind_login": "unknown"
+          },
+          "evidence": {
+            "criteria_location": null,
+            "supply_arrangement_required": null,
+            "supplier_origin_restriction": "World Trade Organization Agreement on Government Procurement (WTO GPA)",
+            "clearance.corporate": null,
+            "clearance.personnel": null,
+            "work_location.on_site": null,
+            "land_claims_applies": null,
+            "documents_behind_login": null
+          },
+          "status": "check_solicitation",
+          "flags": [],
+          "error": "",
+          "outcome": "cache_hit"
+        },
+        "llm_v3": {
+          "eval_extraction_id": 109,
+          "ok": true,
+          "fields": {
+            "criteria_location": "see_solicitation",
+            "supply_arrangement_required": "yes",
+            "supplier_origin_restriction": "unknown",
+            "clearance.corporate": "unknown",
+            "clearance.personnel": "unknown",
+            "work_location.on_site": "unknown",
+            "land_claims_applies": "unknown",
+            "documents_behind_login": "unknown"
+          },
+          "evidence": {
+            "criteria_location": null,
+            "supply_arrangement_required": "only these QSs are eligible to participate in any future phases of the procurement",
+            "supplier_origin_restriction": null,
+            "clearance.corporate": null,
+            "clearance.personnel": null,
+            "work_location.on_site": null,
+            "land_claims_applies": null,
+            "documents_behind_login": null
+          },
+          "status": "blocked",
+          "flags": [],
+          "error": "",
+          "outcome": "ok",
+          "created_at": "2026-11-18T05:07:41.221785+00:00",
+          "run_tag": "eval-dev-20261118T050705Z-v3"
+        },
+        "baseline": {
+          "ok": true,
+          "extraction_id": 159,
+          "created_at": "2026-11-11T04:43:32.324771+00:00",
+          "fields": {
+            "criteria_location": "see_solicitation",
+            "supply_arrangement_required": "unknown",
+            "supplier_origin_restriction": "canadian_and_trading_partners",
+            "clearance.corporate": "unknown",
+            "clearance.personnel": "unknown",
+            "work_location.on_site": "unknown",
+            "land_claims_applies": "unknown",
+            "documents_behind_login": "yes"
+          },
+          "evidence": {
+            "criteria_location": null,
+            "supply_arrangement_required": null,
+            "supplier_origin_restriction": "World Trade Organization Agreement on Government Procurement (WTO GPA)",
+            "clearance.corporate": null,
+            "clearance.personnel": null,
+            "work_location.on_site": null,
+            "land_claims_applies": null,
+            "documents_behind_login": "Solicitation Number: ITQ #W6369-210257 (SAP Ariba #WS3430950409)"
+          },
+          "status": "check_solicitation",
+          "flags": [],
+          "error": "",
+          "outcome": "cache_hit"
+        }
+      },
+      "repeats": {
+        "llm_v2": [
+          {
+            "repeat": 1,
+            "eval_extraction_id": 127,
+            "ok": true,
+            "fields": {
+              "criteria_location": "see_solicitation",
+              "supply_arrangement_required": "unknown",
+              "supplier_origin_restriction": "unknown",
+              "clearance.corporate": "unknown",
+              "clearance.personnel": "unknown",
+              "work_location.on_site": "unknown",
+              "land_claims_applies": "unknown",
+              "documents_behind_login": "unknown"
+            },
+            "evidence": {
+              "criteria_location": null,
+              "supply_arrangement_required": null,
+              "supplier_origin_restriction": null,
+              "clearance.corporate": null,
+              "clearance.personnel": null,
+              "work_location.on_site": null,
+              "land_claims_applies": null,
+              "documents_behind_login": null
+            },
+            "status": "check_solicitation",
+            "flags": [],
+            "error": ""
+          },
+          {
+            "repeat": 2,
+            "eval_extraction_id": 147,
+            "ok": true,
+            "fields": {
+              "criteria_location": "see_solicitation",
+              "supply_arrangement_required": "unknown",
+              "supplier_origin_restriction": "unknown",
+              "clearance.corporate": "unknown",
+              "clearance.personnel": "unknown",
+              "work_location.on_site": "unknown",
+              "land_claims_applies": "unknown",
+              "documents_behind_login": "unknown"
+            },
+            "evidence": {
+              "criteria_location": null,
+              "supply_arrangement_required": null,
+              "supplier_origin_restriction": null,
+              "clearance.corporate": null,
+              "clearance.personnel": null,
+              "work_location.on_site": null,
+              "land_claims_applies": null,
+              "documents_behind_login": null
+            },
+            "status": "check_solicitation",
+            "flags": [],
+            "error": ""
+          },
+          {
+            "repeat": 3,
+            "eval_extraction_id": 167,
+            "ok": true,
+            "fields": {
+              "criteria_location": "see_solicitation",
+              "supply_arrangement_required": "unknown",
+              "supplier_origin_restriction": "unknown",
+              "clearance.corporate": "unknown",
+              "clearance.personnel": "unknown",
+              "work_location.on_site": "unknown",
+              "land_claims_applies": "unknown",
+              "documents_behind_login": "unknown"
+            },
+            "evidence": {
+              "criteria_location": null,
+              "supply_arrangement_required": null,
+              "supplier_origin_restriction": null,
+              "clearance.corporate": null,
+              "clearance.personnel": null,
+              "work_location.on_site": null,
+              "land_claims_applies": null,
+              "documents_behind_login": null
+            },
+            "status": "check_solicitation",
+            "flags": [],
+            "error": ""
+          }
+        ],
+        "llm_v3": [
+          {
+            "repeat": 1,
+            "eval_extraction_id": 128,
+            "ok": true,
+            "fields": {
+              "criteria_location": "see_solicitation",
+              "supply_arrangement_required": "yes",
+              "supplier_origin_restriction": "unknown",
+              "clearance.corporate": "unknown",
+              "clearance.personnel": "unknown",
+              "work_location.on_site": "unknown",
+              "land_claims_applies": "unknown",
+              "documents_behind_login": "unknown"
+            },
+            "evidence": {
+              "criteria_location": null,
+              "supply_arrangement_required": "only these QSs are eligible to participate in any future phases of the procurement",
+              "supplier_origin_restriction": null,
+              "clearance.corporate": null,
+              "clearance.personnel": null,
+              "work_location.on_site": null,
+              "land_claims_applies": null,
+              "documents_behind_login": null
+            },
+            "status": "blocked",
+            "flags": [],
+            "error": ""
+          },
+          {
+            "repeat": 2,
+            "eval_extraction_id": 148,
+            "ok": true,
+            "fields": {
+              "criteria_location": "see_solicitation",
+              "supply_arrangement_required": "yes",
+              "supplier_origin_restriction": "unknown",
+              "clearance.corporate": "unknown",
+              "clearance.personnel": "unknown",
+              "work_location.on_site": "unknown",
+              "land_claims_applies": "unknown",
+              "documents_behind_login": "unknown"
+            },
+            "evidence": {
+              "criteria_location": null,
+              "supply_arrangement_required": "only these QSs are eligible to participate in any future phases of the procurement",
+              "supplier_origin_restriction": null,
+              "clearance.corporate": null,
+              "clearance.personnel": null,
+              "work_location.on_site": null,
+              "land_claims_applies": null,
+              "documents_behind_login": null
+            },
+            "status": "blocked",
+            "flags": [],
+            "error": ""
+          },
+          {
+            "repeat": 3,
+            "eval_extraction_id": 168,
+            "ok": true,
+            "fields": {
+              "criteria_location": "see_solicitation",
+              "supply_arrangement_required": "yes",
+              "supplier_origin_restriction": "unknown",
+              "clearance.corporate": "unknown",
+              "clearance.personnel": "unknown",
+              "work_location.on_site": "unknown",
+              "land_claims_applies": "unknown",
+              "documents_behind_login": "unknown"
+            },
+            "evidence": {
+              "criteria_location": null,
+              "supply_arrangement_required": "only these QSs are eligible to participate in any future phases of the procurement",
+              "supplier_origin_restriction": null,
+              "clearance.corporate": null,
+              "clearance.personnel": null,
+              "work_location.on_site": null,
+              "land_claims_applies": null,
+              "documents_behind_login": null
+            },
+            "status": "blocked",
+            "flags": [],
+            "error": ""
+          }
+        ]
+      }
+    },
+    {
+      "case": "dev-10",
+      "reference": "WS5548295643-Doc5729126490",
+      "file": "dev/dev-10.yaml",
+      "strata": [
+        "region_nl",
+        "sa_or_so_request",
+        "status_expired",
+        "text_land_claims"
+      ],
+      "text_changed_since_selection": false,
+      "notice_kind": "sa_or_so_request",
+      "sa_required_from_metadata": null,
+      "unsure": true,
+      "notes": "On-site rests on the CLCA footnote defining deliveries as services performed in Chibougamau; same requirement as dev-01, which lacks it and is labelled no",
+      "label": {
+        "fields": {
+          "criteria_location": "see_solicitation",
+          "supply_arrangement_required": "no",
+          "supplier_origin_restriction": "canadian_and_trading_partners",
+          "clearance.corporate": "unknown",
+          "clearance.personnel": "unknown",
+          "work_location.on_site": "yes",
+          "land_claims_applies": "yes",
+          "documents_behind_login": "unknown"
+        },
+        "evidence": {
+          "criteria_location": null,
+          "supply_arrangement_required": "Request for Standing Offer",
+          "supplier_origin_restriction": "open only to Canadian suppliers and to Suppliers of an Applicable Trading Partner",
+          "clearance.corporate": null,
+          "clearance.personnel": null,
+          "work_location.on_site": "goods delivered to and services performed in",
+          "land_claims_applies": "This procurement is subject to Comprehensive Land Claim Agreements (CLCAs)",
+          "documents_behind_login": null
+        },
+        "status": "blocked"
+      },
+      "systems": {
+        "llm_v2": {
+          "ok": true,
+          "extraction_id": 188,
+          "created_at": "2026-11-17T20:03:37.898179+00:00",
+          "fields": {
+            "criteria_location": "see_solicitation",
+            "supply_arrangement_required": "unknown",
+            "supplier_origin_restriction": "canadian_and_trading_partners",
+            "clearance.corporate": "unknown",
+            "clearance.personnel": "unknown",
+            "work_location.on_site": "unknown",
+            "land_claims_applies": "yes",
+            "documents_behind_login": "unknown"
+          },
+          "evidence": {
+            "criteria_location": null,
+            "supply_arrangement_required": null,
+            "supplier_origin_restriction": "This solicitation of offers is open only to Canadian suppliers and to Suppliers of an Applicable Trading Partner.",
+            "clearance.corporate": null,
+            "clearance.personnel": null,
+            "work_location.on_site": null,
+            "land_claims_applies": "This procurement is subject to Comprehensive Land Claim Agreements (CLCAs) as deliveries to* Chibougamau, QC are required.",
+            "documents_behind_login": null
+          },
+          "status": "check_solicitation",
+          "flags": [
+            "ungrounded:eligibility.work_location"
+          ],
+          "error": "",
+          "outcome": "cache_hit"
+        },
+        "llm_v3": {
+          "eval_extraction_id": 110,
+          "ok": true,
+          "fields": {
+            "criteria_location": "see_solicitation",
+            "supply_arrangement_required": "no",
+            "supplier_origin_restriction": "canadian_and_trading_partners",
+            "clearance.corporate": "unknown",
+            "clearance.personnel": "unknown",
+            "work_location.on_site": "no",
+            "land_claims_applies": "yes",
+            "documents_behind_login": "unknown"
+          },
+          "evidence": {
+            "criteria_location": null,
+            "supply_arrangement_required": "Request for Standing Offer",
+            "supplier_origin_restriction": "This solicitation of offers is open only to Canadian suppliers and to Suppliers of an Applicable Trading Partner.",
+            "clearance.corporate": null,
+            "clearance.personnel": null,
+            "work_location.on_site": "National Master Standing Offers for aviation fuels (Into-Plane)",
+            "land_claims_applies": "This procurement is subject to Comprehensive Land Claim Agreements (CLCAs) as deliveries to* Chibougamau, QC are required.",
+            "documents_behind_login": null
+          },
+          "status": "check_solicitation",
+          "flags": [],
+          "error": "",
+          "outcome": "ok",
+          "created_at": "2026-11-18T05:07:45.303965+00:00",
+          "run_tag": "eval-dev-20261118T050705Z-v3"
+        },
+        "baseline": {
+          "ok": true,
+          "extraction_id": 189,
+          "created_at": "2026-11-17T20:03:39.333088+00:00",
+          "fields": {
+            "criteria_location": "see_solicitation",
+            "supply_arrangement_required": "no",
+            "supplier_origin_restriction": "canadian_and_trading_partners",
+            "clearance.corporate": "unknown",
+            "clearance.personnel": "unknown",
+            "work_location.on_site": "no",
+            "land_claims_applies": "yes",
+            "documents_behind_login": "unknown"
+          },
+          "evidence": {
+            "criteria_location": null,
+            "supply_arrangement_required": "Request for Standing Offer",
+            "supplier_origin_restriction": "This solicitation of offers is open only to Canadian suppliers and to Suppliers of an Applicable Trading Partner.",
+            "clearance.corporate": null,
+            "clearance.personnel": null,
+            "work_location.on_site": "GD",
+            "land_claims_applies": "This procurement is subject to Comprehensive Land Claim Agreements (CLCAs) as deliveries to* Chibougamau, QC are required.",
+            "documents_behind_login": null
+          },
+          "status": "check_solicitation",
+          "flags": [],
+          "error": "",
+          "outcome": "cache_hit"
+        }
+      },
+      "repeats": {
+        "llm_v2": [
+          {
+            "repeat": 1,
+            "eval_extraction_id": 129,
+            "ok": true,
+            "fields": {
+              "criteria_location": "see_solicitation",
+              "supply_arrangement_required": "unknown",
+              "supplier_origin_restriction": "canadian_and_trading_partners",
+              "clearance.corporate": "unknown",
+              "clearance.personnel": "unknown",
+              "work_location.on_site": "no",
+              "land_claims_applies": "yes",
+              "documents_behind_login": "unknown"
+            },
+            "evidence": {
+              "criteria_location": null,
+              "supply_arrangement_required": null,
+              "supplier_origin_restriction": "This solicitation of offers is open only to Canadian suppliers and to Suppliers of an Applicable Trading Partner.",
+              "clearance.corporate": null,
+              "clearance.personnel": null,
+              "work_location.on_site": "procurement_categories: GD",
+              "land_claims_applies": "This procurement is subject to Comprehensive Land Claim Agreements (CLCAs) as deliveries to* Chibougamau, QC are required.",
+              "documents_behind_login": null
+            },
+            "status": "check_solicitation",
+            "flags": [],
+            "error": ""
+          },
+          {
+            "repeat": 2,
+            "eval_extraction_id": 149,
+            "ok": true,
+            "fields": {
+              "criteria_location": "see_solicitation",
+              "supply_arrangement_required": "unknown",
+              "supplier_origin_restriction": "canadian_and_trading_partners",
+              "clearance.corporate": "unknown",
+              "clearance.personnel": "unknown",
+              "work_location.on_site": "no",
+              "land_claims_applies": "yes",
+              "documents_behind_login": "unknown"
+            },
+            "evidence": {
+              "criteria_location": null,
+              "supply_arrangement_required": null,
+              "supplier_origin_restriction": "This solicitation of offers is open only to Canadian suppliers and to Suppliers of an Applicable Trading Partner.",
+              "clearance.corporate": null,
+              "clearance.personnel": null,
+              "work_location.on_site": "procurement_categories: GD",
+              "land_claims_applies": "This procurement is subject to Comprehensive Land Claim Agreements (CLCAs) as deliveries to* Chibougamau, QC are required.",
+              "documents_behind_login": null
+            },
+            "status": "check_solicitation",
+            "flags": [],
+            "error": ""
+          },
+          {
+            "repeat": 3,
+            "eval_extraction_id": 169,
+            "ok": true,
+            "fields": {
+              "criteria_location": "see_solicitation",
+              "supply_arrangement_required": "unknown",
+              "supplier_origin_restriction": "canadian_and_trading_partners",
+              "clearance.corporate": "unknown",
+              "clearance.personnel": "unknown",
+              "work_location.on_site": "unknown",
+              "land_claims_applies": "yes",
+              "documents_behind_login": "unknown"
+            },
+            "evidence": {
+              "criteria_location": null,
+              "supply_arrangement_required": null,
+              "supplier_origin_restriction": "This solicitation of offers is open only to Canadian suppliers and to Suppliers of an Applicable Trading Partner.",
+              "clearance.corporate": null,
+              "clearance.personnel": null,
+              "work_location.on_site": null,
+              "land_claims_applies": "This procurement is subject to Comprehensive Land Claim Agreements (CLCAs) as deliveries to* Chibougamau, QC are required.",
+              "documents_behind_login": null
+            },
+            "status": "check_solicitation",
+            "flags": [
+              "ungrounded:eligibility.work_location"
+            ],
+            "error": ""
+          }
+        ],
+        "llm_v3": [
+          {
+            "repeat": 1,
+            "eval_extraction_id": 130,
+            "ok": true,
+            "fields": {
+              "criteria_location": "see_solicitation",
+              "supply_arrangement_required": "no",
+              "supplier_origin_restriction": "canadian_and_trading_partners",
+              "clearance.corporate": "unknown",
+              "clearance.personnel": "unknown",
+              "work_location.on_site": "unknown",
+              "land_claims_applies": "yes",
+              "documents_behind_login": "unknown"
+            },
+            "evidence": {
+              "criteria_location": null,
+              "supply_arrangement_required": "Request for Standing Offer",
+              "supplier_origin_restriction": "This solicitation of offers is open only to Canadian suppliers and to Suppliers of an Applicable Trading Partner.",
+              "clearance.corporate": null,
+              "clearance.personnel": null,
+              "work_location.on_site": null,
+              "land_claims_applies": "This procurement is subject to Comprehensive Land Claim Agreements (CLCAs) as deliveries to* Chibougamau, QC are required.",
+              "documents_behind_login": null
+            },
+            "status": "check_solicitation",
+            "flags": [
+              "ungrounded:eligibility.work_location"
+            ],
+            "error": ""
+          },
+          {
+            "repeat": 2,
+            "eval_extraction_id": 150,
+            "ok": true,
+            "fields": {
+              "criteria_location": "see_solicitation",
+              "supply_arrangement_required": "no",
+              "supplier_origin_restriction": "canadian_and_trading_partners",
+              "clearance.corporate": "unknown",
+              "clearance.personnel": "unknown",
+              "work_location.on_site": "no",
+              "land_claims_applies": "yes",
+              "documents_behind_login": "unknown"
+            },
+            "evidence": {
+              "criteria_location": null,
+              "supply_arrangement_required": "Request for Standing Offer",
+              "supplier_origin_restriction": "This solicitation of offers is open only to Canadian suppliers and to Suppliers of an Applicable Trading Partner.",
+              "clearance.corporate": null,
+              "clearance.personnel": null,
+              "work_location.on_site": "Delivery to various locations in Canada",
+              "land_claims_applies": "This procurement is subject to Comprehensive Land Claim Agreements (CLCAs) as deliveries to* Chibougamau, QC are required.",
+              "documents_behind_login": null
+            },
+            "status": "check_solicitation",
+            "flags": [],
+            "error": ""
+          },
+          {
+            "repeat": 3,
+            "eval_extraction_id": 170,
+            "ok": true,
+            "fields": {
+              "criteria_location": "see_solicitation",
+              "supply_arrangement_required": "no",
+              "supplier_origin_restriction": "canadian_and_trading_partners",
+              "clearance.corporate": "unknown",
+              "clearance.personnel": "unknown",
+              "work_location.on_site": "no",
+              "land_claims_applies": "yes",
+              "documents_behind_login": "unknown"
+            },
+            "evidence": {
+              "criteria_location": null,
+              "supply_arrangement_required": "Request for Standing Offer",
+              "supplier_origin_restriction": "This solicitation of offers is open only to Canadian suppliers and to Suppliers of an Applicable Trading Partner.",
+              "clearance.corporate": null,
+              "clearance.personnel": null,
+              "work_location.on_site": "National Master Standing Offers for aviation fuels (Into-Plane)",
+              "land_claims_applies": "This procurement is subject to Comprehensive Land Claim Agreements (CLCAs) as deliveries to* Chibougamau, QC are required.",
+              "documents_behind_login": null
+            },
+            "status": "check_solicitation",
+            "flags": [],
+            "error": ""
+          }
+        ]
+      }
+    }
+  ],
+  "calls": [
+    {
+      "purpose": "eval",
+      "prompt_version": "v3",
+      "status": "ok",
+      "input_tokens": 7144,
+      "output_tokens": 600,
+      "cost_usd": "0.001015",
+      "latency_ms": 3277,
+      "estimated": false
+    },
+    {
+      "purpose": "eval",
+      "prompt_version": "v3",
+      "status": "ok",
+      "input_tokens": 8034,
+      "output_tokens": 667,
+      "cost_usd": "0.001137",
+      "latency_ms": 3389,
+      "estimated": false
+    },
+    {
+      "purpose": "eval",
+      "prompt_version": "v3",
+      "status": "ok",
+      "input_tokens": 6764,
+      "output_tokens": 585,
+      "cost_usd": "0.000969",
+      "latency_ms": 2972,
+      "estimated": false
+    },
+    {
+      "purpose": "eval",
+      "prompt_version": "v3",
+      "status": "ok",
+      "input_tokens": 7109,
+      "output_tokens": 458,
+      "cost_usd": "0.000940",
+      "latency_ms": 2455,
+      "estimated": false
+    },
+    {
+      "purpose": "eval",
+      "prompt_version": "v3",
+      "status": "ok",
+      "input_tokens": 8396,
+      "output_tokens": 647,
+      "cost_usd": "0.001164",
+      "latency_ms": 3327,
+      "estimated": false
+    },
+    {
+      "purpose": "eval",
+      "prompt_version": "v3",
+      "status": "ok",
+      "input_tokens": 8645,
+      "output_tokens": 736,
+      "cost_usd": "0.001233",
+      "latency_ms": 3387,
+      "estimated": false
+    },
+    {
+      "purpose": "eval",
+      "prompt_version": "v3",
+      "status": "ok",
+      "input_tokens": 8114,
+      "output_tokens": 958,
+      "cost_usd": "0.001291",
+      "latency_ms": 3990,
+      "estimated": false
+    },
+    {
+      "purpose": "eval",
+      "prompt_version": "v3",
+      "status": "ok",
+      "input_tokens": 7444,
+      "output_tokens": 812,
+      "cost_usd": "0.001151",
+      "latency_ms": 3479,
+      "estimated": false
+    },
+    {
+      "purpose": "eval",
+      "prompt_version": "v3",
+      "status": "ok",
+      "input_tokens": 7117,
+      "output_tokens": 450,
+      "cost_usd": "0.000937",
+      "latency_ms": 2576,
+      "estimated": false
+    },
+    {
+      "purpose": "eval",
+      "prompt_version": "v3",
+      "status": "ok",
+      "input_tokens": 7243,
+      "output_tokens": 700,
+      "cost_usd": "0.001075",
+      "latency_ms": 3391,
+      "estimated": false
+    },
+    {
+      "purpose": "eval",
+      "prompt_version": "v2",
+      "status": "ok",
+      "input_tokens": 6722,
+      "output_tokens": 562,
+      "cost_usd": "0.000954",
+      "latency_ms": 2930,
+      "estimated": false
+    },
+    {
+      "purpose": "eval",
+      "prompt_version": "v3",
+      "status": "ok",
+      "input_tokens": 7144,
+      "output_tokens": 618,
+      "cost_usd": "0.001024",
+      "latency_ms": 3248,
+      "estimated": false
+    },
+    {
+      "purpose": "eval",
+      "prompt_version": "v2",
+      "status": "ok",
+      "input_tokens": 7612,
+      "output_tokens": 774,
+      "cost_usd": "0.001149",
+      "latency_ms": 3822,
+      "estimated": false
+    },
+    {
+      "purpose": "eval",
+      "prompt_version": "v3",
+      "status": "ok",
+      "input_tokens": 8034,
+      "output_tokens": 653,
+      "cost_usd": "0.001130",
+      "latency_ms": 3286,
+      "estimated": false
+    },
+    {
+      "purpose": "eval",
+      "prompt_version": "v2",
+      "status": "ok",
+      "input_tokens": 6342,
+      "output_tokens": 768,
+      "cost_usd": "0.001019",
+      "latency_ms": 3492,
+      "estimated": false
+    },
+    {
+      "purpose": "eval",
+      "prompt_version": "v3",
+      "status": "ok",
+      "input_tokens": 6764,
+      "output_tokens": 615,
+      "cost_usd": "0.000984",
+      "latency_ms": 3090,
+      "estimated": false
+    },
+    {
+      "purpose": "eval",
+      "prompt_version": "v2",
+      "status": "ok",
+      "input_tokens": 6687,
+      "output_tokens": 614,
+      "cost_usd": "0.000976",
+      "latency_ms": 2984,
+      "estimated": false
+    },
+    {
+      "purpose": "eval",
+      "prompt_version": "v3",
+      "status": "ok",
+      "input_tokens": 7109,
+      "output_tokens": 457,
+      "cost_usd": "0.000940",
+      "latency_ms": 2580,
+      "estimated": false
+    },
+    {
+      "purpose": "eval",
+      "prompt_version": "v2",
+      "status": "ok",
+      "input_tokens": 7974,
+      "output_tokens": 719,
+      "cost_usd": "0.001157",
+      "latency_ms": 3398,
+      "estimated": false
+    },
+    {
+      "purpose": "eval",
+      "prompt_version": "v3",
+      "status": "ok",
+      "input_tokens": 8396,
+      "output_tokens": 745,
+      "cost_usd": "0.001213",
+      "latency_ms": 3691,
+      "estimated": false
+    },
+    {
+      "purpose": "eval",
+      "prompt_version": "v2",
+      "status": "ok",
+      "input_tokens": 8223,
+      "output_tokens": 898,
+      "cost_usd": "0.001272",
+      "latency_ms": 3751,
+      "estimated": false
+    },
+    {
+      "purpose": "eval",
+      "prompt_version": "v3",
+      "status": "ok",
+      "input_tokens": 8645,
+      "output_tokens": 753,
+      "cost_usd": "0.001241",
+      "latency_ms": 3355,
+      "estimated": false
+    },
+    {
+      "purpose": "eval",
+      "prompt_version": "v2",
+      "status": "ok",
+      "input_tokens": 7692,
+      "output_tokens": 957,
+      "cost_usd": "0.001248",
+      "latency_ms": 4100,
+      "estimated": false
+    },
+    {
+      "purpose": "eval",
+      "prompt_version": "v3",
+      "status": "ok",
+      "input_tokens": 8114,
+      "output_tokens": 998,
+      "cost_usd": "0.001311",
+      "latency_ms": 4199,
+      "estimated": false
+    },
+    {
+      "purpose": "eval",
+      "prompt_version": "v2",
+      "status": "ok",
+      "input_tokens": 7022,
+      "output_tokens": 894,
+      "cost_usd": "0.001150",
+      "latency_ms": 4027,
+      "estimated": false
+    },
+    {
+      "purpose": "eval",
+      "prompt_version": "v3",
+      "status": "ok",
+      "input_tokens": 7444,
+      "output_tokens": 826,
+      "cost_usd": "0.001158",
+      "latency_ms": 3688,
+      "estimated": false
+    },
+    {
+      "purpose": "eval",
+      "prompt_version": "v2",
+      "status": "ok",
+      "input_tokens": 6695,
+      "output_tokens": 440,
+      "cost_usd": "0.000890",
+      "latency_ms": 2455,
+      "estimated": false
+    },
+    {
+      "purpose": "eval",
+      "prompt_version": "v3",
+      "status": "ok",
+      "input_tokens": 7117,
+      "output_tokens": 455,
+      "cost_usd": "0.000940",
+      "latency_ms": 2509,
+      "estimated": false
+    },
+    {
+      "purpose": "eval",
+      "prompt_version": "v2",
+      "status": "ok",
+      "input_tokens": 6821,
+      "output_tokens": 742,
+      "cost_usd": "0.001054",
+      "latency_ms": 3406,
+      "estimated": false
+    },
+    {
+      "purpose": "eval",
+      "prompt_version": "v3",
+      "status": "ok",
+      "input_tokens": 7243,
+      "output_tokens": 711,
+      "cost_usd": "0.001080",
+      "latency_ms": 3451,
+      "estimated": false
+    },
+    {
+      "purpose": "eval",
+      "prompt_version": "v2",
+      "status": "ok",
+      "input_tokens": 6722,
+      "output_tokens": 619,
+      "cost_usd": "0.000982",
+      "latency_ms": 3147,
+      "estimated": false
+    },
+    {
+      "purpose": "eval",
+      "prompt_version": "v3",
+      "status": "ok",
+      "input_tokens": 7144,
+      "output_tokens": 607,
+      "cost_usd": "0.001018",
+      "latency_ms": 2916,
+      "estimated": false
+    },
+    {
+      "purpose": "eval",
+      "prompt_version": "v2",
+      "status": "ok",
+      "input_tokens": 7612,
+      "output_tokens": 670,
+      "cost_usd": "0.001097",
+      "latency_ms": 3208,
+      "estimated": false
+    },
+    {
+      "purpose": "eval",
+      "prompt_version": "v3",
+      "status": "ok",
+      "input_tokens": 8034,
+      "output_tokens": 730,
+      "cost_usd": "0.001169",
+      "latency_ms": 4100,
+      "estimated": false
+    },
+    {
+      "purpose": "eval",
+      "prompt_version": "v2",
+      "status": "ok",
+      "input_tokens": 6342,
+      "output_tokens": 590,
+      "cost_usd": "0.000930",
+      "latency_ms": 3038,
+      "estimated": false
+    },
+    {
+      "purpose": "eval",
+      "prompt_version": "v3",
+      "status": "ok",
+      "input_tokens": 6764,
+      "output_tokens": 612,
+      "cost_usd": "0.000983",
+      "latency_ms": 3022,
+      "estimated": false
+    },
+    {
+      "purpose": "eval",
+      "prompt_version": "v2",
+      "status": "ok",
+      "input_tokens": 6687,
+      "output_tokens": 443,
+      "cost_usd": "0.000891",
+      "latency_ms": 3579,
+      "estimated": false
+    },
+    {
+      "purpose": "eval",
+      "prompt_version": "v3",
+      "status": "ok",
+      "input_tokens": 7109,
+      "output_tokens": 449,
+      "cost_usd": "0.000936",
+      "latency_ms": 2570,
+      "estimated": false
+    },
+    {
+      "purpose": "eval",
+      "prompt_version": "v2",
+      "status": "ok",
+      "input_tokens": 7974,
+      "output_tokens": 775,
+      "cost_usd": "0.001185",
+      "latency_ms": 3601,
+      "estimated": false
+    },
+    {
+      "purpose": "eval",
+      "prompt_version": "v3",
+      "status": "ok",
+      "input_tokens": 8396,
+      "output_tokens": 638,
+      "cost_usd": "0.001159",
+      "latency_ms": 3144,
+      "estimated": false
+    },
+    {
+      "purpose": "eval",
+      "prompt_version": "v2",
+      "status": "ok",
+      "input_tokens": 8223,
+      "output_tokens": 772,
+      "cost_usd": "0.001209",
+      "latency_ms": 3628,
+      "estimated": false
+    },
+    {
+      "purpose": "eval",
+      "prompt_version": "v3",
+      "status": "ok",
+      "input_tokens": 8645,
+      "output_tokens": 831,
+      "cost_usd": "0.001280",
+      "latency_ms": 3709,
+      "estimated": false
+    },
+    {
+      "purpose": "eval",
+      "prompt_version": "v2",
+      "status": "ok",
+      "input_tokens": 7692,
+      "output_tokens": 837,
+      "cost_usd": "0.001188",
+      "latency_ms": 3776,
+      "estimated": false
+    },
+    {
+      "purpose": "eval",
+      "prompt_version": "v3",
+      "status": "ok",
+      "input_tokens": 8114,
+      "output_tokens": 1051,
+      "cost_usd": "0.001337",
+      "latency_ms": 4259,
+      "estimated": false
+    },
+    {
+      "purpose": "eval",
+      "prompt_version": "v2",
+      "status": "ok",
+      "input_tokens": 7022,
+      "output_tokens": 953,
+      "cost_usd": "0.001179",
+      "latency_ms": 4090,
+      "estimated": false
+    },
+    {
+      "purpose": "eval",
+      "prompt_version": "v3",
+      "status": "ok",
+      "input_tokens": 7444,
+      "output_tokens": 859,
+      "cost_usd": "0.001174",
+      "latency_ms": 3706,
+      "estimated": false
+    },
+    {
+      "purpose": "eval",
+      "prompt_version": "v2",
+      "status": "ok",
+      "input_tokens": 6695,
+      "output_tokens": 448,
+      "cost_usd": "0.000894",
+      "latency_ms": 2421,
+      "estimated": false
+    },
+    {
+      "purpose": "eval",
+      "prompt_version": "v3",
+      "status": "ok",
+      "input_tokens": 7117,
+      "output_tokens": 473,
+      "cost_usd": "0.000949",
+      "latency_ms": 2517,
+      "estimated": false
+    },
+    {
+      "purpose": "eval",
+      "prompt_version": "v2",
+      "status": "ok",
+      "input_tokens": 6821,
+      "output_tokens": 703,
+      "cost_usd": "0.001034",
+      "latency_ms": 3397,
+      "estimated": false
+    },
+    {
+      "purpose": "eval",
+      "prompt_version": "v3",
+      "status": "ok",
+      "input_tokens": 7243,
+      "output_tokens": 710,
+      "cost_usd": "0.001080",
+      "latency_ms": 3423,
+      "estimated": false
+    },
+    {
+      "purpose": "eval",
+      "prompt_version": "v2",
+      "status": "ok",
+      "input_tokens": 6722,
+      "output_tokens": 588,
+      "cost_usd": "0.000967",
+      "latency_ms": 2912,
+      "estimated": false
+    },
+    {
+      "purpose": "eval",
+      "prompt_version": "v3",
+      "status": "ok",
+      "input_tokens": 7144,
+      "output_tokens": 595,
+      "cost_usd": "0.001012",
+      "latency_ms": 3162,
+      "estimated": false
+    },
+    {
+      "purpose": "eval",
+      "prompt_version": "v2",
+      "status": "ok",
+      "input_tokens": 7612,
+      "output_tokens": 723,
+      "cost_usd": "0.001123",
+      "latency_ms": 3706,
+      "estimated": false
+    },
+    {
+      "purpose": "eval",
+      "prompt_version": "v3",
+      "status": "ok",
+      "input_tokens": 8034,
+      "output_tokens": 704,
+      "cost_usd": "0.001156",
+      "latency_ms": 3603,
+      "estimated": false
+    },
+    {
+      "purpose": "eval",
+      "prompt_version": "v2",
+      "status": "ok",
+      "input_tokens": 6342,
+      "output_tokens": 632,
+      "cost_usd": "0.000951",
+      "latency_ms": 3136,
+      "estimated": false
+    },
+    {
+      "purpose": "eval",
+      "prompt_version": "v3",
+      "status": "ok",
+      "input_tokens": 6764,
+      "output_tokens": 554,
+      "cost_usd": "0.000954",
+      "latency_ms": 2724,
+      "estimated": false
+    },
+    {
+      "purpose": "eval",
+      "prompt_version": "v2",
+      "status": "ok",
+      "input_tokens": 6687,
+      "output_tokens": 498,
+      "cost_usd": "0.000918",
+      "latency_ms": 2692,
+      "estimated": false
+    },
+    {
+      "purpose": "eval",
+      "prompt_version": "v3",
+      "status": "ok",
+      "input_tokens": 7109,
+      "output_tokens": 457,
+      "cost_usd": "0.000940",
+      "latency_ms": 2475,
+      "estimated": false
+    },
+    {
+      "purpose": "eval",
+      "prompt_version": "v2",
+      "status": "ok",
+      "input_tokens": 7974,
+      "output_tokens": 708,
+      "cost_usd": "0.001152",
+      "latency_ms": 3602,
+      "estimated": false
+    },
+    {
+      "purpose": "eval",
+      "prompt_version": "v3",
+      "status": "ok",
+      "input_tokens": 8396,
+      "output_tokens": 663,
+      "cost_usd": "0.001172",
+      "latency_ms": 3393,
+      "estimated": false
+    },
+    {
+      "purpose": "eval",
+      "prompt_version": "v2",
+      "status": "ok",
+      "input_tokens": 8223,
+      "output_tokens": 947,
+      "cost_usd": "0.001296",
+      "latency_ms": 4332,
+      "estimated": false
+    },
+    {
+      "purpose": "eval",
+      "prompt_version": "v3",
+      "status": "ok",
+      "input_tokens": 8645,
+      "output_tokens": 829,
+      "cost_usd": "0.001279",
+      "latency_ms": 3799,
+      "estimated": false
+    },
+    {
+      "purpose": "eval",
+      "prompt_version": "v2",
+      "status": "ok",
+      "input_tokens": 7692,
+      "output_tokens": 1004,
+      "cost_usd": "0.001272",
+      "latency_ms": 4492,
+      "estimated": false
+    },
+    {
+      "purpose": "eval",
+      "prompt_version": "v3",
+      "status": "ok",
+      "input_tokens": 8114,
+      "output_tokens": 1016,
+      "cost_usd": "0.001320",
+      "latency_ms": 4264,
+      "estimated": false
+    },
+    {
+      "purpose": "eval",
+      "prompt_version": "v2",
+      "status": "ok",
+      "input_tokens": 7022,
+      "output_tokens": 986,
+      "cost_usd": "0.001196",
+      "latency_ms": 4480,
+      "estimated": false
+    },
+    {
+      "purpose": "eval",
+      "prompt_version": "v3",
+      "status": "ok",
+      "input_tokens": 7444,
+      "output_tokens": 721,
+      "cost_usd": "0.001105",
+      "latency_ms": 3343,
+      "estimated": false
+    },
+    {
+      "purpose": "eval",
+      "prompt_version": "v2",
+      "status": "ok",
+      "input_tokens": 6695,
+      "output_tokens": 458,
+      "cost_usd": "0.000899",
+      "latency_ms": 2632,
+      "estimated": false
+    },
+    {
+      "purpose": "eval",
+      "prompt_version": "v3",
+      "status": "ok",
+      "input_tokens": 7117,
+      "output_tokens": 447,
+      "cost_usd": "0.000936",
+      "latency_ms": 2535,
+      "estimated": false
+    },
+    {
+      "purpose": "eval",
+      "prompt_version": "v2",
+      "status": "ok",
+      "input_tokens": 6821,
+      "output_tokens": 678,
+      "cost_usd": "0.001022",
+      "latency_ms": 3382,
+      "estimated": false
+    },
+    {
+      "purpose": "eval",
+      "prompt_version": "v3",
+      "status": "ok",
+      "input_tokens": 7243,
+      "output_tokens": 703,
+      "cost_usd": "0.001076",
+      "latency_ms": 3437,
+      "estimated": false
+    }
+  ],
+  "scores": {
+    "fields": {
+      "llm_v2": {
+        "criteria_location": {
+          "correct": 8,
+          "wrong": 2,
+          "missed": 0,
+          "overclaimed": 0,
+          "n": 10,
+          "system_unknown": 0,
+          "accuracy": 0.8,
+          "ci95": [
+            0.49015684672072335,
+            0.9433190520193067
+          ]
+        },
+        "supply_arrangement_required": {
+          "correct": 4,
+          "wrong": 0,
+          "missed": 5,
+          "overclaimed": 1,
+          "n": 10,
+          "system_unknown": 8,
+          "accuracy": 0.4,
+          "ci95": [
+            0.16817758120350967,
+            0.6873304525498135
+          ]
+        },
+        "supplier_origin_restriction": {
+          "correct": 9,
+          "wrong": 0,
+          "missed": 0,
+          "overclaimed": 1,
+          "n": 10,
+          "system_unknown": 7,
+          "accuracy": 0.9,
+          "ci95": [
+            0.5958436145024278,
+            0.9821242504842788
+          ]
+        },
+        "clearance.corporate": {
+          "correct": 10,
+          "wrong": 0,
+          "missed": 0,
+          "overclaimed": 0,
+          "n": 10,
+          "system_unknown": 9,
+          "accuracy": 1.0,
+          "ci95": [
+            0.7224598312333834,
+            1.0
+          ]
+        },
+        "clearance.personnel": {
+          "correct": 10,
+          "wrong": 0,
+          "missed": 0,
+          "overclaimed": 0,
+          "n": 10,
+          "system_unknown": 9,
+          "accuracy": 1.0,
+          "ci95": [
+            0.7224598312333834,
+            1.0
+          ]
+        },
+        "work_location.on_site": {
+          "correct": 9,
+          "wrong": 0,
+          "missed": 1,
+          "overclaimed": 0,
+          "n": 10,
+          "system_unknown": 5,
+          "accuracy": 0.9,
+          "ci95": [
+            0.5958436145024278,
+            0.9821242504842788
+          ]
+        },
+        "land_claims_applies": {
+          "correct": 10,
+          "wrong": 0,
+          "missed": 0,
+          "overclaimed": 0,
+          "n": 10,
+          "system_unknown": 9,
+          "accuracy": 1.0,
+          "ci95": [
+            0.7224598312333834,
+            1.0
+          ]
+        },
+        "documents_behind_login": {
+          "correct": 7,
+          "wrong": 0,
+          "missed": 3,
+          "overclaimed": 0,
+          "n": 10,
+          "system_unknown": 9,
+          "accuracy": 0.7,
+          "ci95": [
+            0.39677321997956516,
+            0.892210712513788
+          ]
+        }
+      },
+      "llm_v3": {
+        "criteria_location": {
+          "correct": 8,
+          "wrong": 2,
+          "missed": 0,
+          "overclaimed": 0,
+          "n": 10,
+          "system_unknown": 0,
+          "accuracy": 0.8,
+          "ci95": [
+            0.49015684672072335,
+            0.9433190520193067
+          ]
+        },
+        "supply_arrangement_required": {
+          "correct": 9,
+          "wrong": 0,
+          "missed": 1,
+          "overclaimed": 0,
+          "n": 10,
+          "system_unknown": 5,
+          "accuracy": 0.9,
+          "ci95": [
+            0.5958436145024278,
+            0.9821242504842788
+          ]
+        },
+        "supplier_origin_restriction": {
+          "correct": 10,
+          "wrong": 0,
+          "missed": 0,
+          "overclaimed": 0,
+          "n": 10,
+          "system_unknown": 8,
+          "accuracy": 1.0,
+          "ci95": [
+            0.7224598312333834,
+            1.0
+          ]
+        },
+        "clearance.corporate": {
+          "correct": 9,
+          "wrong": 0,
+          "missed": 1,
+          "overclaimed": 0,
+          "n": 10,
+          "system_unknown": 10,
+          "accuracy": 0.9,
+          "ci95": [
+            0.5958436145024278,
+            0.9821242504842788
+          ]
+        },
+        "clearance.personnel": {
+          "correct": 9,
+          "wrong": 0,
+          "missed": 1,
+          "overclaimed": 0,
+          "n": 10,
+          "system_unknown": 10,
+          "accuracy": 0.9,
+          "ci95": [
+            0.5958436145024278,
+            0.9821242504842788
+          ]
+        },
+        "work_location.on_site": {
+          "correct": 7,
+          "wrong": 1,
+          "missed": 2,
+          "overclaimed": 0,
+          "n": 10,
+          "system_unknown": 6,
+          "accuracy": 0.7,
+          "ci95": [
+            0.39677321997956516,
+            0.892210712513788
+          ]
+        },
+        "land_claims_applies": {
+          "correct": 10,
+          "wrong": 0,
+          "missed": 0,
+          "overclaimed": 0,
+          "n": 10,
+          "system_unknown": 9,
+          "accuracy": 1.0,
+          "ci95": [
+            0.7224598312333834,
+            1.0
+          ]
+        },
+        "documents_behind_login": {
+          "correct": 9,
+          "wrong": 0,
+          "missed": 1,
+          "overclaimed": 0,
+          "n": 10,
+          "system_unknown": 7,
+          "accuracy": 0.9,
+          "ci95": [
+            0.5958436145024278,
+            0.9821242504842788
+          ]
+        }
+      },
+      "baseline": {
+        "criteria_location": {
+          "correct": 8,
+          "wrong": 2,
+          "missed": 0,
+          "overclaimed": 0,
+          "n": 10,
+          "system_unknown": 0,
+          "accuracy": 0.8,
+          "ci95": [
+            0.49015684672072335,
+            0.9433190520193067
+          ]
+        },
+        "supply_arrangement_required": {
+          "correct": 9,
+          "wrong": 0,
+          "missed": 1,
+          "overclaimed": 0,
+          "n": 10,
+          "system_unknown": 5,
+          "accuracy": 0.9,
+          "ci95": [
+            0.5958436145024278,
+            0.9821242504842788
+          ]
+        },
+        "supplier_origin_restriction": {
+          "correct": 6,
+          "wrong": 0,
+          "missed": 0,
+          "overclaimed": 4,
+          "n": 10,
+          "system_unknown": 4,
+          "accuracy": 0.6,
+          "ci95": [
+            0.3126695474501864,
+            0.8318224187964902
+          ]
+        },
+        "clearance.corporate": {
+          "correct": 9,
+          "wrong": 0,
+          "missed": 1,
+          "overclaimed": 0,
+          "n": 10,
+          "system_unknown": 10,
+          "accuracy": 0.9,
+          "ci95": [
+            0.5958436145024278,
+            0.9821242504842788
+          ]
+        },
+        "clearance.personnel": {
+          "correct": 9,
+          "wrong": 0,
+          "missed": 1,
+          "overclaimed": 0,
+          "n": 10,
+          "system_unknown": 10,
+          "accuracy": 0.9,
+          "ci95": [
+            0.5958436145024278,
+            0.9821242504842788
+          ]
+        },
+        "work_location.on_site": {
+          "correct": 6,
+          "wrong": 1,
+          "missed": 3,
+          "overclaimed": 0,
+          "n": 10,
+          "system_unknown": 7,
+          "accuracy": 0.6,
+          "ci95": [
+            0.3126695474501864,
+            0.8318224187964902
+          ]
+        },
+        "land_claims_applies": {
+          "correct": 10,
+          "wrong": 0,
+          "missed": 0,
+          "overclaimed": 0,
+          "n": 10,
+          "system_unknown": 9,
+          "accuracy": 1.0,
+          "ci95": [
+            0.7224598312333834,
+            1.0
+          ]
+        },
+        "documents_behind_login": {
+          "correct": 6,
+          "wrong": 2,
+          "missed": 2,
+          "overclaimed": 0,
+          "n": 10,
+          "system_unknown": 8,
+          "accuracy": 0.6,
+          "ci95": [
+            0.3126695474501864,
+            0.8318224187964902
+          ]
+        }
+      }
+    },
+    "fields_excluding_unsure": {
+      "llm_v2": {
+        "criteria_location": {
+          "correct": 3,
+          "wrong": 2,
+          "missed": 0,
+          "overclaimed": 0,
+          "n": 5,
+          "system_unknown": 0,
+          "accuracy": 0.6,
+          "ci95": [
+            0.23071993220883708,
+            0.8823817688407467
+          ]
+        },
+        "supply_arrangement_required": {
+          "correct": 3,
+          "wrong": 0,
+          "missed": 1,
+          "overclaimed": 1,
+          "n": 5,
+          "system_unknown": 3,
+          "accuracy": 0.6,
+          "ci95": [
+            0.23071993220883708,
+            0.8823817688407467
+          ]
+        },
+        "supplier_origin_restriction": {
+          "correct": 5,
+          "wrong": 0,
+          "missed": 0,
+          "overclaimed": 0,
+          "n": 5,
+          "system_unknown": 5,
+          "accuracy": 1.0,
+          "ci95": [
+            0.5655085052479191,
+            1.0
+          ]
+        },
+        "clearance.corporate": {
+          "correct": 5,
+          "wrong": 0,
+          "missed": 0,
+          "overclaimed": 0,
+          "n": 5,
+          "system_unknown": 4,
+          "accuracy": 1.0,
+          "ci95": [
+            0.5655085052479191,
+            1.0
+          ]
+        },
+        "clearance.personnel": {
+          "correct": 5,
+          "wrong": 0,
+          "missed": 0,
+          "overclaimed": 0,
+          "n": 5,
+          "system_unknown": 4,
+          "accuracy": 1.0,
+          "ci95": [
+            0.5655085052479191,
+            1.0
+          ]
+        },
+        "work_location.on_site": {
+          "correct": 5,
+          "wrong": 0,
+          "missed": 0,
+          "overclaimed": 0,
+          "n": 5,
+          "system_unknown": 2,
+          "accuracy": 1.0,
+          "ci95": [
+            0.5655085052479191,
+            1.0
+          ]
+        },
+        "land_claims_applies": {
+          "correct": 5,
+          "wrong": 0,
+          "missed": 0,
+          "overclaimed": 0,
+          "n": 5,
+          "system_unknown": 5,
+          "accuracy": 1.0,
+          "ci95": [
+            0.5655085052479191,
+            1.0
+          ]
+        },
+        "documents_behind_login": {
+          "correct": 4,
+          "wrong": 0,
+          "missed": 1,
+          "overclaimed": 0,
+          "n": 5,
+          "system_unknown": 4,
+          "accuracy": 0.8,
+          "ci95": [
+            0.3755282641185388,
+            0.9637768390302125
+          ]
+        }
+      },
+      "llm_v3": {
+        "criteria_location": {
+          "correct": 3,
+          "wrong": 2,
+          "missed": 0,
+          "overclaimed": 0,
+          "n": 5,
+          "system_unknown": 0,
+          "accuracy": 0.6,
+          "ci95": [
+            0.23071993220883708,
+            0.8823817688407467
+          ]
+        },
+        "supply_arrangement_required": {
+          "correct": 4,
+          "wrong": 0,
+          "missed": 1,
+          "overclaimed": 0,
+          "n": 5,
+          "system_unknown": 4,
+          "accuracy": 0.8,
+          "ci95": [
+            0.3755282641185388,
+            0.9637768390302125
+          ]
+        },
+        "supplier_origin_restriction": {
+          "correct": 5,
+          "wrong": 0,
+          "missed": 0,
+          "overclaimed": 0,
+          "n": 5,
+          "system_unknown": 5,
+          "accuracy": 1.0,
+          "ci95": [
+            0.5655085052479191,
+            1.0
+          ]
+        },
+        "clearance.corporate": {
+          "correct": 4,
+          "wrong": 0,
+          "missed": 1,
+          "overclaimed": 0,
+          "n": 5,
+          "system_unknown": 5,
+          "accuracy": 0.8,
+          "ci95": [
+            0.3755282641185388,
+            0.9637768390302125
+          ]
+        },
+        "clearance.personnel": {
+          "correct": 4,
+          "wrong": 0,
+          "missed": 1,
+          "overclaimed": 0,
+          "n": 5,
+          "system_unknown": 5,
+          "accuracy": 0.8,
+          "ci95": [
+            0.3755282641185388,
+            0.9637768390302125
+          ]
+        },
+        "work_location.on_site": {
+          "correct": 3,
+          "wrong": 0,
+          "missed": 2,
+          "overclaimed": 0,
+          "n": 5,
+          "system_unknown": 4,
+          "accuracy": 0.6,
+          "ci95": [
+            0.23071993220883708,
+            0.8823817688407467
+          ]
+        },
+        "land_claims_applies": {
+          "correct": 5,
+          "wrong": 0,
+          "missed": 0,
+          "overclaimed": 0,
+          "n": 5,
+          "system_unknown": 5,
+          "accuracy": 1.0,
+          "ci95": [
+            0.5655085052479191,
+            1.0
+          ]
+        },
+        "documents_behind_login": {
+          "correct": 5,
+          "wrong": 0,
+          "missed": 0,
+          "overclaimed": 0,
+          "n": 5,
+          "system_unknown": 3,
+          "accuracy": 1.0,
+          "ci95": [
+            0.5655085052479191,
+            1.0
+          ]
+        }
+      },
+      "baseline": {
+        "criteria_location": {
+          "correct": 3,
+          "wrong": 2,
+          "missed": 0,
+          "overclaimed": 0,
+          "n": 5,
+          "system_unknown": 0,
+          "accuracy": 0.6,
+          "ci95": [
+            0.23071993220883708,
+            0.8823817688407467
+          ]
+        },
+        "supply_arrangement_required": {
+          "correct": 5,
+          "wrong": 0,
+          "missed": 0,
+          "overclaimed": 0,
+          "n": 5,
+          "system_unknown": 3,
+          "accuracy": 1.0,
+          "ci95": [
+            0.5655085052479191,
+            1.0
+          ]
+        },
+        "supplier_origin_restriction": {
+          "correct": 3,
+          "wrong": 0,
+          "missed": 0,
+          "overclaimed": 2,
+          "n": 5,
+          "system_unknown": 3,
+          "accuracy": 0.6,
+          "ci95": [
+            0.23071993220883708,
+            0.8823817688407467
+          ]
+        },
+        "clearance.corporate": {
+          "correct": 4,
+          "wrong": 0,
+          "missed": 1,
+          "overclaimed": 0,
+          "n": 5,
+          "system_unknown": 5,
+          "accuracy": 0.8,
+          "ci95": [
+            0.3755282641185388,
+            0.9637768390302125
+          ]
+        },
+        "clearance.personnel": {
+          "correct": 4,
+          "wrong": 0,
+          "missed": 1,
+          "overclaimed": 0,
+          "n": 5,
+          "system_unknown": 5,
+          "accuracy": 0.8,
+          "ci95": [
+            0.3755282641185388,
+            0.9637768390302125
+          ]
+        },
+        "work_location.on_site": {
+          "correct": 3,
+          "wrong": 0,
+          "missed": 2,
+          "overclaimed": 0,
+          "n": 5,
+          "system_unknown": 4,
+          "accuracy": 0.6,
+          "ci95": [
+            0.23071993220883708,
+            0.8823817688407467
+          ]
+        },
+        "land_claims_applies": {
+          "correct": 5,
+          "wrong": 0,
+          "missed": 0,
+          "overclaimed": 0,
+          "n": 5,
+          "system_unknown": 5,
+          "accuracy": 1.0,
+          "ci95": [
+            0.5655085052479191,
+            1.0
+          ]
+        },
+        "documents_behind_login": {
+          "correct": 3,
+          "wrong": 0,
+          "missed": 2,
+          "overclaimed": 0,
+          "n": 5,
+          "system_unknown": 5,
+          "accuracy": 0.6,
+          "ci95": [
+            0.23071993220883708,
+            0.8823817688407467
+          ]
+        }
+      }
+    },
+    "status": {
+      "llm_v2": {
+        "table": {
+          "blocked": {
+            "blocked": 1,
+            "check_solicitation": 3,
+            "no_blockers_stated": 0
+          },
+          "check_solicitation": {
+            "blocked": 0,
+            "check_solicitation": 4,
+            "no_blockers_stated": 0
+          },
+          "no_blockers_stated": {
+            "blocked": 0,
+            "check_solicitation": 1,
+            "no_blockers_stated": 1
+          }
+        },
+        "agree": 6,
+        "n": 10,
+        "ci95": [
+          0.3126695474501864,
+          0.8318224187964902
+        ],
+        "false_blocks": [],
+        "missed_blocks": [
+          "dev-02",
+          "dev-09",
+          "dev-10"
+        ]
+      },
+      "llm_v3": {
+        "table": {
+          "blocked": {
+            "blocked": 2,
+            "check_solicitation": 2,
+            "no_blockers_stated": 0
+          },
+          "check_solicitation": {
+            "blocked": 0,
+            "check_solicitation": 4,
+            "no_blockers_stated": 0
+          },
+          "no_blockers_stated": {
+            "blocked": 0,
+            "check_solicitation": 1,
+            "no_blockers_stated": 1
+          }
+        },
+        "agree": 7,
+        "n": 10,
+        "ci95": [
+          0.39677321997956516,
+          0.892210712513788
+        ],
+        "false_blocks": [],
+        "missed_blocks": [
+          "dev-02",
+          "dev-10"
+        ]
+      },
+      "baseline": {
+        "table": {
+          "blocked": {
+            "blocked": 2,
+            "check_solicitation": 2,
+            "no_blockers_stated": 0
+          },
+          "check_solicitation": {
+            "blocked": 0,
+            "check_solicitation": 4,
+            "no_blockers_stated": 0
+          },
+          "no_blockers_stated": {
+            "blocked": 0,
+            "check_solicitation": 2,
+            "no_blockers_stated": 0
+          }
+        },
+        "agree": 6,
+        "n": 10,
+        "ci95": [
+          0.3126695474501864,
+          0.8318224187964902
+        ],
+        "false_blocks": [],
+        "missed_blocks": [
+          "dev-09",
+          "dev-10"
+        ]
+      }
+    },
+    "status_excluding_unsure": {
+      "llm_v2": {
+        "table": {
+          "blocked": {
+            "blocked": 1,
+            "check_solicitation": 1,
+            "no_blockers_stated": 0
+          },
+          "check_solicitation": {
+            "blocked": 0,
+            "check_solicitation": 1,
+            "no_blockers_stated": 0
+          },
+          "no_blockers_stated": {
+            "blocked": 0,
+            "check_solicitation": 1,
+            "no_blockers_stated": 1
+          }
+        },
+        "agree": 3,
+        "n": 5,
+        "ci95": [
+          0.23071993220883708,
+          0.8823817688407467
+        ],
+        "false_blocks": [],
+        "missed_blocks": [
+          "dev-02"
+        ]
+      },
+      "llm_v3": {
+        "table": {
+          "blocked": {
+            "blocked": 1,
+            "check_solicitation": 1,
+            "no_blockers_stated": 0
+          },
+          "check_solicitation": {
+            "blocked": 0,
+            "check_solicitation": 1,
+            "no_blockers_stated": 0
+          },
+          "no_blockers_stated": {
+            "blocked": 0,
+            "check_solicitation": 1,
+            "no_blockers_stated": 1
+          }
+        },
+        "agree": 3,
+        "n": 5,
+        "ci95": [
+          0.23071993220883708,
+          0.8823817688407467
+        ],
+        "false_blocks": [],
+        "missed_blocks": [
+          "dev-02"
+        ]
+      },
+      "baseline": {
+        "table": {
+          "blocked": {
+            "blocked": 2,
+            "check_solicitation": 0,
+            "no_blockers_stated": 0
+          },
+          "check_solicitation": {
+            "blocked": 0,
+            "check_solicitation": 1,
+            "no_blockers_stated": 0
+          },
+          "no_blockers_stated": {
+            "blocked": 0,
+            "check_solicitation": 2,
+            "no_blockers_stated": 0
+          }
+        },
+        "agree": 3,
+        "n": 5,
+        "ci95": [
+          0.23071993220883708,
+          0.8823817688407467
+        ],
+        "false_blocks": [],
+        "missed_blocks": []
+      }
+    },
+    "consistency": {
+      "llm_v2": {
+        "cases": 10,
+        "runs_per_case": {
+          "dev-01": 4,
+          "dev-02": 4,
+          "dev-03": 4,
+          "dev-04": 4,
+          "dev-05": 4,
+          "dev-06": 4,
+          "dev-07": 4,
+          "dev-08": 4,
+          "dev-09": 4,
+          "dev-10": 4
+        },
+        "fields": {
+          "criteria_location": {
+            "stable": 9,
+            "n": 10,
+            "flips": [
+              {
+                "case": "dev-05",
+                "label": "partly_stated",
+                "values": [
+                  "stated_in_notice",
+                  "partly_stated",
+                  "see_solicitation",
+                  "stated_in_notice"
+                ]
+              }
+            ]
+          },
+          "supply_arrangement_required": {
+            "stable": 7,
+            "n": 10,
+            "flips": [
+              {
+                "case": "dev-02",
+                "label": "yes",
+                "values": [
+                  "unknown",
+                  "unknown",
+                  "yes",
+                  "unknown"
+                ]
+              },
+              {
+                "case": "dev-05",
+                "label": "unknown",
+                "values": [
+                  "unknown",
+                  "unknown",
+                  "unknown",
+                  "no"
+                ]
+              },
+              {
+                "case": "dev-08",
+                "label": "unknown",
+                "values": [
+                  "no",
+                  "unknown",
+                  "no",
+                  "no"
+                ]
+              }
+            ]
+          },
+          "supplier_origin_restriction": {
+            "stable": 9,
+            "n": 10,
+            "flips": [
+              {
+                "case": "dev-09",
+                "label": "unknown",
+                "values": [
+                  "canadian_and_trading_partners",
+                  "unknown",
+                  "unknown",
+                  "unknown"
+                ]
+              }
+            ]
+          },
+          "clearance.corporate": {
+            "stable": 10,
+            "n": 10,
+            "flips": []
+          },
+          "clearance.personnel": {
+            "stable": 10,
+            "n": 10,
+            "flips": []
+          },
+          "work_location.on_site": {
+            "stable": 7,
+            "n": 10,
+            "flips": [
+              {
+                "case": "dev-01",
+                "label": "no",
+                "values": [
+                  "no",
+                  "unknown",
+                  "no",
+                  "no"
+                ]
+              },
+              {
+                "case": "dev-02",
+                "label": "no",
+                "values": [
+                  "no",
+                  "unknown",
+                  "unknown",
+                  "unknown"
+                ]
+              },
+              {
+                "case": "dev-10",
+                "label": "yes",
+                "values": [
+                  "unknown",
+                  "no",
+                  "no",
+                  "unknown"
+                ]
+              }
+            ]
+          },
+          "land_claims_applies": {
+            "stable": 9,
+            "n": 10,
+            "flips": [
+              {
+                "case": "dev-06",
+                "label": "unknown",
+                "values": [
+                  "unknown",
+                  "no",
+                  "unknown",
+                  "unknown"
+                ]
+              }
+            ]
+          },
+          "documents_behind_login": {
+            "stable": 8,
+            "n": 10,
+            "flips": [
+              {
+                "case": "dev-02",
+                "label": "no",
+                "values": [
+                  "unknown",
+                  "no",
+                  "unknown",
+                  "unknown"
+                ]
+              },
+              {
+                "case": "dev-07",
+                "label": "no",
+                "values": [
+                  "unknown",
+                  "no",
+                  "unknown",
+                  "no"
+                ]
+              }
+            ]
+          },
+          "status": {
+            "stable": 8,
+            "n": 10,
+            "flips": [
+              {
+                "case": "dev-02",
+                "label": "blocked",
+                "values": [
+                  "check_solicitation",
+                  "check_solicitation",
+                  "blocked",
+                  "check_solicitation"
+                ]
+              },
+              {
+                "case": "dev-05",
+                "label": "no_blockers_stated",
+                "values": [
+                  "no_blockers_stated",
+                  "no_blockers_stated",
+                  "check_solicitation",
+                  "no_blockers_stated"
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "llm_v3": {
+        "cases": 10,
+        "runs_per_case": {
+          "dev-01": 4,
+          "dev-02": 4,
+          "dev-03": 4,
+          "dev-04": 4,
+          "dev-05": 4,
+          "dev-06": 4,
+          "dev-07": 4,
+          "dev-08": 4,
+          "dev-09": 4,
+          "dev-10": 4
+        },
+        "fields": {
+          "criteria_location": {
+            "stable": 9,
+            "n": 10,
+            "flips": [
+              {
+                "case": "dev-05",
+                "label": "partly_stated",
+                "values": [
+                  "stated_in_notice",
+                  "see_solicitation",
+                  "stated_in_notice",
+                  "stated_in_notice"
+                ]
+              }
+            ]
+          },
+          "supply_arrangement_required": {
+            "stable": 8,
+            "n": 10,
+            "flips": [
+              {
+                "case": "dev-02",
+                "label": "yes",
+                "values": [
+                  "unknown",
+                  "yes",
+                  "unknown",
+                  "yes"
+                ]
+              },
+              {
+                "case": "dev-05",
+                "label": "unknown",
+                "values": [
+                  "unknown",
+                  "unknown",
+                  "unknown",
+                  "no"
+                ]
+              }
+            ]
+          },
+          "supplier_origin_restriction": {
+            "stable": 10,
+            "n": 10,
+            "flips": []
+          },
+          "clearance.corporate": {
+            "stable": 9,
+            "n": 10,
+            "flips": [
+              {
+                "case": "dev-02",
+                "label": "none",
+                "values": [
+                  "unknown",
+                  "none",
+                  "none",
+                  "none"
+                ]
+              }
+            ]
+          },
+          "clearance.personnel": {
+            "stable": 9,
+            "n": 10,
+            "flips": [
+              {
+                "case": "dev-02",
+                "label": "none",
+                "values": [
+                  "unknown",
+                  "none",
+                  "none",
+                  "none"
+                ]
+              }
+            ]
+          },
+          "work_location.on_site": {
+            "stable": 8,
+            "n": 10,
+            "flips": [
+              {
+                "case": "dev-03",
+                "label": "yes",
+                "values": [
+                  "unknown",
+                  "yes",
+                  "yes",
+                  "yes"
+                ]
+              },
+              {
+                "case": "dev-10",
+                "label": "yes",
+                "values": [
+                  "no",
+                  "unknown",
+                  "no",
+                  "no"
+                ]
+              }
+            ]
+          },
+          "land_claims_applies": {
+            "stable": 10,
+            "n": 10,
+            "flips": []
+          },
+          "documents_behind_login": {
+            "stable": 10,
+            "n": 10,
+            "flips": []
+          },
+          "status": {
+            "stable": 8,
+            "n": 10,
+            "flips": [
+              {
+                "case": "dev-02",
+                "label": "blocked",
+                "values": [
+                  "check_solicitation",
+                  "blocked",
+                  "check_solicitation",
+                  "blocked"
+                ]
+              },
+              {
+                "case": "dev-05",
+                "label": "no_blockers_stated",
+                "values": [
+                  "no_blockers_stated",
+                  "check_solicitation",
+                  "no_blockers_stated",
+                  "no_blockers_stated"
+                ]
+              }
+            ]
+          }
+        }
+      }
+    },
+    "changes": {
+      "llm_v3": {
+        "before": "llm_v2",
+        "after": "llm_v3",
+        "rows": [
+          {
+            "case": "dev-01",
+            "field": "supply_arrangement_required",
+            "label": "no",
+            "unsure": true,
+            "before": {
+              "value": "unknown",
+              "kind": "missed"
+            },
+            "after": {
+              "value": "no",
+              "kind": "correct"
+            },
+            "change": "fixed"
+          },
+          {
+            "case": "dev-02",
+            "field": "clearance.corporate",
+            "label": "none",
+            "unsure": false,
+            "before": {
+              "value": "none",
+              "kind": "correct"
+            },
+            "after": {
+              "value": "unknown",
+              "kind": "missed"
+            },
+            "change": "broken"
+          },
+          {
+            "case": "dev-02",
+            "field": "clearance.personnel",
+            "label": "none",
+            "unsure": false,
+            "before": {
+              "value": "none",
+              "kind": "correct"
+            },
+            "after": {
+              "value": "unknown",
+              "kind": "missed"
+            },
+            "change": "broken"
+          },
+          {
+            "case": "dev-02",
+            "field": "work_location.on_site",
+            "label": "no",
+            "unsure": false,
+            "before": {
+              "value": "no",
+              "kind": "correct"
+            },
+            "after": {
+              "value": "unknown",
+              "kind": "missed"
+            },
+            "change": "broken"
+          },
+          {
+            "case": "dev-02",
+            "field": "documents_behind_login",
+            "label": "no",
+            "unsure": false,
+            "before": {
+              "value": "unknown",
+              "kind": "missed"
+            },
+            "after": {
+              "value": "no",
+              "kind": "correct"
+            },
+            "change": "fixed"
+          },
+          {
+            "case": "dev-03",
+            "field": "work_location.on_site",
+            "label": "yes",
+            "unsure": false,
+            "before": {
+              "value": "yes",
+              "kind": "correct"
+            },
+            "after": {
+              "value": "unknown",
+              "kind": "missed"
+            },
+            "change": "broken"
+          },
+          {
+            "case": "dev-04",
+            "field": "supply_arrangement_required",
+            "label": "no",
+            "unsure": true,
+            "before": {
+              "value": "unknown",
+              "kind": "missed"
+            },
+            "after": {
+              "value": "no",
+              "kind": "correct"
+            },
+            "change": "fixed"
+          },
+          {
+            "case": "dev-07",
+            "field": "documents_behind_login",
+            "label": "no",
+            "unsure": true,
+            "before": {
+              "value": "unknown",
+              "kind": "missed"
+            },
+            "after": {
+              "value": "no",
+              "kind": "correct"
+            },
+            "change": "fixed"
+          },
+          {
+            "case": "dev-08",
+            "field": "supply_arrangement_required",
+            "label": "unknown",
+            "unsure": false,
+            "before": {
+              "value": "no",
+              "kind": "overclaimed"
+            },
+            "after": {
+              "value": "unknown",
+              "kind": "correct"
+            },
+            "change": "fixed"
+          },
+          {
+            "case": "dev-09",
+            "field": "supply_arrangement_required",
+            "label": "yes",
+            "unsure": true,
+            "before": {
+              "value": "unknown",
+              "kind": "missed"
+            },
+            "after": {
+              "value": "yes",
+              "kind": "correct"
+            },
+            "change": "fixed"
+          },
+          {
+            "case": "dev-09",
+            "field": "supplier_origin_restriction",
+            "label": "unknown",
+            "unsure": true,
+            "before": {
+              "value": "canadian_and_trading_partners",
+              "kind": "overclaimed"
+            },
+            "after": {
+              "value": "unknown",
+              "kind": "correct"
+            },
+            "change": "fixed"
+          },
+          {
+            "case": "dev-09",
+            "field": "status",
+            "label": "blocked",
+            "unsure": true,
+            "before": {
+              "value": "check_solicitation",
+              "kind": "wrong"
+            },
+            "after": {
+              "value": "blocked",
+              "kind": "correct"
+            },
+            "change": "fixed"
+          },
+          {
+            "case": "dev-10",
+            "field": "supply_arrangement_required",
+            "label": "no",
+            "unsure": true,
+            "before": {
+              "value": "unknown",
+              "kind": "missed"
+            },
+            "after": {
+              "value": "no",
+              "kind": "correct"
+            },
+            "change": "fixed"
+          },
+          {
+            "case": "dev-10",
+            "field": "work_location.on_site",
+            "label": "yes",
+            "unsure": true,
+            "before": {
+              "value": "unknown",
+              "kind": "missed"
+            },
+            "after": {
+              "value": "no",
+              "kind": "wrong"
+            },
+            "change": "other"
+          }
+        ],
+        "fields": {
+          "fixed": 8,
+          "broken": 4,
+          "other": 1
+        }
+      }
+    },
+    "grounding": {
+      "llm_v2": {
+        "ungrounded_gates": 6,
+        "ungrounded_details": 2,
+        "failed_extractions": 0
+      },
+      "llm_v3": {
+        "ungrounded_gates": 4,
+        "ungrounded_details": 1,
+        "failed_extractions": 0
+      },
+      "baseline": {
+        "ungrounded_gates": 0,
+        "ungrounded_details": 0,
+        "failed_extractions": 0
+      }
+    },
+    "calls": {
+      "eval v2": {
+        "calls": 30,
+        "ok": 30,
+        "estimated": 0,
+        "input_tokens": 215370,
+        "output_tokens": 21400,
+        "cost_usd": "0.032254",
+        "latency_ms": {
+          "median": 3449,
+          "mean": 3453,
+          "max": 4492
+        }
+      },
+      "eval v3": {
+        "calls": 40,
+        "ok": 40,
+        "estimated": 0,
+        "input_tokens": 304040,
+        "output_tokens": 27093,
+        "cost_usd": "0.043968",
+        "latency_ms": {
+          "median": 3349,
+          "mean": 3286,
+          "max": 4264
+        }
+      }
+    },
+    "n": 10,
+    "n_unsure": 5,
+    "unsure_cases": [
+      "dev-01",
+      "dev-04",
+      "dev-07",
+      "dev-09",
+      "dev-10"
+    ]
+  }
+}

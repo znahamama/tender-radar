@@ -137,3 +137,30 @@ def test_v2_prompt_has_gate_definitions_and_fake_examples():
                    "goods-only notice", "never take it from the regions_of_delivery",
                    "Their notices are invented"):
         assert phrase in SYSTEM_PROMPT, phrase
+
+
+def test_v3_prompt_keeps_v2_and_adds_the_dev_traced_changes():
+    from tenders.extraction.prompt import PROMPTS
+    v2, v3 = PROMPTS["v2"], PROMPTS["v3"]
+    # Every v2 line (one per rule, gate or example line) is in v3 unchanged, except the six
+    # that v3 rewrites (docs/eval-protocol.md, "Prompt v3 changes").
+    rewritten = ("- An eligibility value other", "- Write a supply arrangement name",
+                 '- supply_arrangement_required: "yes"', "- supplier_origin_restriction:",
+                 "- land_claims_applies:", "- documents_behind_login:")
+    assert sum(line.startswith(rewritten) for line in v2.splitlines()) == 6
+    for line in v2.splitlines():
+        if not line.startswith(rewritten):
+            assert line in v3, line
+    for phrase in ('including "no" and "none", needs evidence', "character for character",
+                   '"#"', "Never join text from different places",
+                   "never copy text from these instructions",
+                   "a request to become a holder",
+                   "only pre-qualified suppliers or supply arrangement holders may bid",
+                   'Any other notice_type (such as "Request for Proposal")',
+                   "on its own it does not say who may bid",
+                   ('"excludes locations in areas subject to Comprehensive Land Claims '
+                    'Agreements" means "no"'),
+                   "sent directly to the invited suppliers"):
+        assert phrase in v3, phrase
+    # Removed from v3: it traced to a test case, not to dev or the label guide.
+    assert "Invitation to Qualify" not in v3

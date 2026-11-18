@@ -4,12 +4,13 @@ A "case" here is a plain dict built by tenders.evals.harness:
 
     {"case": "dev-01", "reference": ..., "unsure": bool, "notes": str,
      "label": {"fields": {...}, "evidence": {...}, "status": ...},
-     "systems": {"llm": {"fields": {...}, "evidence": {...}, "status": ..., ...},
-                 "baseline": {...}},
-     "repeats": [{"fields": {...}, "status": ..., ...}, ...]}
+     "systems": {"llm_v2": {"fields": {...}, "evidence": {...}, "status": ..., ...},
+                 "llm_v3": {...}, "baseline": {...}},
+     "repeats": {"llm_v2": [{"fields": {...}, "status": ..., ...}, ...], "llm_v3": [...]}}
 
 ``fields`` maps each scored field to its value; a system value of "unknown" (or None, for a
-failed extraction) means the system stated nothing.
+failed extraction) means the system stated nothing. Which systems a run has is listed in the
+run's "systems" (LLM systems are named ``llm_<prompt version>``); functions take that list.
 """
 
 from __future__ import annotations
@@ -28,7 +29,7 @@ from .labels import _value
 
 UNKNOWN = "unknown"
 FAILED = "(failed)"  # a repeat whose extraction failed, in the consistency tables
-SYSTEMS = ("llm", "baseline")
+BASELINE = "baseline"
 STATUSES = ("blocked", "check_solicitation", "no_blockers_stated")
 ERROR_TYPES = ("correct", "wrong", "missed", "overclaimed")
 
@@ -141,9 +142,9 @@ def tally(cases: list[dict], system: str, field: str) -> dict:
             "ci95": list(ci) if ci else None}
 
 
-def field_scores(cases: list[dict]) -> dict:
+def field_scores(cases: list[dict], systems: list[str]) -> dict:
     """{system: {field: tally}} for every system and scored field."""
-    return {s: {f: tally(cases, s, f) for f in FIELDS} for s in SYSTEMS}
+    return {s: {f: tally(cases, s, f) for f in FIELDS} for s in systems}
 
 
 def expected_status(label: Label, facts: TenderFacts, profile: Profile) -> str:
@@ -168,21 +169,22 @@ def confusion(cases: list[dict], system: str) -> dict:
             "false_blocks": false_blocks, "missed_blocks": missed_blocks}
 
 
-def consistency(cases: list[dict]) -> dict:
-    """Run-to-run agreement of the LLM: the cached extraction plus every repeat.
+def consistency(cases: list[dict], system: str) -> dict:
+    """Run-to-run agreement of one LLM system: its primary run plus every repeat.
 
     Per field (and for the status): how many cases gave the same answer in every run, and
     the cases that flip, with the answer of each run. A failed run counts as its own answer.
     Cases with no repeats are left out.
     """
-    with_runs = [c for c in cases if c.get("repeats")]
+    reps = {c["case"]: c.get("repeats", {}).get(system, []) for c in cases}
+    with_runs = [c for c in cases if reps[c["case"]]]
     out: dict = {"cases": len(with_runs),
-                 "runs_per_case": {c["case"]: 1 + len(c["repeats"]) for c in with_runs},
+                 "runs_per_case": {c["case"]: 1 + len(reps[c["case"]]) for c in with_runs},
                  "fields": {}}
     for name in (*FIELDS, "status"):
         stable, flips = 0, []
         for c in with_runs:
-            runs = [c["systems"]["llm"], *c["repeats"]]
+            runs = [c["systems"][system], *reps[c["case"]]]
             values = [_run_value(r, name) for r in runs]
             if len(set(values)) == 1:
                 stable += 1
@@ -206,19 +208,50 @@ def _label_value(case: dict, name: str) -> str:
     return case["label"]["status"] if name == "status" else case["label"]["fields"][name]
 
 
-def disagreements(case: dict) -> list[dict]:
-    """Fields where either system differs from the label, with all three evidence quotes."""
+def disagreements(case: dict, systems: list[str]) -> list[dict]:
+    """Fields where any system differs from the label, with every evidence quote."""
     rows = []
     for name in FIELDS:
         label = case["label"]["fields"][name]
-        got = {s: case["systems"][s]["fields"][name] for s in SYSTEMS}
-        kinds = {s: classify(label, got[s]) for s in SYSTEMS}
+        got = {s: case["systems"][s]["fields"][name] for s in systems}
+        kinds = {s: classify(label, got[s]) for s in systems}
         if all(k == "correct" for k in kinds.values()):
             continue
         rows.append({
             "field": name,
             "label": {"value": label, "evidence": case["label"]["evidence"][name]},
             **{s: {"value": UNKNOWN if got[s] is None else got[s], "kind": kinds[s],
-                   "evidence": case["systems"][s]["evidence"][name]} for s in SYSTEMS},
+                   "evidence": case["systems"][s]["evidence"][name]} for s in systems},
         })
     return rows
+
+
+def changes(cases: list[dict], before: str, after: str) -> dict:
+    """Primary-run answers that differ between two systems (e.g. prompt v2 -> v3), per field.
+
+    ``fixed``: not correct before, correct after. ``broken``: the reverse. ``other``: a
+    different answer that is still not correct. ``fields`` counts the gates and
+    criteria_location only; status rows are listed but not counted."""
+    rows = []
+    for c in cases:
+        label = c["label"]["fields"]
+        for name in (*FIELDS, "status"):
+            if name == "status":
+                lab = c["label"]["status"]
+                a, b = c["systems"][before]["status"], c["systems"][after]["status"]
+                ka, kb = ("correct" if a == lab else "wrong"), ("correct" if b == lab else "wrong")
+            else:
+                lab = label[name]
+                a, b = (c["systems"][s]["fields"][name] for s in (before, after))
+                a, b = (UNKNOWN if v is None else v for v in (a, b))
+                ka, kb = classify(lab, a), classify(lab, b)
+            if a == b:
+                continue
+            change = ("fixed" if kb == "correct" else
+                      "broken" if ka == "correct" else "other")
+            rows.append({"case": c["case"], "field": name, "label": lab, "unsure": c["unsure"],
+                         "before": {"value": a, "kind": ka}, "after": {"value": b, "kind": kb},
+                         "change": change})
+    counts = Counter(r["change"] for r in rows if r["field"] != "status")
+    return {"before": before, "after": after, "rows": rows,
+            "fields": {k: counts.get(k, 0) for k in ("fixed", "broken", "other")}}

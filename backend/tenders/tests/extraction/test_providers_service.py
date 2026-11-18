@@ -452,3 +452,21 @@ def test_command_stops_cleanly_on_bad_request(make_tender, monkeypatch):
     text = out.getvalue()
     assert "stopped: BadRequestError (400) on the first call of the run" in text
     assert len(client.calls) == 1 and "calls 1" in text
+
+
+def test_prompt_version_selects_a_pinned_prompt_and_is_recorded(make_tender, meter):
+    from tenders.extraction.prompt import PROMPTS
+    t = make_tender()
+    client = StubClient(response(valid_data()))
+    v3 = AnthropicExtractor(client, retry_wait_s=0, prompt_version="v3")
+    assert v3.prompt_version == "v3" and v3.system_prompt == PROMPTS["v3"]
+    assert v3.extract(build_notice(t), meter, tender=t).status == "ok"
+    assert client.calls[0]["system"] == PROMPTS["v3"]
+    assert LlmCall.objects.get().prompt_version == "v3"
+    # The default is the site's prompt, with the same fingerprint (cache key) as before v3.
+    v2 = AnthropicExtractor(client, retry_wait_s=0)
+    assert v2.prompt_version == PROMPT_VERSION == "v2" and v2.system_prompt == SYSTEM_PROMPT
+    assert v2.fingerprint == AnthropicExtractor(client, system_prompt=SYSTEM_PROMPT).fingerprint
+    assert v3.fingerprint != v2.fingerprint
+    with pytest.raises(ImproperlyConfigured, match="Unknown prompt version"):
+        AnthropicExtractor(client, prompt_version="v9")

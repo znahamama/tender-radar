@@ -14,6 +14,18 @@ Also frozen on 2026-11-16, before any labelling:
 |---|---|---|
 | Eligibility rules | `RULES_VERSION` `3` | source of `eligibility/rules.py` + `eligibility/places.py` `69f130cd…1f02b63` |
 
+Pinned 2026-11-18, **after** labelling, from the dev split only (see "Prompt v3 changes"),
+before any test scoring:
+
+| Extractor | Version | Pinned hash (sha256) |
+|---|---|---|
+| LLM (same model and settings as v2) | prompt `v3` | system prompt `12c49a09…bf129039` |
+
+v3 was first pinned as `accc6f93…2fbac32d` and re-pinned the same day, before any test
+scoring, after the "Invitation to Qualify" wording was removed (change 6 below). v2 stays
+pinned and selectable; the site keeps using v2 (`PROMPT_VERSION`) until v3 has been
+scored on the test split. The final test run scores v2, v3 and the baseline together.
+
 `tenders/tests/extraction/test_frozen.py` pins the full hashes, so any change fails CI.
 `places.py` is part of the baseline fingerprint and of the rules hash: changing the gazetteer
 changes both.
@@ -68,9 +80,84 @@ name, and never let it overwrite a frozen version's result.
 
 ## Harness
 
-`python backend/manage.py run_eval --split dev [--repeats N]` writes
-`eval/reports/<split>-<date>.md` and `.json` (same data). It uses the cached LLM extraction for
-the frozen config (extracting it through the normal path and caps if missing) and the keyword
-baseline, both compared after post-validation. `--repeats N` adds N uncached LLM runs per case,
-stored as `EvalExtraction` rows under the run's tag (LlmCall purpose `eval`), never as an
-`Extraction`, so the site never shows them. Scoring: `tenders/evals/scoring.py`.
+`python backend/manage.py run_eval --split dev [--repeats N] [--prompts v2,v3]
+[--report-tag TAG]` writes `eval/reports/<split>[-<tag>]-<date>.md` and `.json` (same data).
+Each pinned prompt (default: all, `v2,v3`) is scored as its own system (`llm_v2`, `llm_v3`)
+with the same model settings, next to the keyword baseline, all compared after
+post-validation.
+
+- The site's prompt (v2) uses the cached site extraction (made through the normal path and
+  caps if missing), as before.
+- Any other prompt (v3) gets an eval-only primary run: an `EvalExtraction` with repeat 0,
+  never an `Extraction` (the site shows the newest extraction per model, so a v3
+  `Extraction` would replace v2 on the site). A later run reuses the first ok repeat-0 row
+  for the same config and notice text instead of re-rolling it.
+- `--repeats N` adds N uncached runs per case and prompt, stored as `EvalExtraction` rows
+  tagged `<run tag>-<prompt>` (LlmCall purpose `eval`).
+
+The report compares all systems: per-field table, error types, status confusion table,
+the primary-run answers that changed between v2 and v3, consistency and grounding.
+Scoring: `tenders/evals/scoring.py`.
+
+## Prompt v3 changes
+
+Made 2026-11-18 from the **dev split only**: the 10 dev labels, the dev report
+`eval/reports/dev-2026-11-17.md`, and the raw v2 outputs for the dev cases (cached extraction
+plus the 3 repeats of run `eval-dev-20261117T200253Z`, before and after grounding). No test
+label, test extraction or test run was opened.
+
+A change was allowed only if it traces to (a) a cause found in that dev diagnosis or (b) one of
+the two clarifications in the label guide's "Fields" section, which were written before test
+labelling. The "Rulings applied during labelling" table was **not** used: some rulings came
+from test notices. Model, effort, max_tokens, schema, the grounding check (`validate.py`) and
+the two invented worked examples are unchanged from v2.
+
+Causes: **(a)** the v2 definition was misread or left the case open; **(b)** a valid answer
+was dropped by grounding because the quote was missing, inexact, joined or not from the notice.
+
+| # | v3 change | Cause | Provenance |
+|---|---|---|---|
+| 1 | Every value other than `unknown`, **including `no` and `none`**, needs evidence. | (b) | dev-04 SA: correct `no` with no evidence in 4/4 runs, reset to unknown. dev-07 docs: same, 3/4 runs. dev-01 SA (2 repeats), dev-10 SA (1 repeat). |
+| 2 | Copy quotes and the SA name, place and portal **character for character**, including symbols such as `#`, `(SA)`, `/`. | (b) | dev-03: SA name written "PWGSC Supply Arrangement E60PQ-140003/D", dropping "(SA) #" (cached, rep 3). dev-10: "Supply and delivery" is not in the notice (cached). |
+| 3 | Prefer a **whole metadata value or a short exact phrase**; never **join** text from different places. | (b) | dev-07: place joined from the title and an address line (cached). dev-06: a mandatory requirement joined across a bullet break (rep 1). dev-08, dev-02: partial trade_agreements lists with the field name (cached, rep 2, rep 3). |
+| 4 | Quote only the notice, **never the instructions or examples**. | (b) | dev-02: SA `yes` quoted "RFP against Supply Arrangement", which is the prompt's own example; the notice_type is "Request for Proposal". Reset to unknown, so a missed block (cached, rep 3). |
+| 5 | SA `yes` also when the text says **only pre-qualified suppliers or SA holders may bid**. | (a) | dev-02 (label evidence "Only suppliers who are pre-qualified and have been issued a supply arrangement are eligible to bid"). |
+| 6 | SA `no` for a request to **become** a holder (Request for Supply Arrangement, Request for Standing Offer), with the whole notice_type value as evidence and `name` null. | guide clarification; (a), (b) | Label guide "Fields" clarification. dev-01, dev-04, dev-10: label `no`; v2 said unknown or `no` without evidence. **Removed:** the first v3 draft also listed "an Invitation to Qualify that invites suppliers to become pre-qualified". That wording traced to a test case (test-05), not to dev or the guide (whose examples are Request for Supply Arrangement and Request for Standing Offer only), so it was taken out and v3 re-pinned before any test scoring. No dev notice is an ITQ. |
+| 7 | Any other notice_type (such as "Request for Proposal") says nothing about SA on its own: `unknown` unless the text says who may bid. | (a) | dev-08: `no` quoting "Request for Proposal" (cached, rep 2, rep 3; label unknown, overclaimed). dev-05 rep 3 the same; dev-05/06/07 repeats gave `no` without evidence. |
+| 8 | Origin: a trade_agreements value alone does not say who may bid: `unknown` unless a sentence does. | (a) | dev-09: `canadian_and_trading_partners` from "WTO GPA" (cached; label unknown, overclaimed). dev-05 rep 1, dev-07 rep 3 the same; dev-08 cached and rep 3 only caught by grounding. |
+| 9 | Land claims `no` for "excludes locations in areas subject to Comprehensive Land Claims Agreements"; a trade_agreements value naming none, or silence, is `unknown`. | guide clarification; (a) | First part: the guide clarification (no dev error). Second part: dev-02 rep 2 and dev-05 rep 1 gave `no` from a trade_agreements list or with no evidence (label unknown; only caught by grounding). |
+| 10 | Documents `no` when the notice says the documents reach bidders another way, such as being **sent directly to the invited suppliers**. | (a) | dev-02: label `no` ("The RFQ document will be sent directly to the eligible SLSA SA Holder…"); v2 said unknown in 4/4 runs. |
+
+Not changed, on purpose:
+
+- **criteria_location** (dev-05, dev-06: label `partly_stated`; v2 `see_solicitation`, dev-05
+  flips across all three values). The notices list "Essential Outcomes" a solution must meet.
+  Neither v2 nor the label guide says whether such outcomes count as evaluation criteria, and
+  the cases are not marked unsure. A fix would mean writing a new labelling rule from two dev
+  labels, so it is left for a decision.
+- **Unsure judgement calls (c):** dev-09 SA `yes` and documents `no` (ITQ results notice),
+  dev-10 on-site `yes` (rests on a CLCA footnote). No change was made for them.
+- **dev-02 on-site** (label `no`; 2 of 4 runs said unknown with no quote): no cause found
+  beyond run-to-run noise.
+
+Dev result: `eval/reports/dev-v3-2026-11-18.md`. With n = 10 the dev numbers can't rank v2
+against v3; the comparison that counts is the test split.
+
+The report is from run `eval-dev-20261118T050705Z` (v3 re-pinned as `12c49a09…`). The
+first v3 draft (`accc6f93…`, with the ITQ wording) was run once on dev as
+`eval-dev-20261118T045657Z`: 74/80 fields against 71/80 now. Its report was overwritten; its
+EvalExtraction rows are kept. The gap is run-to-run noise in quoting, not the wording change:
+in both runs v3 gave the same values on dev-02 and dev-03, and the new run lost them only
+because their quotes failed grounding (below). No dev notice is an ITQ.
+
+Seen on dev with v3 (recorded, not acted on; any fix would be a v4):
+
+- Quoting still drops correct answers. dev-02 primary: clearance `none` quoted as "None"
+  (1 word), on-site `no` as "Supply and delivery" (not in the notice); dev-03 primary: on-site
+  `yes` quoted with words skipped. In the first v3 run, dev-02's on-site quotes were 2 words
+  ("Requirement Description", "Adobe Software"). The "short exact phrase" rule (change 3)
+  seems to push quotes below the 3-word minimum.
+- Change 4 is not complete: dev-02 primary and rep 2 still quoted the prompt's "RFP against
+  Supply Arrangement", so its SA `yes` was reset and the block missed.
+- Change 7 mostly holds: 1 of 6 dev-05/dev-08 repeats answered SA `no` quoting "Request for
+  Proposal" (4 of 6 in the first v3 run).

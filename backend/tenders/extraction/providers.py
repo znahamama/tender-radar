@@ -19,7 +19,7 @@ from django.core.exceptions import ImproperlyConfigured
 from pydantic import ValidationError
 
 from .budget import CallMeter, StopRun, estimate_tokens, is_priced
-from .prompt import PROMPT_VERSION, SYSTEM_PROMPT, Notice
+from .prompt import PROMPT_VERSION, PROMPTS, SYSTEM_PROMPT, Notice
 from .schema import ExtractionData
 
 if TYPE_CHECKING:
@@ -133,13 +133,20 @@ def retry_after_s(e: anthropic.APIStatusError) -> float | None:
 
 
 class AnthropicExtractor:
-    """Messages API with native structured outputs (``output_config.format`` json_schema)."""
+    """Messages API with native structured outputs (``output_config.format`` json_schema).
 
-    prompt_version = PROMPT_VERSION
+    ``prompt_version`` picks a pinned prompt from ``prompt.PROMPTS`` (default: the site's
+    PROMPT_VERSION). ``system_prompt`` overrides the text (tests only).
+    """
 
     def __init__(self, client: anthropic.Anthropic | None = None, *, model_id: str | None = None,
                  max_tokens: int | None = None, effort: str | None = None,
-                 system_prompt: str = SYSTEM_PROMPT, retry_wait_s: float = 2.0):
+                 prompt_version: str = PROMPT_VERSION, system_prompt: str | None = None,
+                 retry_wait_s: float = 2.0):
+        if prompt_version not in PROMPTS:
+            raise ImproperlyConfigured(f"Unknown prompt version {prompt_version!r}; "
+                                       f"pinned: {', '.join(PROMPTS)}")
+        self.prompt_version = prompt_version
         self.model_id = model_id or settings.LLM_MODEL
         if not is_priced(self.model_id):
             raise ImproperlyConfigured(
@@ -147,7 +154,7 @@ class AnthropicExtractor:
                 "the cost cap can't work without one.")
         self.client = client if client is not None else _default_client()
         self.max_tokens = max_tokens or settings.LLM_MAX_TOKENS
-        self.system_prompt = system_prompt
+        self.system_prompt = PROMPTS[prompt_version] if system_prompt is None else system_prompt
         self.retry_wait_s = retry_wait_s
         effort = effort or settings.LLM_EFFORT
         self.output_config = {"format": {"type": "json_schema", "schema": OUTPUT_SCHEMA},
@@ -170,7 +177,7 @@ class AnthropicExtractor:
             input_tokens = getattr(usage, "input_tokens", 0) or 0
             output_tokens = getattr(usage, "output_tokens", 0) or 0
         meter.record(
-            tender=tender, model_id=self.model_id, prompt_version=PROMPT_VERSION,
+            tender=tender, model_id=self.model_id, prompt_version=self.prompt_version,
             input_tokens=input_tokens, output_tokens=output_tokens,
             latency_ms=int((time.monotonic() - t0) * 1000), status=status,
             request_id=(getattr(resp, "_request_id", None) or request_id or ""),
