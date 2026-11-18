@@ -208,7 +208,7 @@ class GateRow:
     gate: str
     label: str
     value: str
-    raw_value: str  # what the model said, when post-validation or a review changed it
+    raw_value: str  # what the model said: when it differs, and always on a reviewed row
     evidence: str | None
     flags: list[str]
     baseline: str
@@ -229,15 +229,35 @@ def gate_rows(llm: Extraction | None, baseline: Extraction | None,
         value = gate_value(gate, checked.get(gate))
         said = gate_value(gate, raw.get(gate))
         decision = reviews.get(gate)
+        overridden = bool(decision and decision.action in REVIEWED)
+        model_flags = gate_flags(gate, flags)
         rows.append(GateRow(
             gate=gate, label=GATE_LABELS[gate], value=value,
-            raw_value=said if said != value else "",
+            # A person's value can match the model's words (e.g. a correct answer whose
+            # quote failed grounding), so a reviewed row always says what the model said.
+            raw_value=said if overridden or said != value else "",
             evidence=(checked.get(gate) or {}).get("evidence"),
-            flags=gate_flags(gate, flags),
+            # The flags are about the model's answer, not the person's value shown here.
+            flags=[f"model's answer: {f}" for f in model_flags] if overridden else model_flags,
             baseline=gate_value(gate, base.get(gate)),
             reviewed=REVIEWED.get(decision.action, "") if decision else "",
         ))
     return rows
+
+
+def not_stated_labels(not_stated: list[str], eligibility: dict) -> list[str]:
+    """Readable names for an assessment's not_stated gates. Clearance counts when either
+    side is unknown (rules v3), so name the side when the other one is known."""
+    labels = []
+    for gate in not_stated:
+        label = GATE_LABELS.get(gate, gate)
+        g = eligibility.get(gate) or {}
+        if gate == "clearance" and g:
+            unknown = [side for side in ("corporate", "personnel") if g.get(side) == "unknown"]
+            if len(unknown) == 1:
+                label = f"{label} ({unknown[0]})"
+        labels.append(label)
+    return labels
 
 
 _EXTRACTION_FLAGS = {
@@ -314,8 +334,9 @@ def tender_detail(request, reference: str):
         "blockers": labelled(assessment.blockers if assessment else []),
         "warnings": labelled(assessment.warnings if assessment else []),
         "notes": labelled(assessment.notes if assessment else []),
-        "not_stated": [GATE_LABELS.get(g, g) for g in (assessment.not_stated if assessment
-                                                        else [])],
+        "not_stated": not_stated_labels(
+            assessment.not_stated if assessment else [],
+            ((apply_reviews(llm.data, reviews) or {}).get("eligibility") or {}) if llm else {}),
         "llm": llm,
         "baseline": baseline,
         "rows": gate_rows(llm, baseline, reviews),

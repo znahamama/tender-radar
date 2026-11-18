@@ -169,16 +169,21 @@ def _summary(capsys):
     return json.loads(capsys.readouterr().out.strip().splitlines()[-1])
 
 
-def test_daily_runs_ingest_extract_assess_in_order(calls, capsys):
+def test_daily_runs_ingest_baseline_extract_assess_in_order(calls, capsys):
     from tenders.worker import handler
 
     out = handler({"task": "daily"})
-    assert [c[0] for c in calls] == ["ingest_canadabuys", "extract_tenders", "assess_tenders"]
+    assert [c[0] for c in calls] == ["ingest_canadabuys", "extract_tenders", "extract_tenders",
+                                     "assess_tenders"]
     ingest_args = calls[0][1]
     assert "--save" in ingest_args and "--url-defaults" in ingest_args
     assert ingest_args[ingest_args.index("--download-dir") + 1].startswith("/tmp/")
-    assert calls[1][1] == ("--status", "Open")
+    # The free keyword baseline first, so a capped or failed LLM step can't skip it.
+    assert calls[1][1] == ("--status", "Open", "--baseline")
+    assert calls[2][1] == ("--status", "Open")
     assert out["ok"] is True
+    assert [s["step"] for s in out["steps"]] == [
+        "ingest_canadabuys", "extract_tenders --baseline", "extract_tenders", "assess_tenders"]
     assert _summary(capsys) == out
 
 
@@ -206,14 +211,15 @@ def test_failed_step_stops_and_logs(monkeypatch, capsys):
     made = []
 
     def fake(name, *a):
-        made.append(name)
-        if name == "extract_tenders":
+        made.append((name, "--baseline" in a))
+        if name == "extract_tenders" and "--baseline" not in a:  # the LLM step
             raise CommandError("No tenders match.")
 
     monkeypatch.setattr(tenders.worker, "call_command", fake)
     with pytest.raises(CommandError):
         tenders.worker.handler({"task": "daily"})
-    assert made == ["ingest_canadabuys", "extract_tenders"]
+    assert made == [("ingest_canadabuys", False), ("extract_tenders", True),
+                    ("extract_tenders", False)]  # stopped: no assess
     s = _summary(capsys)
     assert s["ok"] is False
     assert s["steps"][-1] == {"step": "extract_tenders", "ok": False,

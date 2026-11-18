@@ -455,3 +455,79 @@ def test_superseded_correction_is_not_exported(client, reviewer, extraction, tmp
     correct(client, x, "supply_arrangement_required", value="no", evidence=NO_SA)
     decide(client, x, "supply_arrangement_required", "accept")
     assert "0 written" in export(tmp_path)
+
+
+# --- detail page display --------------------------------------------------------------
+
+def gate_row(client, x, label):
+    r = client.get(reverse("tender-detail", args=[x.tender.reference_number]))
+    rows = {row.label: row for row in r.context["rows"]}
+    return r, rows[label]
+
+
+def test_corrected_row_shows_model_said_and_flags_as_the_models(client, reviewer, extraction):
+    d = sa_only_blocker()
+    # The model's answer is right, but its quote isn't in the notice: grounding resets it.
+    d["eligibility"]["documents_behind_login"] = {
+        "value": "yes", "portal": "CanadaBuys",
+        "evidence": "documents are only on a login portal"}
+    x = extraction(d)
+    client.force_login(reviewer)
+    _, before = gate_row(client, x, "Documents behind a login")
+    assert before.flags == ["quote not found in the notice: treated as unknown"]
+
+    correct(client, x, "documents_behind_login", value="yes", portal="CanadaBuys",
+            evidence="Bid documents are available on CanadaBuys.")
+    r, row = gate_row(client, x, "Documents behind a login")
+    # The person's value matches the model's words, and "model said" is still shown.
+    assert row.value == row.raw_value == "yes (CanadaBuys)"
+    assert row.flags == ["model's answer: quote not found in the notice: treated as unknown"]
+    assert row.reviewed == "Reviewed by a person"
+    html = r.content.decode()
+    assert "model said: yes (CanadaBuys)" in html
+    assert "model&#x27;s answer: quote not found in the notice" in html
+    # An unreviewed gate keeps its flags as they are.
+    _, sa = gate_row(client, x, "Supply arrangement required")
+    assert sa.reviewed == "" and not any(f.startswith("model's") for f in sa.flags)
+
+
+def test_rejected_row_also_marks_flags_as_the_models(client, reviewer, extraction):
+    d = sa_only_blocker()
+    d["eligibility"]["land_claims_applies"] = {"value": "yes",
+                                               "evidence": "not in this notice at all"}
+    x = extraction(d)
+    client.force_login(reviewer)
+    decide(client, x, "land_claims_applies", "reject")
+    _, row = gate_row(client, x, "Land claims agreement")
+    assert row.value == "unknown" and row.raw_value == "yes"
+    assert row.flags == ["model's answer: quote not found in the notice: treated as unknown"]
+
+
+def test_accepted_row_is_shown_as_the_model_answered(client, reviewer, extraction):
+    x = extraction()
+    client.force_login(reviewer)
+    decide(client, x, "supply_arrangement_required", "accept")
+    _, row = gate_row(client, x, "Supply arrangement required")
+    assert row.reviewed == "" and row.raw_value == "" and row.value == "yes (TBIPS)"
+
+
+def not_stated(client, x):
+    r = client.get(reverse("tender-detail", args=[x.tender.reference_number]))
+    return r.context["not_stated"]
+
+
+def test_not_stated_names_the_unknown_clearance_side(client, reviewer, extraction):
+    x = extraction(valid_data())  # corporate reliability (DOS), personnel unknown
+    assert "clearance" in Assessment.objects.get(extraction=x).not_stated
+    assert "Security clearance (personnel)" in not_stated(client, x)
+
+    both = extraction()  # sa_only_blocker: corporate and personnel unknown
+    labels = not_stated(client, both)
+    assert "Security clearance" in labels
+    assert not any(label.startswith("Security clearance (") for label in labels)
+
+    # Display follows the reviewed values: a person states personnel, corporate unknown.
+    client.force_login(reviewer)
+    correct(client, both, "clearance", corporate="unknown", personnel="reliability",
+            evidence="valid Designated Organization Screening (DOS)")
+    assert "Security clearance (corporate)" in not_stated(client, both)

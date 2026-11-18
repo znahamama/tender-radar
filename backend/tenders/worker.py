@@ -2,7 +2,8 @@
 
 Events:
     {"task": "migrate"}  apply migrations over Neon's DIRECT url (SSM database_url_direct)
-    {"task": "daily"}    ingest --save, extract Open tenders (LLM caps apply), reassess
+    {"task": "daily"}    ingest --save, keyword baseline then LLM on Open tenders (LLM caps
+                         apply), reassess
     {"task": "create_admin", "username": "<name>"}
                          create or update that superuser with the password in the one-time
                          SecureString <SSM_PREFIX>admin_bootstrap_password (infra/README.md)
@@ -36,6 +37,9 @@ TASKS: dict[str, list[tuple[str, list[str]]]] = {
     "migrate": [("migrate", ["--noinput"])],
     "daily": [
         ("ingest_canadabuys", ["--url-defaults", "--save", "--download-dir", DOWNLOAD_DIR]),
+        # The keyword baseline first: free (no API) and deterministic, so the detail page's
+        # baseline column is filled even on a day the LLM step stops at a cap or fails.
+        ("extract_tenders", ["--status", "Open", "--baseline"]),
         ("extract_tenders", ["--status", "Open"]),
         ("assess_tenders", []),
     ],
@@ -88,6 +92,11 @@ def _create_admin(event: dict) -> None:
 STEPS = {"create_admin": _create_admin}
 
 
+def _step_label(name: str, args: list[str]) -> str:
+    """The step's name in the summary; the two extract steps differ only by --baseline."""
+    return f"{name} --baseline" if "--baseline" in args else name
+
+
 def _error_line(e: BaseException) -> str:
     first = (str(e).splitlines() or [""])[0]
     return f"{type(e).__name__}: {first[:200]}"
@@ -103,7 +112,7 @@ def handler(event, context=None):
     try:
         for name, args in TASKS[task]:
             t0 = time.monotonic()
-            step = {"step": name, "ok": False}
+            step = {"step": _step_label(name, args), "ok": False}
             steps.append(step)
             try:
                 with _database_for(task):

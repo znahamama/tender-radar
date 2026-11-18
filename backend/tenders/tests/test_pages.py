@@ -2,6 +2,7 @@
 
 from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
+from io import StringIO
 
 import pytest
 from django.urls import reverse
@@ -445,3 +446,38 @@ def test_detail_injection_caution(client, data_quality, flags, shown):
 def test_detail_injection_caution_without_any_extraction(client):
     make_tender("INJ2", data_quality=["injection_pattern"])
     assert CAUTION in client.get(reverse("tender-detail", args=["INJ2"])).content.decode()
+
+
+def test_not_stated_labels_name_the_clearance_side():
+    from tenders.pages import not_stated_labels
+
+    gates = {"clearance": {"corporate": "none", "personnel": "unknown", "evidence": "x"}}
+    assert not_stated_labels(["supply_arrangement_required", "clearance"], gates) == [
+        "Supply arrangement required", "Security clearance (personnel)"]
+    gates["clearance"] = {"corporate": "unknown", "personnel": "secret", "evidence": "x"}
+    assert not_stated_labels(["clearance"], gates) == ["Security clearance (corporate)"]
+    gates["clearance"] = {"corporate": "unknown", "personnel": "unknown", "evidence": None}
+    assert not_stated_labels(["clearance"], gates) == ["Security clearance"]
+    assert not_stated_labels(["clearance"], {}) == ["Security clearance"]  # failed extraction
+
+
+def test_daily_baseline_step_fills_the_baseline_column_without_the_api(client):
+    """The worker's real baseline step: no LLM call (the autouse no_real_api fixture fails
+    any client construction), and the detail page then shows the baseline column."""
+    from django.core.management import call_command
+
+    import tenders.worker
+    from tenders.models import LlmCall
+
+    step = tenders.worker.TASKS["daily"][1]
+    assert step == ("extract_tenders", ["--status", "Open", "--baseline"])
+    t = make_tender("cb-base-1", description="Security Requirement: None. Work is remote.")
+    make_tender("cb-base-2", tender_status="Expired")  # not Open: not extracted
+    call_command(step[0], *step[1], stdout=StringIO())
+    assert LlmCall.objects.count() == 0
+    x = Extraction.objects.get(tender=t)
+    assert (x.model_id, x.status) == (KeywordExtractor().model_id, "ok")
+    assert not Extraction.objects.filter(tender__reference_number="cb-base-2").exists()
+    r = client.get(reverse("tender-detail", args=["cb-base-1"]))
+    assert "No keyword baseline run for this notice." not in r.content.decode()
+    assert r.context["baseline"] == x
