@@ -19,13 +19,15 @@ from django.shortcuts import get_object_or_404, render
 from django.utils import timezone
 from django.views.decorators.http import require_GET
 
-from tenders.extraction.keyword import KeywordExtractor
 from tenders.extraction.schema import GATES
 from tenders.ingest.injection import INJECTION_PATTERN
 from tenders.ingest.schema import SOURCE_TZ
 from tenders.models import Assessment, Extraction, SupplierProfile, Tender
 
 PAGE_SIZE = 25
+# KeywordExtractor.model_id, as a literal: importing keyword.py pulls in providers.py and
+# the Anthropic SDK (~0.6 s of every API cold start). tests/test_pages.py pins the two equal.
+BASELINE_MODEL_ID = "keyword-baseline"
 MAX_QUERY_CHARS = 200
 NOT_ASSESSED = "not_assessed"
 
@@ -279,7 +281,7 @@ def tender_detail(request, reference: str):
         tender.extractions.filter(model_id=settings.LLM_MODEL)
         .order_by("-created_at", "-id").first())
     baseline = (tender.extractions
-                .filter(model_id=KeywordExtractor.model_id, status=Extraction.Status.OK)
+                .filter(model_id=BASELINE_MODEL_ID, status=Extraction.Status.OK)
                 .order_by("-created_at", "-id").first())
     return render(request, "tenders/detail.html", {
         "tender": tender,

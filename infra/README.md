@@ -17,12 +17,12 @@ values never reach state.
 
 | Piece | Config |
 |---|---|
-| `tender-radar-api` | image `api-<sha>`, arm64, 512 MB, 30 s, Lambda Web Adapter → gunicorn :8080, readiness `/api/health` |
+| `tender-radar-api` | image `api-<sha>`, arm64, 1024 MB, 30 s, Lambda Web Adapter → gunicorn :8080, readiness `/api/health` |
 | `tender-radar-worker` | image `worker-<sha>`, arm64, 1024 MB, 900 s, 1024 MB `/tmp`, handler `tenders.worker.handler`, 0 async retries, `LLM_DAILY_BUDGET_USD=0.15` |
 | HTTP API | `$default` stage, auto-deploy, `ANY /` + `ANY /{proxy+}`, throttle 10 rps / burst 20, JSON access logs |
 | Scheduler | `tender-radar-daily`, 06:15 America/St_Johns, `{"task":"daily"}`, 0 retries, **DISABLED** until step (h) |
 | Logs | `/aws/lambda/tender-radar-{api,worker}`, `/aws/apigateway/tender-radar`, 14-day retention |
-| IAM | api-role, worker-role: own log group + `ssm:GetParameter` on `/tender-radar/prod/*`. scheduler-role: invoke the worker only |
+| IAM | api-role, worker-role: own log group + `ssm:GetParameters` on `/tender-radar/prod/*` (one call per cold start). scheduler-role: invoke the worker only |
 
 ## AWS profiles: `tender-radar` and the `tender-radar-tf` bridge
 
@@ -126,7 +126,7 @@ aws ssm describe-parameters --no-cli-pager \
 
 No `--key-id`: the default AWS-managed key `aws/ssm` is free, and its key policy already
 lets SSM decrypt for principals in this account. That's why the roles have no `kms:Decrypt`.
-IAM already covers all four, because both roles may `ssm:GetParameter` on
+IAM already covers all four, because both roles may `ssm:GetParameters` on
 `/tender-radar/prod/*`. (The API role could read `database_url_direct` too but never asks
 for it. Splitting that off would mean listing parameter ARNs per role.)
 To rotate a value later, add `--overwrite`; running Lambdas pick it up on their next cold
@@ -172,8 +172,9 @@ curl -sS "${API%/}/api/health";    echo   # {"status": "ok", "version": "<sha>"}
 curl -sS "${API%/}/api/health/db"; echo   # {"status": "ok", "db": "ok"}; runs SELECT 1
 ```
 
-The first call after a deploy is a cold start (a few seconds). `/api/health/db` can take
-about a second longer if Neon was suspended.
+The first call after a deploy is the slowest cold start there is (5-7 s measured):
+Lambda is still pulling the new image's layers into its cache. Later cold starts, in any
+sandbox, are ~1-2 s. `/api/health/db` can take ~0.7 s longer if Neon was suspended.
 
 ### (h) One manual daily run, then enable the schedule
 
@@ -204,6 +205,8 @@ git status                                  # clean, committed
 export TF_VAR_git_sha="$(git rev-parse HEAD)"
 infra/scripts/build_push.sh "$TF_VAR_git_sha"
 cd infra/prod && terraform plan -out=prod.tfplan && terraform apply prod.tfplan && cd ../..
+# Take the post-deploy cold start (5-7 s: Lambda caching the new image) so a visitor doesn't:
+API="$(terraform -chdir=infra/prod output -raw api_url)"; curl -sS "${API%/}/api/health"; echo
 # with new migrations: step (f) again
 ```
 

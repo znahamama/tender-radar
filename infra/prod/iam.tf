@@ -4,7 +4,7 @@
 # No kms:Decrypt: the SecureStrings use the AWS-managed key aws/ssm. Its key policy
 # (owned by AWS, not editable) already allows kms:Decrypt for any principal in this account
 # when the call comes through SSM (kms:ViaService = ssm.<region>.amazonaws.com and
-# kms:CallerAccount = this account). With GetParameter allowed in IAM, decryption works.
+# kms:CallerAccount = this account). With GetParameters allowed in IAM, decryption works.
 # A customer-managed key would need kms:Decrypt here AND in its key policy.
 #
 # No ECR permissions: the repository policy in ecr.tf grants Lambda the image pull.
@@ -41,8 +41,11 @@ data "aws_iam_policy_document" "lambda" {
   }
 
   statement {
-    sid       = "ReadProdParameters"
-    actions   = ["ssm:GetParameter"]
+    sid = "ReadProdParameters"
+    # config/ssm.py makes one GetParameters call per cold start. GetParameter stays for
+    # one deploy only: this policy changes before the function does (depends_on), and an
+    # old-image cold start in between still calls GetParameter. Drop it on the next deploy.
+    actions   = ["ssm:GetParameters", "ssm:GetParameter"]
     resources = [local.ssm_params_arn]
   }
 }

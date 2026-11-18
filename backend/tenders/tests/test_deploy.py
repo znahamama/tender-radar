@@ -1,6 +1,11 @@
-"""Deployment plumbing: health endpoints, SSM secret loading, the worker Lambda handler."""
+"""Deployment plumbing: health endpoints, SSM secret loading, the worker Lambda handler,
+and what the API loads at cold start."""
 
 import json
+import os
+import subprocess
+import sys
+from pathlib import Path
 
 import pytest
 from config.ssm import SECRET_NAMES, fetch_direct_database_url, fetch_secrets
@@ -40,55 +45,98 @@ def test_health_db_hides_error_details(client, monkeypatch):
     assert "hunter2" not in r.content.decode()
 
 
+# --- API cold start -------------------------------------------------------------------
+
+# Worker-only: the LLM SDK and its HTTP stack, and the extraction/ingest pipelines.
+WORKER_ONLY = ("anthropic", "httpx", "httpx2", "tenders.extraction.providers",
+               "tenders.extraction.service", "tenders.ingest.pipeline")
+
+
+def test_api_urlconf_does_not_import_worker_only_modules():
+    """Everything the API Lambda's gunicorn worker imports before its first request:
+    settings, django.setup(), the WSGI app and the URLconf. The Anthropic SDK alone is
+    ~0.6 s of a cold start (~2 s at 512 MB's CPU share). A fresh interpreter, because
+    this test process has imported anthropic already."""
+    code = (
+        "import sys, django; django.setup()\n"
+        "import config.wsgi, config.urls\n"
+        f"print(sorted(m for m in {WORKER_ONLY!r} if m in sys.modules))\n"
+    )
+    env = {**os.environ, "DJANGO_SETTINGS_MODULE": "config.settings",
+           "DJANGO_SECRET_KEY": "test-only", "DATABASE_URL": "sqlite:///:memory:",
+           "DATABASE_URL_DIRECT": ""}  # set but empty: settings fall back to DATABASE_URL
+    env.pop("SSM_PREFIX", None)
+    backend = Path(__file__).resolve().parents[2]
+    out = subprocess.run([sys.executable, "-c", code], cwd=backend, env=env, check=False,
+                         capture_output=True, text=True, timeout=60)
+    assert out.returncode == 0, out.stderr[-2000:]
+    assert out.stdout.strip() == "[]"
+
+
 # --- SSM ------------------------------------------------------------------------------
 
 class FakeSSM:
-    def __init__(self, values, fail=None):
-        self.values, self.fail, self.calls = values, fail, []
+    """ssm.get_parameters as AWS behaves: unknown names come back under InvalidParameters
+    (no exception); ``error`` makes the whole call fail, like AccessDeniedException."""
 
-    def get_parameter(self, Name, WithDecryption):
-        self.calls.append((Name, WithDecryption))
-        if Name == self.fail:
+    def __init__(self, values, error=None):
+        self.values, self.error, self.calls = values, error, []
+
+    def get_parameters(self, Names, WithDecryption):
+        self.calls.append((tuple(Names), WithDecryption))
+        if self.error:
             err = Exception("boom")
-            err.response = {"Error": {"Code": "ParameterNotFound"}}
+            err.response = {"Error": {"Code": self.error}}
             raise err
-        return {"Parameter": {"Value": self.values[Name]}}
+        return {"Parameters": [{"Name": n, "Value": self.values[n]}
+                               for n in Names if n in self.values],
+                "InvalidParameters": [n for n in Names if n not in self.values]}
 
 
 def _values(prefix):
     return {f"{prefix}{n}": f"value-of-{n}" for n in SECRET_NAMES}
 
 
-def test_fetch_secrets_decrypts_each_name_once():
+def test_fetch_secrets_is_one_decrypted_call():
     fake = FakeSSM(_values("/t/prod/"))
     got = fetch_secrets("/t/prod/", client=fake)
     assert got == {n: f"value-of-{n}" for n in SECRET_NAMES}
-    assert fake.calls == [(f"/t/prod/{n}", True) for n in SECRET_NAMES]
+    # One GetParameters round trip at cold start, not one per secret.
+    assert fake.calls == [(tuple(f"/t/prod/{n}" for n in SECRET_NAMES), True)]
     fetch_secrets("/t/prod/", client=fake)  # cached for the process
-    assert len(fake.calls) == len(SECRET_NAMES)
+    assert len(fake.calls) == 1
     # The direct URL is never part of the cold-start load (API and daily stay pooled).
-    assert all("database_url_direct" not in name for name, _ in fake.calls)
+    assert all("database_url_direct" not in n for names, _ in fake.calls for n in names)
 
 
 def test_fetch_direct_database_url():
     fake = FakeSSM({"/t/direct/database_url_direct": "postgres://direct"})
     assert fetch_direct_database_url("/t/direct/", client=fake) == {
         "DATABASE_URL_DIRECT": "postgres://direct"}
-    assert fake.calls == [("/t/direct/database_url_direct", True)]
+    assert fake.calls == [(("/t/direct/database_url_direct",), True)]
 
 
 def test_missing_direct_url_names_it():
-    fake = FakeSSM({}, fail="/t/nodirect/database_url_direct")
     with pytest.raises(ImproperlyConfigured, match="/t/nodirect/database_url_direct"):
-        fetch_direct_database_url("/t/nodirect/", client=fake)
+        fetch_direct_database_url("/t/nodirect/", client=FakeSSM({}))
 
 
 def test_missing_parameter_names_it_without_values():
-    fake = FakeSSM(_values("/t/miss/"), fail="/t/miss/ANTHROPIC_API_KEY")
+    vals = _values("/t/miss/")
+    del vals["/t/miss/ANTHROPIC_API_KEY"]
     with pytest.raises(ImproperlyConfigured) as exc:
-        fetch_secrets("/t/miss/", client=fake)
+        fetch_secrets("/t/miss/", client=FakeSSM(vals))
     msg = str(exc.value)
     assert "/t/miss/ANTHROPIC_API_KEY" in msg and "ParameterNotFound" in msg
+    assert "value-of" not in msg
+
+
+def test_failed_call_names_parameters_and_code_only():
+    with pytest.raises(ImproperlyConfigured) as exc:
+        fetch_secrets("/t/denied/", client=FakeSSM(_values("/t/denied/"),
+                                                   error="AccessDeniedException"))
+    msg = str(exc.value)
+    assert "/t/denied/DATABASE_URL" in msg and "AccessDeniedException" in msg
     assert "value-of" not in msg
 
 

@@ -14,8 +14,11 @@ resource "aws_lambda_function" "api" {
   package_type  = "Image"
   image_uri     = "${aws_ecr_repository.app.repository_url}:api-${var.git_sha}"
   architectures = ["arm64"]
-  memory_size   = 512
-  timeout       = 30
+  # Lambda's CPU share scales with memory, and a cold start is CPU-bound Python imports.
+  # 1024 vs 512 MB: ~half the import time in a local CPU-capped run, for ~$0 at this
+  # traffic (~500 GB-s/month at most, inside the always-free 400k GB-s).
+  memory_size = 1024
+  timeout     = 30
 
   environment {
     variables = {

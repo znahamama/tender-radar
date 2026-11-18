@@ -82,6 +82,13 @@ def get_list(client, **params):
 
 # --- list -----------------------------------------------------------------------------
 
+def test_baseline_model_id_matches_the_keyword_extractor():
+    # pages.py spells it out instead of importing keyword.py (see BASELINE_MODEL_ID).
+    from tenders.pages import BASELINE_MODEL_ID
+
+    assert BASELINE_MODEL_ID == KeywordExtractor.model_id
+
+
 def test_list_shows_open_by_default_and_all_on_toggle(client):
     make_tender("OPEN-1")
     make_tender("OPEN-NO-DATE", closing_date=None)

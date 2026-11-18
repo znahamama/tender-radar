@@ -29,17 +29,22 @@ def _client(client):
     return client
 
 
-def _get(client, full_name: str) -> str:
-    """One ssm:GetParameter call (the only SSM action IAM grants), decrypted."""
+def _get_many(client, full_names: list[str]) -> dict[str, str]:
+    """One ssm:GetParameters call for all names, decrypted: one round trip at cold start
+    instead of one per secret. GetParameters doesn't raise for a missing name, it lists it
+    under InvalidParameters, so that is checked here."""
     try:
-        resp = client.get_parameter(Name=full_name, WithDecryption=True)
+        resp = client.get_parameters(Names=full_names, WithDecryption=True)
     except Exception as e:  # botocore errors carry names and codes, never values
         code = getattr(e, "response", {}).get("Error", {}).get("Code") or type(e).__name__
-        raise ImproperlyConfigured(f"SSM parameter {full_name}: {code}") from e
-    value = resp["Parameter"]["Value"]
-    if not value.strip():
-        raise ImproperlyConfigured(f"SSM parameter {full_name} is empty")
-    return value
+        raise ImproperlyConfigured(f"SSM parameters {', '.join(full_names)}: {code}") from e
+    values = {p["Name"]: p["Value"] for p in resp.get("Parameters", [])}
+    for name in full_names:
+        if name not in values:
+            raise ImproperlyConfigured(f"SSM parameter {name}: ParameterNotFound")
+        if not values[name].strip():
+            raise ImproperlyConfigured(f"SSM parameter {name} is empty")
+    return values
 
 
 @functools.cache
@@ -47,12 +52,13 @@ def fetch_secrets(prefix: str, names: tuple[str, ...] = SECRET_NAMES, client=Non
     """Return {name: value} for the ``<prefix><name>`` SecureStrings. A missing or
     unreadable parameter fails startup with its name only."""
     _check_prefix(prefix)
-    client = _client(client)
-    return {name: _get(client, f"{prefix}{name}") for name in names}
+    values = _get_many(_client(client), [f"{prefix}{name}" for name in names])
+    return {name: values[f"{prefix}{name}"] for name in names}
 
 
 @functools.cache
 def fetch_direct_database_url(prefix: str, client=None) -> dict[str, str]:
     """Return {"DATABASE_URL_DIRECT": value} from ``<prefix>database_url_direct``."""
     _check_prefix(prefix)
-    return {"DATABASE_URL_DIRECT": _get(_client(client), f"{prefix}{DIRECT_URL_PARAM}")}
+    full_name = f"{prefix}{DIRECT_URL_PARAM}"
+    return {"DATABASE_URL_DIRECT": _get_many(_client(client), [full_name])[full_name]}
