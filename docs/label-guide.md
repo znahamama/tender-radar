@@ -59,6 +59,37 @@ infer from what notices like this usually require, from the buyer, or from outsi
 Set `unsure: true` only for a genuinely ambiguous case, with a one-line `notes` saying why.
 Still give your best value for every gate.
 
+## Rulings applied during labelling
+
+These rulings were made while labelling the dev and test sets and applied to all 30 cases;
+they were written down after labelling finished, and no label was changed.
+
+| Situation | Label | Example |
+|---|---|---|
+| Trade agreements only listed in metadata, no sentence on who may bid | origin `unknown` | dev-02 |
+| "open only to Canadian suppliers and to Suppliers of an Applicable Trading Partner" | origin `canadian_and_trading_partners` | dev-01, test-09 |
+| "...and Suppliers of a Non-Trading Partner are eligible" | origin `none` | test-02, test-03 |
+| Indigenous set-aside (PSIB) | not an origin restriction: origin `unknown`, noted | test-01 |
+| "Security Requirement: None" | corporate `none`, personnel `none` | dev-02 |
+| "Supplier Security Clearance required: DOS - Reliability" | corporate `reliability`, personnel `unknown` | test-20 |
+| "There are security requirements" with no level | clearance `unknown` | test-11 |
+| Request for SA/SO, or an Invitation to Qualify to become pre-qualified | SA `no` | dev-04, test-05, test-14 |
+| Construction notice typed "Invitation to Qualify" with no pre-qualification wording | SA `no`, unsure | test-12, test-15, test-19 |
+| ITQ results / qualified-supplier list, or "only pre-qualified suppliers may bid" | SA `yes` | dev-09, test-20 |
+| notice_type contradicts the text (e.g. typed RFP but the text is an RFSO) | follow the text, unsure | test-10, test-17 |
+| Goods plus installation or services at a named place | on_site `yes`, with that place | dev-03, test-16 |
+| Goods only, no installation stated | on_site `no`, evidence `GD` or the goods sentence | dev-01, test-09 |
+| SA set-up listing services, no place or on-site requirement stated | on_site `unknown` | dev-04, test-17 |
+| "required to travel to [sites]", even if the region is Remote | on_site `yes`, unsure | test-20 |
+| Portal URL only, or a portal used only for **submitting** bids | documents `unknown` | dev-01, dev-05, test-09, test-13 |
+| "MANDATORY ... obtain documents through [platform]" | documents `yes` | dev-08 |
+| "documents obtained from other sources do so at their own risk" | documents `no` | dev-07, test-14 |
+| Documents e-mailed directly to invited holders | documents `no` | dev-02, test-01, test-20 |
+| "excludes locations in areas subject to CLCAs" | land claims `no` | test-07 |
+| Notice contradicts itself on land claims (header "No", body "subject to CLCAs") | follow the specific body text, unsure | test-17 |
+| Indigenous Participation Plan without a named CLCA | land claims `unknown` | dev-07, test-14 |
+| RFI or results notice with no evaluation | criteria `see_solicitation` as nearest, unsure | dev-09, test-08 |
+
 ## Process
 
 1. Label the dev files **in order**, dev-01 to dev-10. Run

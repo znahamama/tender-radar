@@ -33,6 +33,8 @@ name, and never let it overwrite a frozen version's result.
 - The expected status is not labelled: the harness derives it from the gate labels with
   eligibility rules v3. How to label: `docs/label-guide.md`. Check:
   `python backend/manage.py check_labels`.
+- Rulings made during labelling (situation → label → example case) are in the table under
+  "Rulings applied during labelling" in `docs/label-guide.md`.
 
 ### Selection (recorded 2026-11-16)
 
