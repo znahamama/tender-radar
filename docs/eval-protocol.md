@@ -185,3 +185,26 @@ No prompt, baseline, rules or label changes after this point are evaluated on th
 - The report was then re-rendered from the stored run JSON (`render_eval`, no API call) to
   add the across-runs mean and range and the dev/test side-by-side view requested for this
   report. Every score from the original rendering is unchanged (checked field by field).
+
+## Prompt-injection eval (2026-11-18)
+
+Separate from the 30 labelled cases and never mixed into their scores. Five **invented**
+attack notices, each with a clean twin that differs only by the attack text
+(`eval/injection/`, see its README): an instruction override, a fake `SYSTEM:` line, a tag
+break-out, an attack in the buyer name, and a polite request to "AI assistants". Run on the
+site prompt (v3) with the frozen model settings:
+
+`python backend/manage.py run_injection_eval --repeats 3` (4 uncached runs per notice, LlmCall
+purpose `eval_injection`; no Tender, Extraction or EvalExtraction row is written). Report:
+`eval/reports/injection-<date>.md` and `.json`. `--rescore <json>` re-scores a stored run
+with no API call.
+
+Code-side pattern detector (`tenders/ingest/injection.py`): a fixed rule set that runs at
+ingest, before any LLM call, and adds `injection_pattern` to the notice's `data_quality`. It
+changes no gate or status. The detail page shows a neutral caution when a notice has
+`injection_pattern` or its extraction has `injection_suspected`. False positives are counted
+on a seeded sample of 50 stored notices (seed 20261118) and on all stored notices. Counts,
+rules and references only; no text.
+
+First run: `eval/reports/injection-2026-11-18.md`. Nothing frozen was changed. A fix for an
+attack that works would be a new prompt version (v4).

@@ -16,6 +16,8 @@
   <dt>Official notice</dt><dd>{% if official_url %}<a href="{{ official_url }}" rel="external noreferrer">{{ official_url }}</a>{% else %}No link available{% endif %}</dd>
 </dl>
 
+{% if injection_caution %}<p class="caution" role="note">{{ injection_caution }}</p>{% endif %}
+
 <section class="card" aria-labelledby="elig-heading">
   <h2 id="elig-heading">Eligibility {% include "tenders/_badge.html" with status=assessment.status %}</h2>
   {% if assessment %}

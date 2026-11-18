@@ -21,6 +21,7 @@ from django.views.decorators.http import require_GET
 
 from tenders.extraction.keyword import KeywordExtractor
 from tenders.extraction.schema import GATES
+from tenders.ingest.injection import INJECTION_PATTERN
 from tenders.ingest.schema import SOURCE_TZ
 from tenders.models import Assessment, Extraction, SupplierProfile, Tender
 
@@ -233,6 +234,17 @@ def extraction_flags(flags: list[str]) -> list[str]:
             if not f.startswith(("ungrounded:", "ungrounded_detail:", "sa_metadata_disagrees"))]
 
 
+INJECTION_CAUTION = ("Parts of this notice look like instructions to an AI system; treat its "
+                     "extracted fields with extra care.")
+
+
+def injection_caution(tender: Tender, llm: Extraction | None) -> bool:
+    """The code-side detector flagged the notice at ingest, or the model said the notice
+    tries to instruct it. Either way the page shows one neutral note; nothing else changes."""
+    return (INJECTION_PATTERN in (tender.data_quality or [])
+            or bool(llm and "injection_suspected" in (llm.flags or [])))
+
+
 def labelled(findings: list[dict]) -> list[dict]:
     """Assessment findings ({gate, reason, evidence}) with a readable gate label."""
     return [{**f, "gate_label": GATE_LABELS.get(f.get("gate"), f.get("gate"))} for f in findings]
@@ -284,4 +296,5 @@ def tender_detail(request, reference: str):
         "baseline": baseline,
         "rows": gate_rows(llm, baseline),
         "other_flags": extraction_flags(llm.flags if llm else []),
+        "injection_caution": INJECTION_CAUTION if injection_caution(tender, llm) else "",
     })

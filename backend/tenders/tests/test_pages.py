@@ -415,3 +415,26 @@ def test_pages_are_get_only(client, method):
     make_tender("T")
     for url in (reverse("tender-list"), reverse("tender-detail", args=["T"])):
         assert getattr(client, method)(url).status_code == 405
+
+
+CAUTION = ("Parts of this notice look like instructions to an AI system; treat its extracted "
+           "fields with extra care.")
+
+
+@pytest.mark.parametrize(("data_quality", "flags", "shown"), [
+    ([], [], False),
+    (["injection_pattern"], [], True),            # the code-side detector, at ingest
+    ([], ["injection_suspected"], True),          # the model's own flag
+    (["mentions_standing_offer"], ["truncated"], False),
+])
+def test_detail_injection_caution(client, data_quality, flags, shown):
+    t = make_tender("INJ", data_quality=data_quality)
+    assess(t, "check_solicitation", data=valid_data(), flags=flags)
+    html = client.get(reverse("tender-detail", args=["INJ"])).content.decode()
+    assert (CAUTION in html) is shown
+    assert ('class="caution" role="note"' in html) is shown
+
+
+def test_detail_injection_caution_without_any_extraction(client):
+    make_tender("INJ2", data_quality=["injection_pattern"])
+    assert CAUTION in client.get(reverse("tender-detail", args=["INJ2"])).content.decode()

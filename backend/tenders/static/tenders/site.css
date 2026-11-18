@@ -130,6 +130,13 @@ blockquote {
   color: var(--check);
 }
 
+.caution {
+  margin: 1rem 0;
+  padding: .5rem 1rem;
+  border-left: 4px solid var(--line);
+  background: var(--panel);
+}
+
 .description { margin: 1.5rem 0; border: 1px solid var(--line); border-radius: 6px; padding: .5rem 1rem; }
 .description summary { cursor: pointer; font-weight: 600; }
 .desc-text { white-space: pre-wrap; overflow-wrap: anywhere; margin-top: .5rem; }

@@ -25,6 +25,8 @@ from pydantic import (
     model_validator,
 )
 
+from .injection import INJECTION_PATTERN, scan_notice
+
 # CanadaBuys CSVs carry naive timestamps. Spot-checked 2026-11-07: CSV "2026-12-02T16:00:00"
 # is shown as "2026/12/02 16:00 EST" on the notice page, so naive values are Eastern Time.
 # Parsed values are converted to UTC. St. John's is 1.5 h ahead of Eastern.
@@ -151,6 +153,8 @@ class TenderNotice(BaseModel):
             self.notice_url = NOTICE_URL_TEMPLATE.format(ref=self.reference_number)
             self.notice_url_derived = True
         self.data_quality = quality_flags(self.publication_date, self.closing_date, self.description)
+        if scan_notice(self):  # code-side tripwire, before any LLM call
+            self.data_quality.append(INJECTION_PATTERN)
         return self
 
     @property
