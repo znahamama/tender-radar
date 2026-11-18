@@ -159,6 +159,13 @@ def review_queue():
         review_status=Subquery(status),
     ).annotate(
         gates_reviewed=Coalesce(Subquery(gates_reviewed, output_field=IntegerField()), 0),
+        # The newest earlier extraction of this notice that a person reviewed.
+        earlier_reviewed_id=Subquery(
+            Extraction.objects.filter(tender=OuterRef("pk"),
+                                      model_id=settings.LLM_MODEL,
+                                      review_decisions__isnull=False)
+            .exclude(pk=OuterRef("review_extraction_id"))
+            .order_by("-created_at", "-id").values("id")[:1]),
     )
     flagged = Q(data_quality__contains=[INJECTION_PATTERN])
     for f in QUEUE_FLAGS:
@@ -264,8 +271,27 @@ class NeedsReviewAdmin(admin.ModelAdmin):
 
     @admin.display(description="reviewed")
     def reviewed(self, obj):
-        n, total = obj.gates_reviewed, len(review.REVIEW_GATES)
-        return "no" if n == 0 else "yes" if n >= total else f"partly ({n} of {total})"
+        """Gates with a decision in effect (own, or carried and still holding), gates whose
+        earlier decision needs re-review, and a link to an earlier reviewed version."""
+        total = len(review.REVIEW_GATES)
+        carried = ({} if obj.review_extraction_id is None else {
+            g: c for g, c in review.latest_carried(obj.review_extraction_id).items()})
+        own = set(ReviewDecision.objects.filter(extraction_id=obj.review_extraction_id)
+                  .values_list("gate", flat=True)) if obj.review_extraction_id else set()
+        carried = {g: c for g, c in carried.items() if g not in own}
+        n = len(own) + sum(c.applied for c in carried.values())
+        text = "no" if n == 0 else "yes" if n >= total else f"partly ({n} of {total})"
+        extra = []
+        if k := sum(c.applied for c in carried.values()):
+            extra.append(f"{k} carried")
+        if m := sum(not c.applied for c in carried.values()):
+            extra.append(f"{m} {review.NEEDS_REREVIEW}")
+        if extra:
+            text += f" ({'; '.join(extra)})"
+        if obj.earlier_reviewed_id is None:
+            return text
+        url = reverse("admin:tenders_review_extraction", args=[obj.earlier_reviewed_id])
+        return format_html('{}<br><a href="{}">reviewed on an earlier version</a>', text, url)
 
     def get_urls(self):
         return [path("extraction/<int:pk>/", self.admin_site.admin_view(self.review_view),
@@ -316,8 +342,9 @@ class NeedsReviewAdmin(admin.ModelAdmin):
     @staticmethod
     def _gate_context(extraction: Extraction, bound: dict) -> list[dict]:
         history = list(extraction.review_decisions.select_related("reviewer"))
+        reviews = review.reviews_for(extraction)
         latest = review.latest_decisions(extraction)
-        effective = review.apply_reviews(extraction.data, latest)
+        effective = review.apply_reviews(extraction.data, reviews.applied)
         labels = {**GATE_LABELS, **dict(ReviewDecision.GATE_CHOICES)}
         rows = []
         for gate in review.REVIEW_GATES:
@@ -330,11 +357,13 @@ class NeedsReviewAdmin(admin.ModelAdmin):
                 model_text, evidence = gate_value(gate, model), model.get("evidence")
                 flags = gate_flags(gate, extraction.flags)
             decision = latest.get(gate)
+            in_effect = reviews.applied.get(gate)
             rows.append({
                 "gate": gate, "label": labels[gate], "model_value": model_text,
                 "evidence": evidence, "flags": flags, "decision": decision,
+                "carried": reviews.carried.get(gate),
                 "effective": (now if gate == review.CRITERIA else gate_value(gate, now))
-                if decision and decision.action != ReviewDecision.Action.ACCEPT else "",
+                if in_effect and in_effect.action != ReviewDecision.Action.ACCEPT else "",
                 "effective_evidence": None if gate == review.CRITERIA else now.get("evidence"),
                 "history": [d for d in history if d.gate == gate],
                 "correction_form": bound.get(gate) or CorrectionForm(
@@ -354,6 +383,14 @@ class NeedsReviewAdmin(admin.ModelAdmin):
             profiles = {default_profile(), *SupplierProfile.objects.filter(
                 assessments__extraction=extraction)}
             statuses = [assess(extraction, p).get_status_display() for p in profiles]
+            # A decision on an older extraction may carry to the newest one the site shows.
+            newest = (Extraction.objects.select_related("tender")
+                      .filter(tender_id=extraction.tender_id, model_id=extraction.model_id)
+                      .order_by("-created_at", "-id").first())
+            if newest.pk != extraction.pk:
+                for p in {default_profile(), *SupplierProfile.objects.filter(
+                        assessments__extraction=newest)}:
+                    assess(newest, p)
         messages.success(request, f"{ReviewDecision.Action(action).label}: "
                                   f"{dict(ReviewDecision.GATE_CHOICES)[gate]}. "
                                   f"Status now: {', '.join(sorted(set(statuses)))}.")

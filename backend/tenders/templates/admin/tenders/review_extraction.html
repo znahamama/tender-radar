@@ -38,7 +38,14 @@
       <dt>Evidence</dt><dd>{% if g.evidence %}<blockquote>{{ g.evidence }}</blockquote>{% else %}—{% endif %}</dd>
       <dt>Flags</dt><dd>{% for f in g.flags %}<span class="review-flag">{{ f }}</span>{% empty %}—{% endfor %}</dd>
       {% endif %}
-      <dt>Decision</dt><dd>{% if g.decision %}<strong>{{ g.decision.get_action_display }}</strong> by {{ g.decision.reviewer.get_username }}, {{ g.decision.created_at|date:"Y-m-d H:i" }}{% if g.decision.note %}: {{ g.decision.note }}{% endif %}{% else %}not reviewed{% endif %}</dd>
+      <dt>Decision</dt><dd>{% if g.decision %}<strong>{{ g.decision.get_action_display }}</strong> by {{ g.decision.reviewer.get_username }}, {{ g.decision.created_at|date:"Y-m-d H:i" }}{% if g.decision.note %}: {{ g.decision.note }}{% endif %}{% elif g.carried %}not reviewed on this version{% else %}not reviewed{% endif %}</dd>
+      {% if g.carried %}
+      {% with c=g.carried src=g.carried.source %}
+      <dt>Earlier version</dt><dd>{% if c.applied %}<strong>Carried:</strong>{% else %}<strong class="review-flag">Needs re-review (notice text changed):</strong>{% endif %}
+        {{ src.get_action_display }} by {{ src.reviewer.get_username }}, {{ src.created_at|date:"Y-m-d H:i" }}{% if src.corrected_value %}: {{ src.corrected_value }}{% endif %}{% if src.note %} ({{ src.note }}){% endif %}
+        on <a href="{% url 'admin:tenders_review_extraction' src.extraction_id %}#gate-{{ g.gate }}">extraction #{{ src.extraction_id }}</a> (decision #{{ src.pk }}); {{ c.get_reason_display }}.</dd>
+      {% endwith %}
+      {% endif %}
       {% if g.effective %}
       <dt>Now used</dt><dd>{{ g.effective }}{% if g.effective_evidence %}<blockquote>{{ g.effective_evidence }}</blockquote>{% endif %}</dd>
       {% endif %}

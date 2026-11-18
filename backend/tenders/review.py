@@ -13,6 +13,10 @@ schema (tenders.extraction.schema), and its evidence and details go through the 
 post-validation (tenders.extraction.validate.postvalidate) against the same notice text the
 model saw (tenders.extraction.prompt.build_notice).
 
+Decisions follow a notice across re-extractions (carry_forward, CarriedReview): with the
+same LLM input they carry as they stood; with changed input each gate is re-checked, and a
+gate whose decision no longer holds is marked "needs re-review (notice text changed)".
+
 The supply-arrangement metadata override stays a rule: if the notice metadata says an
 arrangement is required, rules v3 say "yes" whatever the gate value, human or model.
 
@@ -23,6 +27,8 @@ from __future__ import annotations
 
 import copy
 import typing
+from dataclasses import dataclass, field
+from itertools import pairwise
 from types import UnionType
 
 from django.core.exceptions import ValidationError
@@ -32,7 +38,7 @@ from pydantic import ValidationError as SchemaError
 from tenders.extraction.prompt import build_notice
 from tenders.extraction.schema import GATES, Eligibility, ExtractionData
 from tenders.extraction.validate import postvalidate
-from tenders.models import Extraction, ReviewDecision
+from tenders.models import CarriedReview, Extraction, ReviewDecision
 
 CRITERIA = "criteria_location"
 REVIEW_GATES = (*GATES, CRITERIA)
@@ -183,3 +189,112 @@ def validate_correction(extraction: Extraction, gate: str, fields: dict,
         raise ValidationError(errors)
     stored = checked.model_dump()
     return {k: v for k, v in stored.items() if k != "evidence"}, stored["evidence"]
+
+
+# --- decisions across re-extractions ---------------------------------------------------
+
+Reason = CarriedReview.Reason
+NEEDS_REREVIEW = "needs re-review (notice text changed)"
+
+
+@dataclass
+class Reviews:
+    """What review means for one extraction.
+
+    ``applied``: the decision in effect per gate: this extraction's own newest decision,
+    else a carried one that still holds (the person's original ReviewDecision either way).
+    ``carried``: the newest CarriedReview per gate that has no own decision (applied or
+    not), for "from an earlier version" and "needs re-review".
+    """
+
+    applied: dict[str, ReviewDecision] = field(default_factory=dict)
+    carried: dict[str, CarriedReview] = field(default_factory=dict)
+
+    @property
+    def needs_rereview(self) -> list[str]:
+        return [g for g in REVIEW_GATES if g in self.carried and not self.carried[g].applied]
+
+
+def latest_carried(extraction_id: int) -> dict[str, CarriedReview]:
+    """Queried, not read from a prefetch: carry_forward() may have just added rows."""
+    latest: dict[str, CarriedReview] = {}
+    rows = (CarriedReview.objects.filter(extraction_id=extraction_id)
+            .select_related("source__reviewer", "source__extraction")
+            .order_by("created_at", "id"))
+    for c in rows:
+        latest[c.gate] = c
+    return latest
+
+
+def reviews_for(extraction: Extraction) -> Reviews:
+    own = latest_decisions(extraction)
+    carried = {g: c for g, c in latest_carried(extraction.pk).items() if g not in own}
+    applied = {**{g: c.source for g, c in carried.items() if c.applied}, **own}
+    return Reviews(applied=applied, carried=carried)
+
+
+def _model_answer(extraction: Extraction, gate: str):
+    """The model's post-validated answer for a gate, without its evidence."""
+    data = extraction.data or {}
+    if gate == CRITERIA:
+        return data.get(CRITERIA)
+    g = (data.get("eligibility") or {}).get(gate) or {}
+    return {k: v for k, v in g.items() if k != "evidence"}
+
+
+def _judge(source: ReviewDecision, inherited: CarriedReview | None, prev: Extraction,
+           cur: Extraction) -> tuple[bool, str]:
+    """Does ``source`` (in effect on ``prev``) still hold on ``cur``?"""
+    if prev.input_hash and prev.input_hash == cur.input_hash:
+        # Same text: nothing to re-check; a decision carries exactly as it stood.
+        return (True, Reason.SAME_INPUT) if inherited is None else (inherited.applied,
+                                                                     inherited.reason)
+    if source.action == Action.CORRECT:
+        if source.gate == CRITERIA:
+            return False, Reason.NO_QUOTE
+        try:
+            validate_correction(cur, source.gate, dict(source.corrected_value), source.evidence)
+        except ValidationError:
+            return False, Reason.QUOTE_GONE
+        return True, Reason.QUOTE_FOUND
+    # accept / reject judged the model's answer on the extraction they were made on.
+    same = _model_answer(source.extraction, source.gate) == _model_answer(cur, source.gate)
+    return (True, Reason.SAME_ANSWER) if same else (False, Reason.ANSWER_CHANGED)
+
+
+def _carry_step(prev: Extraction, cur: Extraction) -> None:
+    """Judge, for ``cur``, each gate's decision as it stands on ``prev``: prev's own newest
+    decision, else the newest one carried onto prev (applied or not)."""
+    own_prev = latest_decisions(prev)
+    carried_prev = latest_carried(prev.pk)
+    own_cur = latest_decisions(cur)
+    have = latest_carried(cur.pk)
+    for gate in REVIEW_GATES:
+        if gate in own_cur:
+            continue  # a person reviewed this version itself
+        inherited = None if gate in own_prev else carried_prev.get(gate)
+        source = own_prev.get(gate) or (inherited.source if inherited else None)
+        if source is None:
+            continue
+        if gate in have and have[gate].source_id == source.pk:
+            continue  # already judged for this source
+        applied, reason = _judge(source, inherited, prev, cur)
+        CarriedReview.objects.create(extraction=cur, gate=gate, source=source,
+                                     applied=applied, reason=reason)
+
+
+def carry_forward(extraction: Extraction) -> None:
+    """Carry review decisions along this notice's ok extractions (same model), oldest first,
+    up to ``extraction``. Idempotent; one query when the notice has never been reviewed.
+    Called by tenders.eligibility.service.assess() before it reads the decisions."""
+    if extraction.status != Extraction.Status.OK:
+        return
+    same_notice = Extraction.objects.filter(tender_id=extraction.tender_id,
+                                            model_id=extraction.model_id)
+    if not ReviewDecision.objects.filter(extraction__in=same_notice).exists():
+        return
+    chain = list(same_notice.filter(status=Extraction.Status.OK)
+                 .select_related("tender").order_by("created_at", "id"))
+    chain = chain[: next(i for i, x in enumerate(chain) if x.pk == extraction.pk) + 1]
+    for prev, cur in pairwise(chain):
+        _carry_step(prev, cur)

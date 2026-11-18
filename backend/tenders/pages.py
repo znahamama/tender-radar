@@ -29,7 +29,7 @@ from tenders.models import (
     SupplierProfile,
     Tender,
 )
-from tenders.review import apply_reviews, latest_decisions
+from tenders.review import apply_reviews, reviews_for
 
 PAGE_SIZE = 25
 # KeywordExtractor.model_id, as a literal: importing keyword.py pulls in providers.py and
@@ -324,7 +324,8 @@ def tender_detail(request, reference: str):
     baseline = (tender.extractions
                 .filter(model_id=BASELINE_MODEL_ID, status=Extraction.Status.OK)
                 .order_by("-created_at", "-id").first())
-    reviews = latest_decisions(llm) if llm else {}
+    # Only decisions in effect: own ones, and carried ones that still hold.
+    reviews = reviews_for(llm).applied if llm else {}
     return render(request, "tenders/detail.html", {
         "tender": tender,
         "published": published_date(tender),

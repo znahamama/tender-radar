@@ -297,6 +297,50 @@ class ReviewDecision(models.Model):
         return f"{self.extraction_id} {self.gate} {self.action}"
 
 
+class CarriedReview(models.Model):
+    """A review decision considered for a newer extraction of the same notice (same model).
+
+    Not a decision and not a copy: ``source`` is the person's original ReviewDecision, so
+    the reviewer and time stay theirs. Written by tenders.review.carry_forward() when the
+    newer extraction is assessed; never edited (the newest row per gate counts).
+    - Same LLM input as the extraction before: the decision carries as it stood.
+    - Changed input: a correction carries if its quote (and details) still pass the
+      grounding check on the new text; a reject or accept carries if the model's new
+      answer equals the one that was judged. Otherwise ``applied`` is False and the gate
+      needs re-review.
+    """
+
+    class Reason(models.TextChoices):
+        SAME_INPUT = "same_input", "same notice text"
+        QUOTE_FOUND = "quote_found", "notice text changed; the correction's quote is still in it"
+        QUOTE_GONE = "quote_gone", "notice text changed; the correction's quote is no longer in it"
+        NO_QUOTE = "no_quote", "notice text changed; a criteria-location correction has no quote to re-check"
+        SAME_ANSWER = "same_answer", "notice text changed; the model gave the same answer"
+        ANSWER_CHANGED = "answer_changed", "notice text changed; the model's answer changed"
+
+    extraction = models.ForeignKey(Extraction, on_delete=models.CASCADE,
+                                   related_name="carried_reviews")
+    gate = models.CharField(max_length=32, choices=ReviewDecision.GATE_CHOICES)
+    source = models.ForeignKey(ReviewDecision, on_delete=models.PROTECT, related_name="carried")
+    applied = models.BooleanField()
+    reason = models.CharField(max_length=20, choices=Reason.choices)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = (
+            models.UniqueConstraint(fields=["extraction", "gate", "source"],
+                                    name="carried_review_once_per_source"),
+        )
+
+    def save(self, *args, **kwargs):
+        if not self._state.adding:
+            raise AppendOnlyError("carried reviews are never edited; a newer one supersedes")
+        super().save(*args, **kwargs)
+
+    def __str__(self) -> str:
+        return f"{self.extraction_id} {self.gate} from {self.source_id} applied={self.applied}"
+
+
 class NeedsReview(Tender):
     """Proxy for the admin's "Needs review" queue (tenders.admin.NeedsReviewAdmin)."""
 

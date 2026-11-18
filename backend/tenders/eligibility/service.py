@@ -1,7 +1,8 @@
 """Compute and store Assessments. No API calls: everything here re-runs on stored data.
 
 Human review overrides the model here, not in the frozen rules: the latest review decision
-per gate (tenders.review) is applied to the post-validated extraction before evaluate().
+per gate (tenders.review), including decisions carried from earlier extractions of the same
+notice that still hold, is applied to the post-validated extraction before evaluate().
 """
 
 from __future__ import annotations
@@ -14,7 +15,7 @@ from django.utils import timezone
 
 from tenders.extraction.service import refresh
 from tenders.models import Assessment, Extraction, SupplierProfile
-from tenders.review import apply_reviews, latest_decisions
+from tenders.review import apply_reviews, carry_forward, reviews_for
 
 from .rules import RULES_VERSION, Profile, TenderFacts, evaluate
 
@@ -42,7 +43,8 @@ def assess(extraction: Extraction, profile: SupplierProfile | None = None) -> As
                         tender.notice_kind or "")
     prof = Profile.from_model(profile)
     data = extraction.data if extraction.status == Extraction.Status.OK else None
-    reviews = latest_decisions(extraction)
+    carry_forward(extraction)  # decisions on earlier extractions of this notice, re-checked
+    reviews = reviews_for(extraction).applied
     data = apply_reviews(data, reviews)
     decision = evaluate(data, list(extraction.flags), facts, prof, extraction.error)
 
@@ -52,7 +54,8 @@ def assess(extraction: Extraction, profile: SupplierProfile | None = None) -> As
               "profile": [prof.supply_arrangements, prof.corporate_clearance,
                           prof.personnel_clearance], "rules": RULES_VERSION}
     if reviews:  # only when there are any, so unreviewed assessments keep their hash
-        inputs["reviews"] = {g: [d.action, d.pk] for g, d in sorted(reviews.items())}
+        inputs["reviews"] = {g: [d.action, d.pk, d.extraction_id != extraction.pk]
+                             for g, d in sorted(reviews.items())}
     fields = {**decision.as_fields(), "rules_version": RULES_VERSION,
               "inputs_hash": hashlib.sha256(
                   json.dumps(inputs, sort_keys=True, default=str).encode()).hexdigest()}

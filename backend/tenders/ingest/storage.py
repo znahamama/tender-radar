@@ -47,8 +47,22 @@ def tender_fields(n: TenderNotice) -> dict:
     return data
 
 
+# Multi-value fields whose order CanadaBuys does not keep stable between CSV regenerations
+# (same items, new order). The hash ignores their order; stored values keep theirs.
+UNORDERED_FIELDS = (
+    "trade_agreements", "regions_of_delivery", "regions_of_opportunity",
+    "procurement_categories", "unspsc_codes", "gsin_codes",
+)
+
+
 def content_hash(fields: dict) -> str:
-    canon = json.dumps(fields, sort_keys=True, default=lambda v: v.isoformat(), ensure_ascii=False)
+    """Hash of the content columns. A reorder-only change to an UNORDERED_FIELDS list hashes
+    the same, so upsert() counts it unchanged and does not save it: the stored order, and
+    with it the LLM input, stays as it was. Sorts a copy; ``fields`` is not changed.
+    Migration 0011 recomputed stored hashes with this rule (keep the two in step)."""
+    canon_fields = {**fields, **{f: sorted(fields[f]) for f in UNORDERED_FIELDS if f in fields}}
+    canon = json.dumps(canon_fields, sort_keys=True, default=lambda v: v.isoformat(),
+                       ensure_ascii=False)
     return hashlib.sha256(canon.encode()).hexdigest()
 
 

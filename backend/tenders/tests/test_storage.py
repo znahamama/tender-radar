@@ -128,3 +128,72 @@ def test_audit_command_prints_counts_and_refs_only():
     assert "title        known_name       0        0" in text
     for fake in ("Alex", "Buyer", "Test Person", "example.com", "555"):
         assert fake not in text, fake
+
+
+# --- list order is not a change -------------------------------------------------------
+
+def _with_lists(n, **lists):
+    return n.model_copy(update=lists)
+
+
+LISTS = {"trade_agreements": ["CFTA", "CETA", "WTO-AGP"],
+         "regions_of_delivery": ["Newfoundland and Labrador", "National Capital Region"],
+         "unspsc_codes": ["*81110000", "*43230000"]}
+
+
+def _seed():
+    notices = {n.reference_number: n for n in _kept()}
+    base = _with_lists(notices["FAKE-NL-1"], **LISTS)
+    upsert([base], now=NOW)
+    return base
+
+
+@pytest.mark.django_db
+def test_reorder_only_is_unchanged_and_keeps_the_stored_order():
+    base = _seed()
+    shuffled = _with_lists(base, **{f: list(reversed(v)) for f, v in LISTS.items()})
+    r = upsert([shuffled], now=NOW + timedelta(hours=1))
+    assert (r.created, r.updated, r.unchanged) == (0, 0, 1)
+    t = Tender.objects.get(reference_number="FAKE-NL-1")
+    assert t.trade_agreements == LISTS["trade_agreements"]  # stored order untouched
+    assert t.updated_at == NOW
+    assert shuffled.trade_agreements == ["WTO-AGP", "CETA", "CFTA"]  # input not sorted in place
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("change", [
+    {"trade_agreements": ["CFTA", "CETA", "WTO-AGP", "CUSMA"]},   # added
+    {"regions_of_delivery": ["Newfoundland and Labrador"]},       # removed
+    {"description": "Amended: the scope now includes a second site."},
+])
+def test_real_changes_are_updated(change):
+    base = _seed()
+    r = upsert([_with_lists(base, **change)], now=NOW + timedelta(hours=1))
+    assert (r.created, r.updated, r.unchanged) == (0, 1, 0)
+    t = Tender.objects.get(reference_number="FAKE-NL-1")
+    field, value = next(iter(change.items()))
+    assert getattr(t, field) == value
+
+
+@pytest.mark.django_db
+def test_migration_0011_rehashes_stored_rows_without_changing_values():
+    import importlib
+
+    from django.apps import apps
+
+    from tenders.ingest.storage import CONTENT_FIELDS, content_hash
+
+    mig = importlib.import_module("tenders.migrations.0011_order_insensitive_content_hash")
+    base = _seed()
+    t = Tender.objects.get(reference_number=base.reference_number)
+    values = {f: getattr(t, f) for f in CONTENT_FIELDS}
+    old = mig._hash(values, ())  # the order-sensitive hash rows were stored with
+    assert old != t.content_hash
+    Tender.objects.filter(pk=t.pk).update(content_hash=old)
+    mig.forwards(apps, None)
+    t.refresh_from_db()
+    assert t.content_hash == content_hash(values)
+    assert {f: getattr(t, f) for f in CONTENT_FIELDS} == values
+    mig.backwards(apps, None)
+    t.refresh_from_db()
+    assert t.content_hash == old
