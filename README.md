@@ -4,6 +4,7 @@ Eligibility triage for Canadian federal tenders: can a small St. John's IT firm 
 
 **Live:** https://h70n8j46yk.execute-api.us-east-2.amazonaws.com/
 (the first load after a quiet period can take about 9 s while the Lambda starts; a fix is planned).
+The site runs prompt v3 as of 2026-11-18: its 90 open notices were re-extracted for about $0.09.
 
 ## The problem
 
@@ -55,7 +56,7 @@ flowchart LR
 ```
 
 - **Backend:** Python 3.12, Django 5.2, server-rendered pages (no JavaScript on public pages).
-- **LLM:** `claude-haiku-5-5`, structured outputs, effort low, max 2000 tokens.
+- **LLM:** `claude-haiku-5-5`, prompt v3, structured outputs, effort low, max 2000 tokens.
 - **Database:** Neon Postgres (free tier), pooled connections from Lambda.
 - **Infra:** AWS Lambda (arm64 container images, ECR), API Gateway HTTP API, EventBridge
   Scheduler, SSM Parameter Store, CloudWatch Logs. All Terraform; no VPC, NAT or RDS.
@@ -67,6 +68,33 @@ flowchart LR
 The question: does the LLM extract the gates better than a keyword baseline, and does the
 final status match what a human would decide?
 
+**Test set: 20 blind cases, scored once** at commit `3cce2a9` on 2026-11-18, for prompt v3
+(on the site now), prompt v2 and the keyword baseline. Values are after the grounding check,
+i.e. what the site shows. "Scored" is the cached run every other number uses; the LLM was also
+run 3 more times per case, and v3's mean and range are over all its runs.
+
+| Field (correct of 20) | v3 scored | v3 mean (min–max) | v2 scored | Baseline |
+|---|---|---|---|---|
+| criteria_location | 18 | 86% (83–90%) | 17 | 17 |
+| supply_arrangement_required | 12 | 63% (60–70%) | 10 | 13 |
+| supplier_origin_restriction | 19 | 93% (89–95%) | 17 | 10 |
+| clearance.corporate | 20 | 100% (100–100%) | 20 | 20 |
+| clearance.personnel | 19 | 99% (95–100%) | 19 | 19 |
+| work_location.on_site | 15 | 68% (65–75%) | 17 | 12 |
+| land_claims_applies | 18 | 90% (89–90%) | 15 | 18 |
+| documents_behind_login | 20 | 98% (95–100%) | 17 | 14 |
+| **All fields** | **141/160** | 87% (86–88%) | **132/160** | **123/160** |
+| All fields, excluding unsure cases (9 cases) | 68/72 | | 60/72 | 58/72 |
+
+- **Status (can-bid decision):** v3 **18/20**, v2 **18/20**, baseline **17/20** agree with
+  the labels (95% interval for 18/20: 70–97%).
+- **False blocks: 0** for all three. **Both LLM prompts caught 5 of 5 blocked notices**; the
+  baseline missed one (test-16), which landed on "check solicitation".
+- **Overclaims** (a value the notice doesn't state): v3 **3**, v2 **8**, baseline **12**.
+  Wrong / missed: v3 4 / 12, v2 5 / 15, baseline 8 / 17.
+- **Consistency:** across runs, the status was the same in 19/20 cases for both prompts.
+- **Cost:** the test run made 150 API calls for about $0.17. The baseline is free.
+
 **Protocol** ([docs/eval-protocol.md](docs/eval-protocol.md))
 
 - **Frozen before labelling:** prompt `v2`, schema `1`, the keyword baseline `rules-v1` and
@@ -77,45 +105,37 @@ final status match what a human would decide?
   expired): 10 dev, 20 test.
 - **Blind hand labels:** each gate labelled from the redacted notice with a written guide,
   without seeing any model output. The expected status is derived from the labels by the same
-  rules, not labelled directly. 5 of 10 dev cases are marked unsure.
-- **n = 10 (dev only so far).** The LLM was run once (cached) plus 3 uncached repeats per case.
+  rules, not labelled directly. 5 of 10 dev and 11 of 20 test cases are marked unsure.
+- **Dev designed v3, test scored it once.** Prompt v3 was written from the 10 dev cases only,
+  each change traced to a dev error or a label-guide clarification. The test set was then
+  scored once, with v2, v3 and the baseline together; nothing is tuned on it afterwards.
+- **One v3 change was removed before scoring.** Its "Invitation to Qualify" wording traced to a
+  test case rather than to dev or the guide, so it was taken out and v3 re-pinned first.
+- **Repeats:** the per-run call cap stopped the repeats 3 calls short (test-19 and test-20 have
+  3 runs instead of 4). Every case has its scored run from all three systems.
 
-**Per field, correct out of 10** (after the grounding check, i.e. what the site shows)
+**Dev set (n=10, used to design v3):** all fields v3 71/80, v2 67/80, baseline 63/80; status
+7/10, 6/10, 6/10 ([eval/reports/dev-v3-2026-11-18.md](eval/reports/dev-v3-2026-11-18.md)).
 
-| Field | LLM | Keyword baseline |
-|---|---|---|
-| criteria_location | 8 | 8 |
-| supply_arrangement_required | 4 | 9 |
-| supplier_origin_restriction | 9 | 6 |
-| clearance.corporate | 10 | 9 |
-| clearance.personnel | 10 | 9 |
-| work_location.on_site | 9 | 6 |
-| land_claims_applies | 10 | 10 |
-| documents_behind_login | 7 | 6 |
-| **All fields** | **67/80** | **63/80** |
-| All fields, excluding unsure cases | 35/40 | 30/40 |
+**What this does and doesn't show.**
 
-Errors: the LLM missed 9 known values and overclaimed 2 (gave a value the notice doesn't
-state); the baseline missed 8, overclaimed 4 and was wrong 5 times.
+- With n = 20, one case is 5 points and the per-field 95% intervals are wide (18/20 is
+  70–97%). The test set shows where each system fails better than it ranks them.
+- v3's supply-arrangement gain on dev (4/10 → 9/10) didn't carry over: on test it scored
+  12/20, below the baseline's 13/20.
+- On-site work is v3's weakest gate: 15/20 scored, mean 68% across runs, below v2's 17/20.
+- LLM answers vary from run to run, which is why the mean and range are reported next to the
+  scored run.
 
-**Status (can-bid decision):** both systems agree with the labels on **6/10**, and neither
-produced a **false block** (0 for each). The misses go the safe way: the LLM missed 3 blocks
-and the baseline 2, each landing on "check solicitation" rather than "no blockers".
-
-**Consistency:** across the 4 LLM runs per case, the status was the same in **8/10** cases.
-
-**Cost:** the whole dev eval (37 API calls) cost about **$0.04**. The baseline is free.
-
-**What this does and doesn't show.** With 10 cases, one case is 10 points and the 95%
-intervals overlap almost everywhere (6/10 is 31–83%). The dev split shows where each system
-fails; it does not rank them. The 20-case blind test set, labelled before any scoring and
-never used for tuning, is scored next.
-
-Full report: [eval/reports/dev-2026-11-17.md](eval/reports/dev-2026-11-17.md) (per-case
-disagreements with evidence quotes; same data in `.json`).
+Full report: [eval/reports/test-final-2026-11-18.md](eval/reports/test-final-2026-11-18.md)
+(per-case disagreements with evidence quotes for v3, v2 and the baseline; dev and test side by
+side; same data in `.json`).
 
 ## Findings
 
+- **v3 overclaims less and quotes better than v2.** On the test set it stated something the
+  notice doesn't say 3 times against v2's 8, and none of its scored answers had to be reset by
+  the grounding check (v2: 8). All fields: 141/160 against 132/160.
 - **Most notices push their criteria into attached documents.** On the production run of
   2026-11-16, 72 of 88 open notices were "check solicitation" (14 blocked, 2 no blockers
   stated), and 8 of the 10 dev notices were labelled `see_solicitation`. For these, "check solicitation" is the honest answer, and the
@@ -157,8 +177,7 @@ disagreements with evidence quotes; same data in `.json`).
   the values never reach Terraform state or the repo.
 - **LLM spend is capped** per run (50 calls by default) and per day ($0.15 on the deployed
   worker), checked before every API call.
-- **Cost:** total LLM spend to date is under $0.25 (about $0.22 across all dev, production and
-  eval runs). AWS is estimated at $0–1/month (mostly free tier); Neon is on its free tier.
+- **Cost:** total LLM spend to date is under $1 across all dev, production and eval runs. AWS is estimated at $0–1/month (mostly free tier); Neon is on its free tier.
   See the cost table in [infra/README.md](infra/README.md).
 
 ## Limits
@@ -166,8 +185,9 @@ disagreements with evidence quotes; same data in `.json`).
 - One fictional firm profile; no real users or client data.
 - Federal notices from CanadaBuys only; no provincial or municipal sources.
 - No attachment parsing, so most notices end at "check solicitation".
-- LLM output varies run to run (status stable in 8/10 dev cases).
-- Small evaluation: 10 dev cases scored so far; the 20-case test set is next.
+- LLM output varies run to run (status stable in 19/20 test cases).
+- Small evaluation: 20 test cases scored once, plus 10 dev cases; per-field intervals are wide.
+- Indigenous set-asides (PSIB) are a real blocker that the six gates don't model.
 
 ## Run it locally
 
@@ -197,7 +217,5 @@ Harbourline Software is a fictional firm used only as the eligibility profile.
 
 ## Roadmap
 
-- Score the 20-case blind test set (prompt v2, baseline, rules v3).
-- Prompt v3, aimed at supply arrangements and origin; scored as a new version on test.
 - Prompt-injection test cases.
 - Fix the cold start on the first page load.
