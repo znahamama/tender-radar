@@ -14,6 +14,9 @@ SECRET_NAMES = ("DATABASE_URL", "ANTHROPIC_API_KEY", "DJANGO_SECRET_KEY")
 # Neon's direct (unpooled) URL. Only the worker's "migrate" task loads it, as
 # DATABASE_URL_DIRECT; the API and the daily task keep the pooled DATABASE_URL.
 DIRECT_URL_PARAM = "database_url_direct"
+# One-time: created by hand just before the worker's "create_admin" task, deleted right
+# after (infra/README.md). Never loaded at cold start and never cached.
+ADMIN_BOOTSTRAP_PARAM = "admin_bootstrap_password"
 
 
 def _check_prefix(prefix: str) -> None:
@@ -62,3 +65,11 @@ def fetch_direct_database_url(prefix: str, client=None) -> dict[str, str]:
     _check_prefix(prefix)
     full_name = f"{prefix}{DIRECT_URL_PARAM}"
     return {"DATABASE_URL_DIRECT": _get_many(_client(client), [full_name])[full_name]}
+
+
+def fetch_admin_bootstrap_password(prefix: str, client=None) -> str:
+    """The ``<prefix>admin_bootstrap_password`` SecureString. Not cached: it is read once,
+    by the task that uses it, and the parameter is deleted afterwards."""
+    _check_prefix(prefix)
+    full_name = f"{prefix}{ADMIN_BOOTSTRAP_PARAM}"
+    return _get_many(_client(client), [full_name])[full_name]

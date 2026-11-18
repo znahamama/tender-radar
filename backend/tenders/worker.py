@@ -3,6 +3,9 @@
 Events:
     {"task": "migrate"}  apply migrations over Neon's DIRECT url (SSM database_url_direct)
     {"task": "daily"}    ingest --save, extract Open tenders (LLM caps apply), reassess
+    {"task": "create_admin", "username": "<name>"}
+                         create or update that superuser with the password in the one-time
+                         SecureString <SSM_PREFIX>admin_bootstrap_password (infra/README.md)
 
 Each command's own output goes to the log as usual; the last line is a one-line JSON summary.
 A failed step stops the run and fails the invocation (no retries are configured anywhere,
@@ -21,7 +24,7 @@ import django
 django.setup()  # at import: once per cold start, including the SSM fetch in settings
 
 import dj_database_url
-from config.ssm import fetch_direct_database_url
+from config.ssm import fetch_admin_bootstrap_password, fetch_direct_database_url
 from django.conf import settings
 from django.core.management import call_command
 from django.db import connections
@@ -36,6 +39,7 @@ TASKS: dict[str, list[tuple[str, list[str]]]] = {
         ("extract_tenders", ["--status", "Open"]),
         ("assess_tenders", []),
     ],
+    "create_admin": [("create_admin", [])],  # a Python step, not a command: STEPS below
 }
 
 
@@ -65,6 +69,25 @@ def _database_for(task: str):
     return nullcontext()
 
 
+def _create_admin(event: dict) -> None:
+    """Never logs, prints or returns the password; only the username and the outcome."""
+    from tenders.bootstrap import bootstrap_admin
+
+    username = event.get("username")
+    if not isinstance(username, str) or not username.strip():
+        raise ValueError('create_admin needs "username", e.g. {"task": "create_admin", '
+                         '"username": "admin"}')
+    if not settings.SSM_PREFIX:
+        raise RuntimeError("create_admin reads its password from SSM and runs on Lambda only; "
+                           "locally use manage.py createsuperuser")
+    outcome = bootstrap_admin(username, fetch_admin_bootstrap_password(settings.SSM_PREFIX))
+    print(f"admin {outcome}: {username.strip()}", flush=True)
+
+
+# Steps that are Python functions of the event rather than management commands.
+STEPS = {"create_admin": _create_admin}
+
+
 def _error_line(e: BaseException) -> str:
     first = (str(e).splitlines() or [""])[0]
     return f"{type(e).__name__}: {first[:200]}"
@@ -84,7 +107,10 @@ def handler(event, context=None):
             steps.append(step)
             try:
                 with _database_for(task):
-                    call_command(name, *args)
+                    if name in STEPS:
+                        STEPS[name](event)
+                    else:
+                        call_command(name, *args)
             except Exception as e:
                 step["error"] = _error_line(e)
                 raise

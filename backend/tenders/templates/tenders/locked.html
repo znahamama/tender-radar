@@ -1,0 +1,9 @@
+{% extends "tenders/base.html" %}
+{# django-axes lockout page (settings.AXES_LOCKOUT_TEMPLATE), served with HTTP 429. #}
+{% block title %}Account temporarily locked · NL Public Tender Radar{% endblock %}
+
+{% block content %}
+<h1>Account temporarily locked</h1>
+<p>Too many failed sign-in attempts. Sign-in for this account is locked from your network for one hour.</p>
+<p>Wait an hour, then try again.</p>
+{% endblock %}

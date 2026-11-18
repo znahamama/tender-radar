@@ -169,6 +169,15 @@ side; same data in `.json`).
   brackets escaped, the prompt says it's data, not instructions (and asks the model to flag
   injection attempts), the output must match a JSON schema, and every evidence quote must appear
   in the notice or the gate is reset to `unknown` (6 gates were reset in the dev run).
+- **Admin:** 5 failed logins for one username from one client address lock that pair for an
+  hour (django-axes; the address is the one API Gateway appends to `X-Forwarded-For`, so a
+  client can't spoof its way around the count). Sessions last 8 hours, with Secure, HttpOnly
+  cookies. The admin user is created by a worker task from a one-time SSM parameter, so the
+  password never passes through a terminal, a log or the chat.
+- **Human review overrides the model:** staff review each gate in the admin (accept, correct
+  or reject). A correction must be an allowed schema value with evidence that passes the
+  same grounding check, and it replaces the model's value before the frozen rules run.
+  Decisions are append-only.
 - **Strict CSP:** public pages load one same-origin stylesheet and no scripts
   (`default-src 'none'`), with `frame-ancestors 'none'`.
 - **No long-lived keys:** Lambdas use IAM roles, deploys use short-lived `aws login`
@@ -214,8 +223,3 @@ Contains information licensed under the
 [Open Government Licence – Canada](https://open.canada.ca/en/open-government-licence-canada).
 
 Harbourline Software is a fictional firm used only as the eligibility profile.
-
-## Roadmap
-
-- Prompt-injection test cases.
-- Fix the cold start on the first page load.

@@ -208,3 +208,19 @@ rules and references only; no text.
 
 First run: `eval/reports/injection-2026-11-18.md`. Nothing frozen was changed. A fix for an
 attack that works would be a new prompt version (v4).
+
+## Reviewed pool (candidate labels from human review)
+
+A separate pool, never mixed into dev or test. In the admin review queue a person can
+accept, correct or reject each gate of an extraction. `python backend/manage.py
+export_review_labels` writes each extraction with a correction as a candidate label file in
+`eval/cases/reviewed/`: same comment block and fields as the dev/test files, and readable by
+the same checker. It is not in `manifest.json`, so `run_eval` never scores it and
+`check_labels` lists its files as ignored. A notice that is a dev or test case is never
+exported.
+
+Only corrections become label values (a correction passed the same schema and grounding
+checks as model output). Label files hold no model output, so accepted, rejected and
+unreviewed gates are written as `TODO`, with a comment naming the decision. Before any of
+these become eval data: label the TODOs independently, then fix and record a split in a new
+manifest, as for dev/test.

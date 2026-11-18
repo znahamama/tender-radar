@@ -5,6 +5,7 @@ pydantic>=2
 anthropic>=2.8,<3
 psycopg[binary]
 python-dotenv
+django-axes~=9.0  # admin login lockout; no django-ipware (tenders.security.client_ip)
 # production (Lambda)
 boto3>=1.40
 gunicorn>=23

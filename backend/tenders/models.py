@@ -1,3 +1,6 @@
+import typing
+
+from django.conf import settings
 from django.db import models
 
 
@@ -216,3 +219,88 @@ class Assessment(models.Model):
 
     def __str__(self) -> str:
         return f"{self.tender_id} {self.status}"
+
+
+class AppendOnlyError(Exception):
+    """A ReviewDecision is never edited or deleted: record a newer decision instead."""
+
+
+class ReviewDecisionQuerySet(models.QuerySet):
+    def update(self, **kwargs):
+        raise AppendOnlyError("review decisions are append-only")
+
+    def delete(self):
+        raise AppendOnlyError("review decisions are append-only")
+
+
+class ReviewDecision(models.Model):
+    """A person's verdict on one gate (or criteria_location) of one extraction.
+
+    Append-only (enforced here, on the queryset and by a database trigger, migration 0009):
+    the newest decision for (extraction, gate) is the one that counts. tenders.review applies
+    it before the eligibility rules run; tenders.eligibility.service.assess() uses it.
+    - accept: the model's (post-validated) value is right.
+    - correct: ``corrected_value`` replaces it, with ``evidence`` quoted from the notice
+      (checked like model evidence). Gate value fields and detail fields, no evidence key;
+      for criteria_location, {"value": ...}.
+    - reject: the model's value is wrong; the gate is treated as unknown.
+    """
+
+    class Action(models.TextChoices):
+        ACCEPT = "accept", "Accept"
+        CORRECT = "correct", "Correct"
+        REJECT = "reject", "Reject"
+
+    GATE_CHOICES: typing.ClassVar = [
+        ("supply_arrangement_required", "Supply arrangement required"),
+        ("supplier_origin_restriction", "Supplier origin restriction"),
+        ("clearance", "Security clearance"),
+        ("work_location", "Work location"),
+        ("land_claims_applies", "Land claims agreement"),
+        ("documents_behind_login", "Documents behind a login"),
+        ("criteria_location", "Where the evaluation criteria are"),
+    ]
+
+    extraction = models.ForeignKey(Extraction, on_delete=models.PROTECT,
+                                   related_name="review_decisions")
+    gate = models.CharField(max_length=32, choices=GATE_CHOICES)
+    action = models.CharField(max_length=10, choices=Action.choices)
+    corrected_value = models.JSONField(null=True, blank=True)
+    evidence = models.TextField(blank=True)
+    reviewer = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT,
+                                 related_name="review_decisions")
+    note = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    objects = ReviewDecisionQuerySet.as_manager()
+
+    class Meta:
+        ordering = ("extraction_id", "gate", "-created_at", "-id")
+        constraints = (
+            models.CheckConstraint(
+                condition=models.Q(action="correct", corrected_value__isnull=False)
+                | (~models.Q(action="correct") & models.Q(corrected_value__isnull=True,
+                                                          evidence="")),
+                name="review_corrected_value_only_on_correct",
+            ),
+        )
+
+    def save(self, *args, **kwargs):
+        if not self._state.adding:
+            raise AppendOnlyError("review decisions are append-only")
+        super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        raise AppendOnlyError("review decisions are append-only")
+
+    def __str__(self) -> str:
+        return f"{self.extraction_id} {self.gate} {self.action}"
+
+
+class NeedsReview(Tender):
+    """Proxy for the admin's "Needs review" queue (tenders.admin.NeedsReviewAdmin)."""
+
+    class Meta:
+        proxy = True
+        verbose_name = "notice needing review"
+        verbose_name_plural = "needs review"

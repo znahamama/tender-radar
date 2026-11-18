@@ -42,10 +42,9 @@ data "aws_iam_policy_document" "lambda" {
 
   statement {
     sid = "ReadProdParameters"
-    # config/ssm.py makes one GetParameters call per cold start. GetParameter stays for
-    # one deploy only: this policy changes before the function does (depends_on), and an
-    # old-image cold start in between still calls GetParameter. Drop it on the next deploy.
-    actions   = ["ssm:GetParameters", "ssm:GetParameter"]
+    # config/ssm.py makes one GetParameters call per cold start, and one more for each
+    # worker task that needs a lowercase parameter (migrate, create_admin).
+    actions   = ["ssm:GetParameters"]
     resources = [local.ssm_params_arn]
   }
 }

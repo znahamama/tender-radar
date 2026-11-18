@@ -1,4 +1,8 @@
-"""Compute and store Assessments. No API calls: everything here re-runs on stored data."""
+"""Compute and store Assessments. No API calls: everything here re-runs on stored data.
+
+Human review overrides the model here, not in the frozen rules: the latest review decision
+per gate (tenders.review) is applied to the post-validated extraction before evaluate().
+"""
 
 from __future__ import annotations
 
@@ -10,6 +14,7 @@ from django.utils import timezone
 
 from tenders.extraction.service import refresh
 from tenders.models import Assessment, Extraction, SupplierProfile
+from tenders.review import apply_reviews, latest_decisions
 
 from .rules import RULES_VERSION, Profile, TenderFacts, evaluate
 
@@ -24,10 +29,11 @@ def default_profile() -> SupplierProfile:
 def assess(extraction: Extraction, profile: SupplierProfile | None = None) -> Assessment:
     """(Re)compute the assessment of one extraction for one profile.
 
-    Re-validates the extraction first (grounding rules may have changed), then applies the
-    rules. Writes only when the result or its inputs changed, so ``computed_at`` is the time
-    the answer last changed. Call it whenever the extraction, the validation rules or the
-    profile change; reassess() does it in bulk.
+    Re-validates the extraction first (grounding rules may have changed), applies the latest
+    human review decisions (a correction replaces the gate's value, a rejection makes it
+    unknown), then applies the rules. Writes only when the result or its inputs changed, so
+    ``computed_at`` is the time the answer last changed. Call it whenever the extraction, a
+    review decision, the validation rules or the profile change; reassess() does it in bulk.
     """
     profile = profile or default_profile()
     tender = extraction.tender
@@ -36,6 +42,8 @@ def assess(extraction: Extraction, profile: SupplierProfile | None = None) -> As
                         tender.notice_kind or "")
     prof = Profile.from_model(profile)
     data = extraction.data if extraction.status == Extraction.Status.OK else None
+    reviews = latest_decisions(extraction)
+    data = apply_reviews(data, reviews)
     decision = evaluate(data, list(extraction.flags), facts, prof, extraction.error)
 
     inputs = {"data": data, "flags": extraction.flags, "error": extraction.error,
@@ -43,6 +51,8 @@ def assess(extraction: Extraction, profile: SupplierProfile | None = None) -> As
                         facts.notice_kind],
               "profile": [prof.supply_arrangements, prof.corporate_clearance,
                           prof.personnel_clearance], "rules": RULES_VERSION}
+    if reviews:  # only when there are any, so unreviewed assessments keep their hash
+        inputs["reviews"] = {g: [d.action, d.pk] for g, d in sorted(reviews.items())}
     fields = {**decision.as_fields(), "rules_version": RULES_VERSION,
               "inputs_hash": hashlib.sha256(
                   json.dumps(inputs, sort_keys=True, default=str).encode()).hexdigest()}
@@ -60,7 +70,8 @@ def assess(extraction: Extraction, profile: SupplierProfile | None = None) -> As
 def latest_extractions(model_ids: Iterable[str] | None = None,
                        tender_status: str | None = None) -> list[Extraction]:
     """The newest extraction per (tender, model_id)."""
-    qs = Extraction.objects.select_related("tender").order_by(
+    qs = Extraction.objects.select_related("tender").prefetch_related(
+        "review_decisions").order_by(
         "tender_id", "model_id", "-created_at", "-id")
     if model_ids:
         qs = qs.filter(model_id__in=list(model_ids))

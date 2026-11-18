@@ -1,0 +1,13 @@
+/* Admin review page (tenders/templates/admin/tenders/review_extraction.html). */
+.review-gate { margin-bottom: 1.5rem; }
+.review-facts { display: grid; grid-template-columns: 9rem 1fr; gap: .25rem 1rem; padding: .5rem 1rem; margin: 0; }
+.review-facts dt { font-weight: 600; }
+.review-facts dd { margin: 0; overflow-wrap: anywhere; }
+.review-facts blockquote { margin: 0; padding-left: .5rem; border-left: 3px solid var(--hairline-color, #ccc); }
+.review-flag { display: block; color: var(--error-fg, #ba2121); }
+.review-history { padding: 0 1rem .5rem; }
+.review-forms { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; padding: .5rem 1rem 1rem; }
+.review-forms form { border-top: 1px solid var(--hairline-color, #ccc); padding-top: .5rem; }
+.review-correct .form-row { padding: .25rem 0; border: 0; }
+.review-correct textarea { width: 100%; }
+@media (max-width: 767px) { .review-forms, .review-facts { grid-template-columns: 1fr; } }

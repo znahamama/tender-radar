@@ -22,7 +22,14 @@ from django.views.decorators.http import require_GET
 from tenders.extraction.schema import GATES
 from tenders.ingest.injection import INJECTION_PATTERN
 from tenders.ingest.schema import SOURCE_TZ
-from tenders.models import Assessment, Extraction, SupplierProfile, Tender
+from tenders.models import (
+    Assessment,
+    Extraction,
+    ReviewDecision,
+    SupplierProfile,
+    Tender,
+)
+from tenders.review import apply_reviews, latest_decisions
 
 PAGE_SIZE = 25
 # KeywordExtractor.model_id, as a literal: importing keyword.py pulls in providers.py and
@@ -190,31 +197,45 @@ def _eligibility(extraction: Extraction | None, source: str) -> dict:
     return (data or {}).get("eligibility") or {}
 
 
+REVIEWED = {
+    ReviewDecision.Action.CORRECT: "Reviewed by a person",
+    ReviewDecision.Action.REJECT: "Reviewed by a person: the model's answer was marked wrong",
+}
+
+
 @dataclass(frozen=True)
 class GateRow:
     gate: str
     label: str
     value: str
-    raw_value: str  # what the model said, when post-validation changed it
+    raw_value: str  # what the model said, when post-validation or a review changed it
     evidence: str | None
     flags: list[str]
     baseline: str
+    reviewed: str = ""  # set when a person corrected or rejected the model's answer
 
 
-def gate_rows(llm: Extraction | None, baseline: Extraction | None) -> list[GateRow]:
-    checked, raw = _eligibility(llm, "data"), _eligibility(llm, "raw_output")
+def gate_rows(llm: Extraction | None, baseline: Extraction | None,
+              reviews: dict[str, ReviewDecision] | None = None) -> list[GateRow]:
+    """The values shown are the ones the assessment used: post-validated, then reviewed."""
+    reviews = reviews or {}
+    reviewed = apply_reviews(llm.data, reviews) if llm and llm.data else None
+    checked = (reviewed or {}).get("eligibility") or {}
+    raw = _eligibility(llm, "raw_output")
     base = _eligibility(baseline, "data")
     flags = list(llm.flags) if llm else []
     rows = []
     for gate in GATES:
         value = gate_value(gate, checked.get(gate))
         said = gate_value(gate, raw.get(gate))
+        decision = reviews.get(gate)
         rows.append(GateRow(
             gate=gate, label=GATE_LABELS[gate], value=value,
             raw_value=said if said != value else "",
             evidence=(checked.get(gate) or {}).get("evidence"),
             flags=gate_flags(gate, flags),
             baseline=gate_value(gate, base.get(gate)),
+            reviewed=REVIEWED.get(decision.action, "") if decision else "",
         ))
     return rows
 
@@ -283,6 +304,7 @@ def tender_detail(request, reference: str):
     baseline = (tender.extractions
                 .filter(model_id=BASELINE_MODEL_ID, status=Extraction.Status.OK)
                 .order_by("-created_at", "-id").first())
+    reviews = latest_decisions(llm) if llm else {}
     return render(request, "tenders/detail.html", {
         "tender": tender,
         "published": published_date(tender),
@@ -296,7 +318,8 @@ def tender_detail(request, reference: str):
                                                         else [])],
         "llm": llm,
         "baseline": baseline,
-        "rows": gate_rows(llm, baseline),
+        "rows": gate_rows(llm, baseline, reviews),
+        "reviewed_count": sum(d.action != ReviewDecision.Action.ACCEPT for d in reviews.values()),
         "other_flags": extraction_flags(llm.flags if llm else []),
         "injection_caution": INJECTION_CAUTION if injection_caution(tender, llm) else "",
     })

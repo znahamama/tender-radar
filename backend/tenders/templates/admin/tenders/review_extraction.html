@@ -1,0 +1,78 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+{# Review page for one extraction (tenders.admin.NeedsReviewAdmin.review_view). No inline #}
+{# styles or scripts: the admin CSP allows same-origin files only.                        #}
+
+{% block extrastyle %}{{ block.super }}<link rel="stylesheet" href="{% static 'tenders/review.css' %}">{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+  <a href="{% url 'admin:index' %}">Home</a>
+  › <a href="{% url 'admin:tenders_needsreview_changelist' %}">Needs review</a>
+  › {{ tender.reference_number }}
+</div>
+{% endblock %}
+
+{% block content %}
+<div id="content-main" class="review">
+  <p>
+    <a href="{% url 'tender-detail' tender.reference_number %}">Public page</a>
+    · extraction #{{ extraction.pk }} by {{ extraction.model_id }} (prompt {{ extraction.prompt_version }})
+    · status: <strong>{% if assessment %}{{ assessment.get_status_display }}{% else %}not assessed{% endif %}</strong>
+  </p>
+  {% if newest_id and newest_id != extraction.pk %}
+  <p class="errornote">This is not the newest extraction of this notice (that is #{{ newest_id }}). Decisions here don't change what the site shows.</p>
+  {% endif %}
+
+  {% if not reviewable %}
+  <p class="errornote">This extraction failed{% if extraction.error %}: {{ extraction.error|truncatechars:200 }}{% endif %}. There is no model answer to review.</p>
+  {% else %}
+  <p class="help">A correction must be an allowed schema value, with evidence quoted exactly from the notice (checked like the model's). Reject marks the model's answer wrong and treats the gate as unknown. The newest decision on a gate counts; older ones stay in the log.</p>
+
+  {% for g in gates %}
+  <fieldset class="module aligned review-gate" id="gate-{{ g.gate }}">
+    <h2>{{ g.label }}</h2>
+    <dl class="review-facts">
+      <dt>Model value</dt><dd>{{ g.model_value|default:"—" }}</dd>
+      {% if g.gate != "criteria_location" %}
+      <dt>Evidence</dt><dd>{% if g.evidence %}<blockquote>{{ g.evidence }}</blockquote>{% else %}—{% endif %}</dd>
+      <dt>Flags</dt><dd>{% for f in g.flags %}<span class="review-flag">{{ f }}</span>{% empty %}—{% endfor %}</dd>
+      {% endif %}
+      <dt>Decision</dt><dd>{% if g.decision %}<strong>{{ g.decision.get_action_display }}</strong> by {{ g.decision.reviewer.get_username }}, {{ g.decision.created_at|date:"Y-m-d H:i" }}{% if g.decision.note %}: {{ g.decision.note }}{% endif %}{% else %}not reviewed{% endif %}</dd>
+      {% if g.effective %}
+      <dt>Now used</dt><dd>{{ g.effective }}{% if g.effective_evidence %}<blockquote>{{ g.effective_evidence }}</blockquote>{% endif %}</dd>
+      {% endif %}
+    </dl>
+    {% if g.history|length > 1 %}
+    <details class="review-history"><summary>Earlier decisions ({{ g.history|length|add:"-1" }})</summary>
+      <ul>{% for d in g.history|slice:"1:" %}<li>{{ d.created_at|date:"Y-m-d H:i" }} {{ d.get_action_display }} by {{ d.reviewer.get_username }}{% if d.corrected_value %}: {{ d.corrected_value }}{% endif %}{% if d.note %} ({{ d.note }}){% endif %}</li>{% endfor %}</ul>
+    </details>
+    {% endif %}
+
+    <div class="review-forms">
+      <form method="post" class="review-decide">{% csrf_token %}
+        <input type="hidden" name="gate" value="{{ g.gate }}">
+        <input type="hidden" name="form" value="decide">
+        <label>Note <input type="text" name="note" maxlength="1000"></label>
+        <button type="submit" name="action" value="accept">Accept</button>
+        <button type="submit" name="action" value="reject">Reject</button>
+      </form>
+      <form method="post" class="review-correct">{% csrf_token %}
+        <input type="hidden" name="gate" value="{{ g.gate }}">
+        <input type="hidden" name="form" value="correct">
+        {{ g.correction_form.non_field_errors }}
+        {% for field in g.correction_form %}
+        <div class="form-row">
+          {{ field.errors }}
+          {{ field.label_tag }} {{ field }}
+          {% if field.help_text %}<div class="help">{{ field.help_text }}</div>{% endif %}
+        </div>
+        {% endfor %}
+        <button type="submit">Save correction</button>
+      </form>
+    </div>
+  </fieldset>
+  {% endfor %}
+  {% endif %}
+</div>
+{% endblock %}

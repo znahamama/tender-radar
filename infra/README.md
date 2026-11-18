@@ -198,6 +198,56 @@ cd ../..
 aws scheduler get-schedule --no-cli-pager --name tender-radar-daily --query State
 ```
 
+## Admin user (one-time bootstrap)
+
+The admin password never passes through Claude Code, a shell argument, the logs or the
+chat. You put it into a one-time SecureString; the worker's `create_admin` task reads it,
+creates or updates the superuser (Django's password validators apply: 12+ characters, not
+common, not all digits, not like the username), and logs only `admin created: <username>`
+or `admin updated: <username>`. Then you delete the parameter. The same steps reset a
+forgotten password; they also clear that username's failed-login lockout.
+
+1. **You:** copy a new password (from your password manager) to the clipboard, then:
+
+   ```sh
+   aws ssm put-parameter --no-cli-pager --type SecureString \
+     --name /tender-radar/prod/admin_bootstrap_password --value "$(pbpaste)"
+   pbcopy < /dev/null
+   ```
+
+   (Retrying after a refused password: add `--overwrite`.)
+
+2. **Claude Code (or you):** invoke the task, with your admin username in the payload:
+
+   ```sh
+   AWS_MAX_ATTEMPTS=1 aws lambda invoke --no-cli-pager \
+     --function-name tender-radar-worker \
+     --cli-binary-format raw-in-base64-out \
+     --payload '{"task":"create_admin","username":"<username>"}' \
+     --cli-read-timeout 910 /tmp/tr-admin.json
+   cat /tmp/tr-admin.json; echo
+   aws logs tail /aws/lambda/tender-radar-worker --since 5m | grep -E "admin (created|updated)|create_admin"
+   ```
+
+   Success: `"ok": true` and one `admin created: <username>` line. A refused password fails
+   the invocation with the validator's reason, e.g. `BootstrapError: the bootstrap password
+   was refused by Django's password validators: This password is too short...`; nothing is
+   written then. A missing parameter fails with `SSM parameter
+   /tender-radar/prod/admin_bootstrap_password: ParameterNotFound`.
+
+3. **You:** log in at `${API%/}/admin/` (the URL from `terraform output api_url`).
+
+4. **You:** delete the parameter straight away (the worker role can only read parameters,
+   so the task can't delete it itself):
+
+   ```sh
+   aws ssm delete-parameter --no-cli-pager --name /tender-radar/prod/admin_bootstrap_password
+   ```
+
+Lockout: 5 failed logins for one username from one address lock that pair for an hour,
+then it unlocks by itself. While logged in, see **Axes → Access attempts** in the admin; to
+unlock early, delete the attempt there or run this bootstrap again for that username.
+
 ## Later deploys
 
 ```sh

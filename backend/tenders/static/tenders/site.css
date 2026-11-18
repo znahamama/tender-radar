@@ -129,6 +129,7 @@ blockquote {
   font-size: .8rem;
   color: var(--check);
 }
+.reviewed { font-size: .8rem; font-weight: 600; color: var(--clear); }
 
 .caution {
   margin: 1rem 0;

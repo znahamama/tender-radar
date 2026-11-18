@@ -1,4 +1,5 @@
 import os
+from datetime import timedelta
 from decimal import Decimal
 from pathlib import Path
 
@@ -45,6 +46,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "rest_framework",
+    "axes",
     "tenders",
 ]
 
@@ -58,6 +60,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "axes.middleware.AxesMiddleware",  # last: turns a locked-out login into the lockout page
 ]
 
 # Explicit, though both are Django's defaults. The CSP header is set in tenders.security.
@@ -89,6 +92,30 @@ _db_url = os.environ.get("DATABASE_URL_DIRECT") or os.environ["DATABASE_URL"]
 DATABASES = {"default": dj_database_url.parse(_db_url, conn_max_age=0)}
 # Neon's pooler is PgBouncer in transaction mode: no server-side cursors.
 DATABASES["default"]["DISABLE_SERVER_SIDE_CURSORS"] = True
+
+# Login lockout (django-axes): 5 failed logins for the same username from the same client IP
+# lock that pair for an hour. Keyed on the pair, so someone guessing from elsewhere locks
+# only themselves out, never the real admin.
+AUTHENTICATION_BACKENDS = [
+    "axes.backends.AxesStandaloneBackend",  # first: refuses a locked-out pair before checking
+    "django.contrib.auth.backends.ModelBackend",
+]
+AXES_FAILURE_LIMIT = 5
+AXES_COOLOFF_TIME = timedelta(hours=1)
+AXES_LOCKOUT_PARAMETERS = [["username", "ip_address"]]
+AXES_RESET_ON_SUCCESS = True
+AXES_LOCKOUT_TEMPLATE = "tenders/locked.html"
+AXES_CLIENT_IP_CALLABLE = "tenders.security.client_ip"
+# Behind API Gateway only (DEBUG off is the deployed config): the client IP is the right-most
+# X-Forwarded-For hop, the one API Gateway appended. See tenders.security.client_ip.
+TRUST_X_FORWARDED_FOR = not DEBUG
+
+# Admin sessions: 8 hours from login (not renewed per request). HttpOnly is Django's default,
+# stated here; Secure is set above when DEBUG is off. The admin's JS never reads the CSRF
+# cookie (it posts the form token), so that cookie is HttpOnly too.
+SESSION_COOKIE_AGE = 8 * 60 * 60
+SESSION_COOKIE_HTTPONLY = True
+CSRF_COOKIE_HTTPONLY = True
 
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},

@@ -53,7 +53,7 @@
     {% if not_stated %}
     <ul class="plain">{% for label in not_stated %}<li>{{ label }}</li>{% endfor %}</ul>
     {% else %}<p>Every gate is stated.</p>{% endif %}
-    <p class="small">Assessed {{ assessment.computed_at|date:"Y-m-d H:i T" }} from extraction by {{ assessment.extraction.model_id }} (prompt {{ assessment.extraction.prompt_version }}), rules v{{ assessment.rules_version }}.</p>
+    <p class="small">Assessed {{ assessment.computed_at|date:"Y-m-d H:i T" }} from extraction by {{ assessment.extraction.model_id }} (prompt {{ assessment.extraction.prompt_version }}), rules v{{ assessment.rules_version }}.{% if reviewed_count %} A person reviewed {{ reviewed_count }} of the model's answers; their values replace the model's.{% endif %}</p>
   {% else %}
     <p>This notice has not been assessed yet. Only notices open at ingest time are assessed.</p>
   {% endif %}
@@ -77,7 +77,7 @@
       {% for r in rows %}
       <tr>
         <th scope="row">{{ r.label }}</th>
-        <td data-label="LLM value">{{ r.value|default:"—" }}{% if r.raw_value %}<br><span class="small">model said: {{ r.raw_value }}</span>{% endif %}</td>
+        <td data-label="LLM value">{{ r.value|default:"—" }}{% if r.reviewed %}<br><span class="reviewed">{{ r.reviewed }}</span>{% endif %}{% if r.raw_value %}<br><span class="small">model said: {{ r.raw_value }}</span>{% endif %}</td>
         <td data-label="Evidence">{% if r.evidence %}<blockquote>{{ r.evidence }}</blockquote>{% else %}—{% endif %}</td>
         <td data-label="Flags">{% for flag in r.flags %}<span class="flag">{{ flag }}</span>{% empty %}—{% endfor %}</td>
         <td data-label="Keyword baseline" class="baseline">{{ r.baseline|default:"—" }}</td>
