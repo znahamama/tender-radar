@@ -5,7 +5,7 @@ Terraform (see below). Everything is tagged `Project=tender-radar`.
 
 ```
 infra/bootstrap/   S3 bucket for Terraform state (local state, gitignored)
-infra/prod/        ECR, IAM, 2 Lambdas, HTTP API, daily schedule (state in that bucket)
+infra/prod/        ECR, IAM, 2 Lambdas, HTTP API, daily schedule, alarms (state in that bucket)
 infra/scripts/     build_push.sh: build arm64 images, push api-<sha> / worker-<sha>
 ```
 
@@ -23,6 +23,7 @@ values never reach state.
 | Scheduler | `tender-radar-daily`, 06:15 America/St_Johns, `{"task":"daily"}`, 0 retries, **DISABLED** until step (h) |
 | Logs | `/aws/lambda/tender-radar-{api,worker}`, `/aws/apigateway/tender-radar`, 14-day retention |
 | IAM | api-role, worker-role: own log group + `ssm:GetParameters` on `/tender-radar/prod/*` (one call per cold start). scheduler-role: invoke the worker only |
+| Alerts | SNS `tender-radar-alerts` → one email; 4 CloudWatch alarms notify on ALARM and OK (see **Alerts**) |
 
 ## AWS profiles: `tender-radar` and the `tender-radar-tf` bridge
 
@@ -75,11 +76,16 @@ owns the bucket.
 The images must exist before the Lambdas can be created, so the repository goes first.
 `build_push.sh` refuses a dirty tree, so commit everything before this step.
 
+First create `infra/prod/alerts.secret.tfvars` (gitignored by `*.secret.tfvars`) in an
+editor, with one line: `alarm_email = "<the address for alarm emails>"`. `alarm_email` has
+no default, so **every** prod plan, including `-target` and `-destroy` plans, needs
+`-var-file=alerts.secret.tfvars`; without it Terraform prompts or fails.
+
 ```sh
 export TF_VAR_git_sha="$(git rev-parse HEAD)"
 cd infra/prod
 terraform init -backend-config="bucket=$(terraform -chdir=../bootstrap output -raw state_bucket)"
-terraform plan -out=ecr.tfplan \
+terraform plan -var-file=alerts.secret.tfvars -out=ecr.tfplan \
   -target=aws_ecr_repository.app \
   -target=aws_ecr_lifecycle_policy.app \
   -target=aws_ecr_repository_policy.app
@@ -142,7 +148,7 @@ infra/scripts/build_push.sh "$(git rev-parse HEAD)"
 
 ```sh
 cd infra/prod
-terraform plan -out=prod.tfplan           # TF_VAR_git_sha from step (b), same commit as (d)
+terraform plan -var-file=alerts.secret.tfvars -out=prod.tfplan   # TF_VAR_git_sha from (b), same commit as (d)
 terraform apply prod.tfplan
 terraform output api_url
 cd ../..
@@ -192,7 +198,7 @@ set `schedule_enabled = true` in `infra/prod/terraform.tfvars`, commit, then:
 
 ```sh
 cd infra/prod
-terraform plan -out=prod.tfplan           # expect exactly 1 change: the schedule state
+terraform plan -var-file=alerts.secret.tfvars -out=prod.tfplan   # expect exactly 1 change: the schedule state
 terraform apply prod.tfplan
 cd ../..
 aws scheduler get-schedule --no-cli-pager --name tender-radar-daily --query State
@@ -254,7 +260,7 @@ unlock early, delete the attempt there or run this bootstrap again for that user
 git status                                  # clean, committed
 export TF_VAR_git_sha="$(git rev-parse HEAD)"
 infra/scripts/build_push.sh "$TF_VAR_git_sha"
-cd infra/prod && terraform plan -out=prod.tfplan && terraform apply prod.tfplan && cd ../..
+cd infra/prod && terraform plan -var-file=alerts.secret.tfvars -out=prod.tfplan && terraform apply prod.tfplan && cd ../..
 # Take the post-deploy cold start (5-7 s: Lambda caching the new image) so a visitor doesn't:
 API="$(terraform -chdir=infra/prod output -raw api_url)"; curl -sS "${API%/}/api/health"; echo
 # with new migrations: step (f) again
@@ -262,6 +268,52 @@ API="$(terraform -chdir=infra/prod output -raw api_url)"; curl -sS "${API%/}/api
 
 ECR keeps the last 5 `api-*` and the last 5 `worker-*` images. To roll back, set
 `TF_VAR_git_sha` to an older sha whose images still exist, then plan and apply.
+
+## Alerts
+
+One SNS topic, `tender-radar-alerts`, with one email subscription, and four alarms
+(`infra/prod/alerts.tf`). Each emails on ALARM and again on OK.
+
+| Alarm | Fires when | Missing data |
+|---|---|---|
+| `tender-radar-worker-errors` | worker `Errors` ≥ 1 in an hour: a step raised (incl. a bad Anthropic key/model), or the 900 s timeout | OK |
+| `tender-radar-worker-not-run` | worker `Invocations` < 1 in the last 26 h (sliding; 26 not 24 so metric lag and the 25 h autumn DST gap don't false-alarm) | ALARM |
+| `tender-radar-api-errors` | API `Errors` ≥ 5 in 5 minutes | OK |
+| `tender-radar-scheduler-target-errors` | Scheduler `TargetErrorCount` ≥ 1 in an hour, schedule group `default` | OK |
+
+A budget cap is not an error: `extract_tenders` stops cleanly, the run is `"ok": true`.
+
+Add or change them:
+
+```sh
+cd infra/prod
+terraform plan -var-file=alerts.secret.tfvars -out=alerts.tfplan
+terraform apply alerts.tfplan
+cd ../..
+```
+
+After the first apply, **confirm the subscription** from the email AWS sends ("AWS
+Notification - Subscription Confirmation"). Until then nothing is delivered, including the
+OK notification each alarm sends when it first leaves INSUFFICIENT_DATA. Check:
+
+```sh
+aws sns list-subscriptions-by-topic --no-cli-pager \
+  --topic-arn "$(terraform -chdir=infra/prod output -raw alerts_topic_arn)" \
+  --query "Subscriptions[].SubscriptionArn"         # an ARN, not PendingConfirmation
+aws cloudwatch describe-alarms --no-cli-pager --alarm-name-prefix tender-radar- \
+  --query "MetricAlarms[].[AlarmName,StateValue]" --output table
+```
+
+Test delivery end to end without breaking anything (it goes back to its real state at the
+next evaluation, within a minute or so, and sends an OK):
+
+```sh
+aws cloudwatch set-alarm-state --no-cli-pager --alarm-name tender-radar-worker-errors \
+  --state-value ALARM --state-reason "manual test"
+```
+
+To change the address, edit `alerts.secret.tfvars`, then plan and apply (the old
+subscription is replaced; confirm the new one).
 
 ## Monthly cost estimate: about $0–1
 
@@ -273,6 +325,8 @@ ECR keeps the last 5 `api-*` and the last 5 `worker-*` images. To roll back, set
 | CloudWatch Logs | MBs per month, 14-day retention; 5 GB ingestion free | $0 |
 | SSM Parameter Store | 4 standard SecureStrings with `aws/ssm`: free. KMS decrypts at cold start, inside the free 20k requests/month | $0 |
 | EventBridge Scheduler | 30 invocations/month, 14M free | $0 |
+| CloudWatch alarms | 4 standard-resolution metric alarms: 10 free (always-free tier), then $0.10/alarm-month | $0 (list price $0.40) |
+| SNS | 1 topic; email deliveries: 1,000/month free, a few per month used | $0 |
 | S3 state bucket | KBs, a few hundred requests | <$0.01 |
 | ECR basic scan on push | free | $0 |
 | Data transfer out | CSV downloads come *in* (free); calls to Neon/Anthropic are tiny | ~$0 |
@@ -287,7 +341,7 @@ its free tier. Optional: an AWS Budget with a $1 alert (the first two budgets ar
 ```sh
 # 1. Prod: everything, including ECR images (force_delete) and log groups
 cd infra/prod
-terraform plan -destroy -out=destroy.tfplan
+terraform plan -destroy -var-file=alerts.secret.tfvars -out=destroy.tfplan
 terraform apply destroy.tfplan
 cd ../..
 

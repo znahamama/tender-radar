@@ -18,3 +18,7 @@ output "worker_function_name" {
 output "schedule_state" {
   value = aws_scheduler_schedule.daily.state
 }
+
+output "alerts_topic_arn" {
+  value = aws_sns_topic.alerts.arn
+}

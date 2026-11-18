@@ -14,3 +14,5 @@ data/
 !backend/tenders/tests/fixtures/*.csv
 .claude/settings.local.json
 *.tfplan
+# alarm_email and anything else not to commit: infra/prod/alerts.secret.tfvars
+*.secret.tfvars

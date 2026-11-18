@@ -9,6 +9,7 @@ import httpx2
 import pytest
 from django.core.exceptions import ImproperlyConfigured
 from django.core.management import call_command
+from django.core.management.base import CommandError
 from django.utils import timezone
 
 from tenders.extraction import providers, validate
@@ -443,16 +444,54 @@ def test_command_stops_cleanly_at_cap(make_tender, settings):
     assert "calls 0  cache hits 2" in out.getvalue()
 
 
-def test_command_stops_cleanly_on_bad_request(make_tender, monkeypatch):
+def test_command_fails_after_totals_on_bad_request(make_tender, monkeypatch):
+    """Stops at the first call, prints the totals, then fails, so the worker invocation
+    fails and the CloudWatch Errors alarm fires (a cap, above, exits cleanly instead)."""
     make_tender()
     make_tender()
     client = StubClient(api_error(anthropic.BadRequestError, 400))
     monkeypatch.setattr(providers, "_default_client", lambda: client)
     out = StringIO()
-    call_command("extract_tenders", stdout=out)
+    with pytest.raises(CommandError, match="stopped: BadRequestError"):
+        call_command("extract_tenders", stdout=out)
     text = out.getvalue()
     assert "stopped: BadRequestError (400) on the first call of the run" in text
     assert len(client.calls) == 1 and "calls 1" in text
+
+
+def test_command_fails_on_bad_api_key(make_tender, monkeypatch):
+    """A revoked key must fail the run, not leave the site on baseline-only answers with
+    a green worker."""
+    make_tender()
+    client = StubClient(api_error(anthropic.AuthenticationError, 401))
+    monkeypatch.setattr(providers, "_default_client", lambda: client)
+    out = StringIO()
+    with pytest.raises(CommandError, match="AuthenticationError"):
+        call_command("extract_tenders", stdout=out)
+    assert "== totals ==" in out.getvalue()
+
+
+def test_worker_daily_fails_on_bad_api_key(make_tender, monkeypatch, capsys):
+    """End to end through the Lambda handler with the real extract command: the invocation
+    raises (Lambda counts an Error) and the summary line says which step failed."""
+    import tenders.worker
+
+    make_tender()
+    client = StubClient(api_error(anthropic.AuthenticationError, 401))
+    monkeypatch.setattr(providers, "_default_client", lambda: client)
+
+    def only_extract_is_real(name, *args):
+        if name == "extract_tenders":
+            call_command(name, *args, stdout=StringIO())
+
+    monkeypatch.setattr(tenders.worker, "call_command", only_extract_is_real)
+    with pytest.raises(CommandError, match="AuthenticationError"):
+        tenders.worker.handler({"task": "daily"})
+    summary = json.loads(capsys.readouterr().out.strip().splitlines()[-1])
+    assert summary["ok"] is False
+    assert [s["ok"] for s in summary["steps"]] == [True, True, False]  # no assess
+    assert summary["steps"][-1]["step"] == "extract_tenders"
+    assert summary["steps"][-1]["error"].startswith("CommandError: stopped: AuthenticationError")
 
 
 def test_prompt_version_selects_a_pinned_prompt_and_is_recorded(make_tender, meter):

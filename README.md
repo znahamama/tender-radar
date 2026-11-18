@@ -3,7 +3,7 @@
 Eligibility triage for Canadian federal tenders: can a small St. John's IT firm even bid?
 
 **Live:** https://h70n8j46yk.execute-api.us-east-2.amazonaws.com/
-(the first load after a quiet period can take about 9 s while the Lambda starts; a fix is planned).
+(a cold start takes 1.3–2.1 s; see Performance below).
 The site runs prompt v3 as of 2026-11-18: its 90 open notices were re-extracted for about $0.09.
 
 ## The problem
@@ -36,6 +36,25 @@ The LLM never makes the decision. It only extracts quoted facts; the status come
 versioned, unit-tested rules. Where CanadaBuys metadata already says a notice is "against a
 supply arrangement", that metadata overrides whatever the LLM extracted.
 
+## Human review
+
+- **Review queue:** staff accept, correct or reject each gate in the admin, blocked and
+  flagged notices first. A correction must be an allowed schema value with evidence that
+  passes the same grounding check as model output.
+- **Overrides the model, not the rules:** the decision replaces the model's value before the
+  frozen rules run.
+- **Append-only:** decisions are never edited or deleted (model, queryset and a Postgres
+  trigger); a newer decision supersedes an older one.
+- **Carried over to re-extractions** of the same notice:
+  - same LLM input: the decision carries;
+  - a correction: carries if its quote still grounds in the new text;
+  - an accept or reject: carries if the model's answer is unchanged;
+  - otherwise the gate is marked "needs re-review (notice text changed)" and the model's
+    answer counts again.
+  A carried decision links to the original; the reviewer and time stay theirs.
+- **Public page:** gates with a decision in effect show "Reviewed by a person" and what the
+  model said.
+
 ## Architecture
 
 ```mermaid
@@ -62,6 +81,9 @@ flowchart LR
   Scheduler, SSM Parameter Store, CloudWatch Logs. All Terraform; no VPC, NAT or RDS.
 - **CI:** GitHub Actions: ruff, Django checks, pytest against a throwaway Postgres,
   gitleaks over the full history, `terraform fmt`/`validate`.
+- **Performance:** API cold start went from 2.3–3.0 s to 1.3–2.1 s. The first request after a
+  deploy takes ~6.5 s while Lambda caches the new image, so the deploy runbook ends with a
+  warm-up curl.
 
 ## Evaluation
 
@@ -131,6 +153,18 @@ Full report: [eval/reports/test-final-2026-11-18.md](eval/reports/test-final-202
 (per-case disagreements with evidence quotes for v3, v2 and the baseline; dev and test side by
 side; same data in `.json`).
 
+**Prompt injection** (5 invented attack notices, each with a clean twin, 4 runs each, prompt v3):
+
+- **0/20** attack runs reached the attacker's target; no status changed.
+- One of 20 attack runs (d, buyer-name metadata) moved a field outside the clean twin's range
+  (supply arrangement → no); it wasn't the attack's target and the status stayed Blocked.
+- The model flagged **20/20** attack runs as suspected injection (0/20 twin runs).
+- The code-side pattern detector flagged 5/5 attack notices and 0 of 326 stored real notices.
+  The 5/5 is by construction (the same person wrote the rules and the attacks, and rewording
+  gets past it); the false-positive count is the useful number.
+
+Report: [eval/reports/injection-2026-11-18.md](eval/reports/injection-2026-11-18.md).
+
 ## Findings
 
 - **v3 overclaims less and quotes better than v2.** On the test set it stated something the
@@ -154,6 +188,10 @@ side; same data in `.json`).
   and the baseline read "excludes locations in areas subject to Comprehensive Land Claims
   Agreements" as land claims *applying*. The label guide treats this wording as `no`.
   This is one observation, not an eval metric.
+- **CanadaBuys reorders list fields between CSV regenerations.** Trade agreements and regions
+  came back as the same items in a new order, so unchanged notices counted as "updated" and
+  were re-extracted. Fix: `content_hash` ignores list order, and migration 0011 recomputed the
+  stored hashes. The next daily run: 0 updated, 341 unchanged.
 - **Run-to-run variance shows up as value↔unknown flips.** Every gate that changed between runs
   moved between a value and `unknown`; none flipped between two values (e.g. yes↔no). Status
   flips follow from those (dev-02 went blocked ↔ check solicitation as its supply-arrangement
@@ -169,15 +207,11 @@ side; same data in `.json`).
   brackets escaped, the prompt says it's data, not instructions (and asks the model to flag
   injection attempts), the output must match a JSON schema, and every evidence quote must appear
   in the notice or the gate is reset to `unknown` (6 gates were reset in the dev run).
-- **Admin:** 5 failed logins for one username from one client address lock that pair for an
-  hour (django-axes; the address is the one API Gateway appends to `X-Forwarded-For`, so a
-  client can't spoof its way around the count). Sessions last 8 hours, with Secure, HttpOnly
+- **Admin:** django-axes locks a login after 5 failures for 1 hour, keyed on username + IP.
+  The client IP is the right-most `X-Forwarded-For` entry (the one API Gateway appends), so
+  a client can't spoof its way around the count. Sessions last 8 hours, with Secure, HttpOnly
   cookies. The admin user is created by a worker task from a one-time SSM parameter, so the
   password never passes through a terminal, a log or the chat.
-- **Human review overrides the model:** staff review each gate in the admin (accept, correct
-  or reject). A correction must be an allowed schema value with evidence that passes the
-  same grounding check, and it replaces the model's value before the frozen rules run.
-  Decisions are append-only.
 - **Strict CSP:** public pages load one same-origin stylesheet and no scripts
   (`default-src 'none'`), with `frame-ancestors 'none'`.
 - **No long-lived keys:** Lambdas use IAM roles, deploys use short-lived `aws login`
@@ -196,7 +230,20 @@ side; same data in `.json`).
 - No attachment parsing, so most notices end at "check solicitation".
 - LLM output varies run to run (status stable in 19/20 test cases).
 - Small evaluation: 20 test cases scored once, plus 10 dev cases; per-field intervals are wide.
-- Indigenous set-asides (PSIB) are a real blocker that the six gates don't model.
+- Indigenous set-asides (PSIB) aren't assessed for the fictional firm: they're a real blocker
+  that the six gates don't model.
+
+## Scope cuts
+
+- No React front end and no REST API/OpenAPI: server-rendered Django templates instead.
+- Bedrock was replaced by the Anthropic API after two quota denials.
+
+## Roadmap
+
+Cleanup:
+- An assess-only worker task (`{"task":"assess"}`: `assess_tenders` alone, no ingest, no
+  LLM), so reassessing after a deploy (e.g. carrying review decisions forward) doesn't
+  need a full daily run.
 
 ## Run it locally
 

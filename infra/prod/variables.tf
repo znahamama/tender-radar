@@ -27,3 +27,13 @@ variable "schedule_enabled" {
   type        = bool
   default     = false
 }
+
+variable "alarm_email" {
+  description = "Address the alarm emails go to. Never committed: set it in the gitignored infra/prod/alerts.secret.tfvars and pass -var-file=alerts.secret.tfvars."
+  type        = string
+  sensitive   = true # kept out of plan output; it is still stored in state
+  validation {
+    condition     = can(regex("^[^@[:space:]]+@[^@[:space:]]+\\.[^@[:space:]]+$", var.alarm_email))
+    error_message = "alarm_email must be an email address."
+  }
+}

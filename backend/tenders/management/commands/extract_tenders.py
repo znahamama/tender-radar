@@ -4,7 +4,7 @@ from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
 
 from tenders.eligibility.service import assess, default_profile
-from tenders.extraction.budget import CallMeter, StopRun
+from tenders.extraction.budget import CallMeter, CapReached, StopRun
 from tenders.extraction.keyword import KeywordExtractor
 from tenders.extraction.providers import AnthropicExtractor, FakeExtractor
 from tenders.extraction.schema import GATES
@@ -69,11 +69,13 @@ class Command(BaseCommand):
         out(f"model {extractor.model_id}, {len(tenders)} tender(s)")
         counts: Counter = Counter()
         verdicts: Counter = Counter()
+        stopped: StopRun | None = None
         for t in tenders:
             try:
                 o = extract_tender(t, extractor, meter)
             except StopRun as e:  # caps, bad key/model, 400 on the first call
                 out(self.style.WARNING(f"stopped: {e}"))
+                stopped = e
                 break
             counts[o.status] += 1
             x = o.extraction
@@ -89,3 +91,9 @@ class Command(BaseCommand):
             f"failed {counts['failed']}")
         out(f"tokens in {meter.input_tokens}  out {meter.output_tokens}  "
             f"cost ${meter.cost:.6f}  (worst-case estimates included for failed connections)")
+
+        # A cap is the budget working as designed: a clean exit. Any other stop (bad key or
+        # model, 400 on the first call) is a broken run; failing here fails the worker
+        # invocation, which is what the CloudWatch Errors alarm watches.
+        if stopped is not None and not isinstance(stopped, CapReached):
+            raise CommandError(f"stopped: {stopped}") from stopped
