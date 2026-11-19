@@ -17,11 +17,11 @@ from django.core.management import call_command
 from django.urls import reverse
 from django.utils import timezone
 
-from tenders.documents import parse
+from tenders.documents import parse, service
 from tenders.documents.fetch import FetchFailed, download_pdf, is_allowed_url
 from tenders.documents.service import Limits, fetch_documents
 from tenders.ingest.pipeline import REF_HEADER
-from tenders.ingest.redact import HINT_HEADERS, redact
+from tenders.ingest.redact import HINT_HEADERS, REDACT_VERSION, redact
 from tenders.models import Tender, TenderDocument
 
 pytestmark = pytest.mark.django_db
@@ -348,7 +348,7 @@ def test_the_pdf_itself_is_never_stored(csv_dir):
     assert "%PDF" not in d.text
     stored = {f.name for f in TenderDocument._meta.concrete_fields}
     assert stored == {"id", "tender", "url", "status", "text", "pages", "sha256",
-                      "injection_patterns", "attempts", "fetched_at"}
+                      "injection_patterns", "attempts", "redact_version", "fetched_at"}
 
 
 def test_injection_is_flagged(csv_dir):
@@ -474,14 +474,39 @@ def test_permanent_rejections_are_never_retried(csv_dir, status):
     assert opener.calls == [] and summary.unchanged == 1 and doc(url).attempts == 1
 
 
-def test_over_tender_limit_is_not_retried(csv_dir):
-    urls = [ATT + f"{i}.pdf" for i in range(6)]
+def test_over_tender_limit_is_left_alone_while_the_limit_is_unchanged(csv_dir):
+    urls = [ATT + f"{i}.pdf" for i in range(9)]
     tender(urls=urls)
     paths = csv_dir("PW-1")
     run(paths, {u: PDF for u in urls})
-    assert doc(urls[5]).status == "over_tender_limit"
+    assert doc(urls[8]).status == "over_tender_limit"
     summary, opener = run(paths, {u: PDF for u in urls})
     assert opener.calls == [] and summary.unchanged == 1
+
+
+def test_over_tender_limit_is_reevaluated_under_a_higher_limit(csv_dir):
+    urls = [ATT + f"{i}.pdf" for i in range(4)]
+    tender(urls=urls)
+    paths = csv_dir("PW-1")
+    run(paths, {u: PDF for u in urls}, per_tender=2)
+    assert [doc(u).status for u in urls] == ["ok", "ok", "over_tender_limit", "over_tender_limit"]
+
+    summary, opener = run(paths, {u: PDF for u in urls}, per_tender=3)
+    assert opener.calls == [urls[2]] and summary.reevaluated == 1 and summary.retries == 0
+    assert (doc(urls[2]).status, doc(urls[2]).attempts) == ("ok", 1)
+    assert doc(urls[3]).status == "over_tender_limit"
+
+
+def test_reevaluation_counts_toward_the_per_run_cap(csv_dir):
+    urls = [ATT + f"{i}.pdf" for i in range(4)]
+    tender(urls=urls)
+    paths = csv_dir("PW-1")
+    run(paths, {u: PDF for u in urls}, per_tender=1)
+    summary, opener = run(paths, {u: PDF for u in urls}, per_tender=8, per_run=2)
+    assert opener.calls == urls[1:3] and summary.stopped.startswith("per-run download cap")
+    assert doc(urls[3]).status == "over_tender_limit"  # still waiting, not lost
+    summary, opener = run(paths, {u: PDF for u in urls}, per_tender=8, per_run=2)
+    assert opener.calls == [urls[3]] and doc(urls[3]).status == "ok"
 
 
 def test_retries_count_toward_the_per_run_cap(csv_dir):
@@ -509,12 +534,198 @@ def test_a_retry_replaces_every_stored_field(csv_dir):
     assert "Ignore" not in d.text
 
 
-def test_at_most_five_downloads_per_tender(csv_dir):
-    urls = [ATT + f"{i}.pdf" for i in range(7)]
+def test_at_most_eight_downloads_per_tender(csv_dir):
+    assert Limits().per_tender == 8
+    urls = [ATT + f"{i}.pdf" for i in range(10)]
     tender(urls=["https://sscp2pspc.ssc-spc.gc.ca/x", *urls])
     summary, opener = run(csv_dir("PW-1"), {u: PDF for u in urls})
-    assert opener.calls == urls[:5]
-    assert summary.statuses == {"ok": 5, "over_tender_limit": 2, "skipped_host": 1}
+    assert opener.calls == urls[:8]
+    assert summary.statuses == {"ok": 8, "over_tender_limit": 2, "skipped_host": 1}
+
+
+# --- re-cleaning after a redact() change --------------------------------------------
+
+def _make_stale(url, text="Technical Authority: Jane Doe (old cleaning)"):
+    """As if cleaned by redact() version 1: the name after the label was not caught."""
+    TenderDocument.objects.filter(url=url).update(redact_version=1, text=text)
+
+
+def test_new_rows_record_the_current_redact_version(csv_dir):
+    url = ATT + "a.pdf"
+    tender(urls=[url, "https://sscp2pspc.ssc-spc.gc.ca/x"])
+    run(csv_dir("PW-1"), {url: PDF})
+    assert set(TenderDocument.objects.values_list("redact_version", flat=True)) == {
+        REDACT_VERSION}
+
+
+def test_an_ok_document_cleaned_by_an_older_redact_is_downloaded_and_recleaned(csv_dir):
+    url = ATT + "a.pdf"
+    tender(urls=[url])
+    paths = csv_dir("PW-1")
+    run(paths, {url: make_pdf(["Technical Authority: Jane Doe"])})
+    assert doc(url).text.strip() == "Technical Authority: [NAME]"
+    _make_stale(url)
+
+    summary, opener = run(paths, {url: make_pdf(["Technical Authority: Jane Doe"])})
+    assert opener.calls == [url] and summary.recleaned == 1 and summary.unchanged == 0
+    d = doc(url)
+    assert (d.status, d.redact_version, d.attempts) == ("ok", REDACT_VERSION, 1)
+    assert d.text.strip() == "Technical Authority: [NAME]" and "Jane" not in d.text
+
+    summary, opener = run(paths, {})  # now current: left alone
+    assert opener.calls == [] and summary.unchanged == 1
+
+
+def test_current_version_and_non_ok_rows_are_not_recleaned(csv_dir):
+    ok, failed = ATT + "ok.pdf", ATT + "bad.pdf"
+    tender(urls=[ok, failed])
+    paths = csv_dir("PW-1")
+    run(paths, {ok: PDF, failed: b"<html>"})
+    TenderDocument.objects.filter(url=failed).update(redact_version=1)  # not_pdf: no text
+    summary, opener = run(paths, {ok: PDF, failed: PDF})
+    assert opener.calls == [] and summary.unchanged == 1 and summary.ok_stale == 0
+
+
+def test_a_stale_document_outside_the_limit_is_still_recleaned(csv_dir):
+    urls = [ATT + f"{i}.pdf" for i in range(3)]
+    tender(urls=urls)
+    paths = csv_dir("PW-1")
+    run(paths, {u: PDF for u in urls})
+    _make_stale(urls[2])
+    summary, opener = run(paths, {u: PDF for u in urls}, per_tender=1)  # limit lowered
+    assert opener.calls == [urls[2]] and summary.recleaned == 1
+
+
+def test_recleaning_counts_toward_the_per_run_cap_and_continues_next_run(csv_dir):
+    urls = [ATT + f"{i}.pdf" for i in range(3)]
+    tender(urls=urls)
+    paths = csv_dir("PW-1")
+    run(paths, {u: PDF for u in urls})
+    for u in urls:
+        _make_stale(u)
+    summary, opener = run(paths, {u: PDF for u in urls}, per_run=2)
+    assert len(opener.calls) == 2 and summary.stopped.startswith("per-run download cap")
+    assert summary.ok_stale == 1  # the one left for next run
+    summary, opener = run(paths, {u: PDF for u in urls}, per_run=2)
+    assert opener.calls == [urls[2]] and summary.ok_stale == 0
+
+
+def test_a_failed_reclean_drops_the_old_text_and_is_retried(csv_dir):
+    url = ATT + "a.pdf"
+    tender(urls=[url])
+    paths = csv_dir("PW-1")
+    run(paths, {url: PDF})
+    _make_stale(url)
+    run(paths, {url: TimeoutError()})
+    d = doc(url)
+    assert (d.status, d.text, d.attempts, d.redact_version) == ("timeout", "", 1, REDACT_VERSION)
+    _, opener = run(paths, {url: PDF})  # an ordinary retry
+    assert opener.calls == [url] and doc(url).status == "ok"
+
+
+@pytest.mark.parametrize("fields", [
+    {"tender_status": "Expired", "closing_date": NOW - timedelta(days=30)},
+    {"tender_status": "Cancelled"},
+    {"tender_status": "Open", "closing_date": NOW - timedelta(days=1)},  # closed since
+    {"regions_of_delivery": ["Ontario"]},  # no longer kept by the filter
+])
+def test_stale_documents_of_any_tender_are_recleaned(csv_dir, fields):
+    url = ATT + "a.pdf"
+    tender(urls=[url])
+    paths = csv_dir("PW-1")
+    run(paths, {url: make_pdf(["Technical Authority: Jane Doe"])})
+    _make_stale(url)
+    Tender.objects.filter(reference_number="PW-1").update(**fields)
+    summary, opener = run(paths, {url: make_pdf(["Technical Authority: Jane Doe"])})
+    assert summary.tenders_checked == 0  # not an open, kept tender any more
+    assert opener.calls == [url] and summary.recleaned == 1 and summary.ok_stale == 0
+    d = doc(url)
+    assert d.redact_version == REDACT_VERSION and "Jane" not in d.text
+
+
+def test_a_stale_document_without_a_csv_row_is_left_as_it_is(csv_dir):
+    url = ATT + "a.pdf"
+    tender("PW-9", [url])
+    run(csv_dir("PW-9"), {url: PDF})
+    _make_stale(url, text="old text")
+    Tender.objects.filter(reference_number="PW-9").update(
+        tender_status="Expired", closing_date=NOW - timedelta(days=30))
+    summary, opener = run(csv_dir("PW-1"), {url: PDF})  # PW-9 is not in these CSVs
+    assert opener.calls == [] and summary.stale_no_csv_row == 1 and summary.ok_stale == 1
+    assert (doc(url).text, doc(url).redact_version) == ("old text", 1)
+
+
+def test_open_tenders_come_first_and_other_recleans_share_the_run_cap(csv_dir):
+    new_url, old_url = ATT + "new.pdf", ATT + "old.pdf"
+    tender("PW-1", [new_url])
+    tender("PW-2", [old_url])
+    paths = csv_dir("PW-1", "PW-2")
+    run(paths, {new_url: PDF, old_url: PDF})
+    TenderDocument.objects.filter(url=new_url).delete()  # PW-1 has a new URL to fetch
+    _make_stale(old_url)
+    Tender.objects.filter(reference_number="PW-2").update(tender_status="Expired")
+    summary, opener = run(paths, {new_url: PDF, old_url: PDF}, per_run=1)
+    assert opener.calls == [new_url] and summary.stopped.startswith("per-run download cap")
+    assert summary.ok_stale == 1
+    summary, opener = run(paths, {new_url: PDF, old_url: PDF}, per_run=1)
+    assert opener.calls == [old_url] and summary.recleaned == 1 and summary.ok_stale == 0
+
+
+def test_command_reports_recleaned_and_stale_counts(csv_dir, monkeypatch):
+    url = ATT + "a.pdf"
+    tender(urls=[url])
+    paths = csv_dir("PW-1")
+    run(paths, {url: PDF})
+    _make_stale(url)
+    monkeypatch.setattr(service, "default_opener", lambda: FakeOpener({url: PDF}))
+    out = StringIO()
+    call_command("fetch_documents", "--csv-dir", str(Path(paths[0]).parent), stdout=out)
+    assert "1 re-cleaned" in out.getvalue() and "0 still cleaned by an older" in out.getvalue()
+
+
+# --- order ----------------------------------------------------------------------------
+
+EBSU = ATT + "ABES.PROD.PW__HP.B539.E79947.EBSU{:03d}.PDF"
+
+
+def test_main_solicitation_first_then_amendments_in_order():
+    csv_order = [ATT + "annex_b_corporate_profile.docx", EBSU.format(2), ATT + "map.pdf",
+                 EBSU.format(10), EBSU.format(1), EBSU.format(0), ATT + "pricing.zip"]
+    assert service.order_urls(csv_order) == [
+        EBSU.format(0), EBSU.format(1), EBSU.format(2), EBSU.format(10),
+        ATT + "map.pdf",                                              # other PDFs
+        ATT + "annex_b_corporate_profile.docx", ATT + "pricing.zip",  # other types, CSV order
+    ]
+
+
+@pytest.mark.parametrize("main", ["rfsa_5p420-20-0315-b.pdf", "itq_-_diplomatic_vehicles.pdf",
+                                  "Solicitation_EN.pdf", "demande-de-propositions.pdf"])
+def test_a_file_named_as_a_solicitation_ranks_as_the_main_document(main):
+    urls = [ATT + "annex_a.pdf", ATT + "amendment_002.pdf", ATT + "amendment-1.pdf", ATT + main]
+    assert service.order_urls(urls) == [ATT + main, ATT + "amendment-1.pdf",
+                                         ATT + "amendment_002.pdf", ATT + "annex_a.pdf"]
+
+
+def test_the_limit_keeps_the_main_solicitation_and_earliest_amendments(csv_dir):
+    urls = [EBSU.format(n) for n in (5, 3, 0, 7, 1, 2, 4, 6, 8, 9)]  # CSV order, shuffled
+    tender(urls=urls)
+    _, opener = run(csv_dir("PW-1"), {u: PDF for u in urls})
+    assert opener.calls == [EBSU.format(n) for n in range(8)]  # downloaded best first
+    assert {doc(EBSU.format(n)).status for n in (8, 9)} == {"over_tender_limit"}
+
+
+# --- stored totals --------------------------------------------------------------------
+
+def test_summary_counts_tenders_with_an_ok_document_and_their_characters(csv_dir):
+    a1, a2, b1 = ATT + "a1.pdf", ATT + "a2.pdf", ATT + "b1.pdf"
+    tender("PW-1", [a1, a2])
+    tender("PW-2", [b1])
+    summary, _ = run(csv_dir("PW-1", "PW-2"), {a1: PDF, a2: PDF, b1: b"<html>"})
+    assert (summary.ok_tenders, summary.ok_documents) == (1, 2)
+    assert summary.ok_chars == len(doc(a1).text) + len(doc(a2).text) > 0
+    again, _ = run(csv_dir("PW-1", "PW-2"), {})  # totals are over stored rows, not this run
+    assert (again.ok_tenders, again.ok_documents, again.ok_chars) == (
+        1, 2, summary.ok_chars)
 
 
 def test_per_run_cap_stops_and_the_next_run_continues(csv_dir):
@@ -562,7 +773,8 @@ def test_document_text_is_never_on_the_public_pages(client, csv_dir):
     url = ATT + "a.pdf"
     t = tender(urls=[url])
     TenderDocument.objects.create(tender=t, url=url, status="ok", text="SECRET-DOC-TEXT",
-                                  pages=1, sha256="0" * 64, fetched_at=NOW)
+                                  pages=1, sha256="0" * 64, fetched_at=NOW,
+                                  redact_version=REDACT_VERSION)
     for path in (reverse("tender-list"), reverse("tender-detail", args=[t.reference_number])):
         html = client.get(path, {"show": "all"}).content.decode()
         assert "SECRET-DOC-TEXT" not in html and "documents/pub/att" not in html
@@ -584,8 +796,6 @@ def test_command_needs_the_csvs(tmp_path):
 
 
 def test_command_prints_counts_only(csv_dir, monkeypatch):
-    from tenders.documents import service
-
     url = ATT + "a.pdf"
     tender(urls=[url, "https://sscp2pspc.ssc-spc.gc.ca/x"])
     paths = csv_dir("PW-1")
@@ -594,4 +804,7 @@ def test_command_prints_counts_only(csv_dir, monkeypatch):
     call_command("fetch_documents", "--csv-dir", str(Path(paths[0]).parent), stdout=out)
     text = out.getvalue()
     assert "documents: ok 1, skipped_host 1" in text and "downloads: 1" in text
+    chars = len(doc(url).text)
+    assert f"stored ok: 1 tender(s) with >= 1 ok document, 1 document(s), {chars:,} characters" \
+        in text
     assert OFFICER not in text and "security requirement" not in text

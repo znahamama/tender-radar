@@ -297,3 +297,149 @@ def test_datum_label_keeps_text_after_its_placeholder():
 def test_glued_split_needs_a_capitalised_label_with_separator():
     for text in ("Please contact: the desk", "the Contact list", "a NameTag item", "fooName"):
         assert r(text)[0] == text
+
+
+# --- names after role labels (no hints needed) -------------------------------------------
+
+@pytest.mark.parametrize(("text", "expected"), [
+    ("Technical Authority: Jane Doe", "Technical Authority: [NAME]"),
+    ("Questions go to the Contracting Authority - Jane Doe",
+     "Questions go to the Contracting Authority - [NAME]"),
+    ("Project Authority:\nJane Q. Doe\nProject Lead", "Project Authority:\n[NAME]\nProject Lead"),
+    ("Project Authority\nJane Doe", "Project Authority\n[NAME]"),
+    ("  • Technical Authority\n\nJane Doe", "  • Technical Authority\n\n[NAME]"),
+    ("Attention: Ms. Jane Doe", "Attention: Ms. [NAME]"),
+    ("please contact: Jane Doe.", "please contact: [NAME]."),
+    ("For details, contact - Pat O'Brien-Smith", "For details, contact - [NAME]"),
+    ("Autorité technique : Jean-François Tremblay, Gestionnaire",
+     "Autorité technique : [NAME], Gestionnaire"),
+    ("Questions à l'autorité contractante - Marie de la Fontaine",
+     "Questions à l'autorité contractante - [NAME]"),
+    ("Responsable de projet:\n\nLuc Gagnon", "Responsable de projet:\n\n[NAME]"),
+    ("À l'attention de : Mme Marie Roy", "À l'attention de : Mme [NAME]"),
+    ("a l’attention de - Luc Roy", "a l’attention de - [NAME]"),
+    ("The Technical Authority for the Contract is:\nJane Doe\nTitle: Engineer",
+     "The Technical Authority for the Contract is:\n[NAME]\nTitle: Engineer"),
+    ("L'autorité technique pour le contrat est :\n\nJean Roy",
+     "L'autorité technique pour le contrat est :\n\n[NAME]"),
+    ("Project Authority: Jane DOE", "Project Authority: [NAME]"),
+    # meeting roles
+    ("Chair: Jane Doe, Manager Marine Emergency Response Division",
+     "Chair: [NAME], Manager Marine Emergency Response Division"),
+    ("Speaker - Jane Doe", "Speaker - [NAME]"),
+    ("1:30 pm  Presented by: Jane Doe", "1:30 pm  Presented by: [NAME]"),
+    ("Moderator:\nJane Doe", "Moderator:\n[NAME]"),
+    ("Président(e) : Jean Roy", "Président(e) : [NAME]"),
+    ("Présidente : Marie Roy", "Présidente : [NAME]"),
+    ("Présentée par : Marie Roy", "Présentée par : [NAME]"),
+    ("Animateur/Animatrice : Luc Gagnon", "Animateur/Animatrice : [NAME]"),
+    ("Animatrice - Julie Côté", "Animatrice - [NAME]"),
+])
+def test_name_after_role_label_is_redacted_label_kept(text, expected):
+    clean, counts = r(text)
+    assert clean == expected
+    assert counts["name"] == 1
+
+
+def test_only_the_name_is_redacted_not_the_title_or_office_after_it():
+    clean, _ = r("Attention: Jane Doe Supply Officer, Public Works")
+    assert clean == "Attention: [NAME] Supply Officer, Public Works"
+
+
+@pytest.mark.parametrize("text", [
+    # a department or office after the label, not a person
+    "Technical Authority: Directorate of Land Requirements",
+    "Project Authority: Department of National Defence",
+    "Autorité technique : Direction des services techniques",
+    "Attention: Bid Receiving Unit",
+    "Attention: Small Business Office",
+    "Responsable de projet : Garde côtière canadienne",
+    "Attention: SSC Magnet",
+    "Attention: NRC IT",
+    # instructions and placeholders
+    "Attention: All Bidders",
+    "Technical Authority: TBD",
+    "Project Authority: Jane",  # a single word is too ambiguous
+    # a label ending a sentence or following a name: the next line is not its value
+    "Submit questions to the Contracting Authority\nSSC Magnet / Government of Canada",
+    "Jane Doe, Technical Authority\nCabling Team",
+    # not a label
+    "Contact-Free Delivery is required.",
+    # meeting-role labels followed by an organisation or a placeholder
+    "Presented by: Canadian Coast Guard",
+    "Présenté par : Garde côtière canadienne",
+    "Chair: TBD",
+    "Speaker: Public Works and Government Services Canada",
+    "Moderator: PSPC Atlantic Region",
+    "The Technical Authority for the Contract will be identified at contract award.",
+])
+def test_label_followed_by_a_department_or_non_name_is_left_alone(text):
+    clean, counts = r(text)
+    assert counts["name"] == 0
+    assert "[NAME]" not in clean
+
+
+def test_role_label_rule_leaves_urls_and_existing_placeholders_alone():
+    text = "Please write to [EMAIL]; forms at https://example.ca/Attention:Jane-Doe"
+    clean, counts = r(text)
+    assert clean == text and counts["name"] == 0
+
+
+def test_a_contact_block_at_line_start_is_still_scrubbed_whole():
+    clean, counts = r("Contracting Authority - Jane Doe\nPWGSC\n123 Main St")
+    assert clean == "Contracting Authority - [CONTACT_BLOCK]"
+    assert (counts["contact_block"], counts["name"]) == (1, 0)
+
+
+def test_redact_version_is_an_int_recorded_with_documents():
+    from tenders.ingest.redact import REDACT_VERSION
+    assert REDACT_VERSION == 3
+
+
+# --- signature blocks (synthetic names; the shapes of the 8 real ones found in the CSVs) ---
+
+@pytest.mark.parametrize(("text", "expected"), [
+    ("Questions can be addressed to:\n\nJane Doe\nProcurement Specialist, Contract Services\n",
+     "Questions can be addressed to:\n\n[NAME]\nProcurement Specialist, Contract Services\n"),
+    ("Questions can be addressed to:\n\n\nJane L. Doe\nTeam Leader, Contract Services\nDefence",
+     "Questions can be addressed to:\n\n\n[NAME]\nTeam Leader, Contract Services\nDefence"),
+    ("Notice can be addressed to:\n\n\nJean L. Roy\nTeam Leader, Contract Services",
+     "Notice can be addressed to:\n\n\n[NAME]\nTeam Leader, Contract Services"),
+    ("prior to the bid closing date.\n\nJane Doe\nProcurement Officer [CONTACT_BLOCK]",
+     "prior to the bid closing date.\n\n[NAME]\nProcurement Officer [CONTACT_BLOCK]"),
+    ("in writing to the following:\n\nJane Doe\nActing Senior Contracting Officer\nProcurement",
+     "in writing to the following:\n\n[NAME]\nActing Senior Contracting Officer\nProcurement"),
+    ("File Number: 123456789\n\nJane Doe\nSenior Contracting Officer\nRoyal Canadian Mounted Police",
+     "File Number: 123456789\n\n[NAME]\nSenior Contracting Officer\nRoyal Canadian Mounted Police"),
+    ("Government of Canada\n[EMAIL] | [PHONE]\n\n\nJo Lee-Smithson\nSupply Team Leader\nMarine",
+     "Government of Canada\n[EMAIL] | [PHONE]\n\n\n[NAME]\nSupply Team Leader\nMarine"),
+    ("Jo Leeman\nSupply Team Leader\nMarine Emergency Response Division",
+     "[NAME]\nSupply Team Leader\nMarine Emergency Response Division"),
+    # French titles
+    ("Jean Roy\nGestionnaire de l'approvisionnement", "[NAME]\nGestionnaire de l'approvisionnement"),
+    ("  Mme Marie Roy\nAgente d'approvisionnement", "  Mme [NAME]\nAgente d'approvisionnement"),
+])
+def test_name_line_above_a_job_title_is_redacted(text, expected):
+    clean, counts = r(text)
+    assert clean == expected
+    assert counts["name"] == 1
+
+
+@pytest.mark.parametrize("text", [
+    # the table header that kept the first version out: a code starts the "title" line
+    "Personnel Security\nClearance Level\nB.12 Network Support Specialist Level 2 SECRET",
+    "Jane Doe\nB.12 Specialist",
+    # "Clearance"/"Level" are non-name words even above a real title
+    "Clearance Level\nNetwork Support Specialist",
+    # offices, acronyms, long lines
+    "Public Works\nContracting Authority",
+    "PWGSC ATL\nSupply Officer",
+    "Marine Emergency Response Division\nSupply Team Leader",
+    # not directly above: a blank line in between
+    "Jane Doe\n\nSupply Team Leader",
+    # the next line isn't a job title
+    "Jane Doe\nMarine Emergency Response Division",
+])
+def test_signature_rule_leaves_non_signatures_alone(text):
+    clean, counts = r(text)
+    assert clean == text and counts["name"] == 0

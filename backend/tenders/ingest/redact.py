@@ -7,7 +7,9 @@ Order (see ``redact``):
   1. exact-match scrub of the row's own contact hints (name variants, email, phone, fax)
   2. regex scrub of any email address / North American phone number
   3. label-led contact blocks ("Contracting Authority: ...", "Email: ...", ...)
-URLs are masked during all three steps so they are never altered.
+  4. a person's name right after a role label ("Technical Authority: Jane Doe"), name only
+  5. a name line directly above a job-title line (a signature block), name only
+URLs are masked during all five steps so they are never altered.
 """
 
 from __future__ import annotations
@@ -15,6 +17,15 @@ from __future__ import annotations
 import re
 from collections.abc import Mapping
 from dataclasses import dataclass
+
+# Bump whenever redact() can give a different result for the same input. Stored document
+# text records the version that cleaned it (TenderDocument.redact_version), and the document
+# fetcher re-cleans older ones. Notice descriptions need no record: ingest re-redacts them
+# from the CSV every run.
+#   1: hints, emails, phones, contact blocks (to 2026-11-19)
+#   2: + a person's name after a role or meeting-role label
+#   3: + a name line directly above a job-title line (signature block)
+REDACT_VERSION = 3
 
 NAME, EMAIL, PHONE, BLOCK = "name", "email", "phone", "contact_block"
 PLACEHOLDER = {NAME: "[NAME]", EMAIL: "[EMAIL]", PHONE: "[PHONE]", BLOCK: "[CONTACT_BLOCK]"}
@@ -122,6 +133,144 @@ GENERIC_NAME_RE = re.compile(
     r"general|inbox|mailbox|tenders?|officer|specialist|secretariat|solutions)\b",
     re.IGNORECASE,
 )
+# A person's name right after a role label ("Technical Authority: Jane Doe", "À l'attention
+# de - Jean-François Tremblay", "Project Authority\nJane Q. Doe", PSPC's "The Technical
+# Authority for the Contract is:\nJane Doe", an agenda's "Chair: Jane Doe, ..."). Only the
+# name is replaced: the label, an honorific and what follows the name (a title, an office)
+# stay. Runs after the block scrub, so it only acts where that left a name (labels it doesn't
+# know, or prose-length lines).
+_ROLE_LABELS = (
+    r"technical\s+authority|contracting\s+authority|project\s+authority|attention|contact"
+    r"|autorit[ée]\s+technique|autorit[ée]\s+contractante|responsable\s+de\s+projet"
+    r"|[àa]\s+l['’]attention\s+de"
+    # meeting roles (industry days, bidders' conferences)
+    r"|chair|speaker|presented\s+by|moderator"
+    r"|présidente?|président\(e\)|présenté(?:e|\(e\))?\s+par"
+    r"|animat(?:eur|rice)(?:\s*/\s*animat(?:eur|rice))?"
+)
+# "... for the Contract is:" / "... pour le contrat est :" between the label and the colon.
+_ROLE_FOR = (
+    r"(?:\s+(?:for\s+the\s+(?:contract|standing\s+offers?|supply\s+arrangement|requirement)"
+    r"\s+is|pour\s+(?:le\s+contrat|l['’]offre\s+à\s+commandes|l['’]arrangement\s+en\s+"
+    r"matière\s+d['’]approvisionnement|le\s+besoin)\s+est))?"
+)
+_BREAK = r"(?:\n(?:[ \t]*\n)?[ \t]*)"  # a line break, one blank line allowed
+_ROLE_SEP = (rf"(?P<punct>[ \t]*:[ \t]*{_BREAK}?"  # "Label: Name", "Label :\n\nName"
+             rf"|[ \t]+[-–—][ \t]*{_BREAK}?"         # "Label - Name": a spaced dash only,
+             rf"|[-–—][ \t]+{_BREAK}?)"              # never "Contact-Free Delivery"
+             rf"|[ \t]*{_BREAK}")                    # "Label\nName": label alone on its line
+_HONORIFIC = r"(?:(?:Mr|Mrs|Ms|Miss|Dr|Mme|Mlle|M)\.?[ \t]+)"
+_NAME_TOKEN = (r"(?:(?:Mc|Mac|O['’]|D['’]|L['’])?[A-ZÀ-Ý][a-zà-ÿ]+(?:-[A-ZÀ-Ý][a-zà-ÿ]+)*"
+               r"|[A-ZÀ-Ý]{2,}(?:-[A-ZÀ-Ý]{2,})*)")  # Jane, Jean-François, O'Brien, DOE
+_INITIAL = r"[A-ZÀ-Ý]\."
+_PARTICLE = r"(?:de|du|des|da|di|van|von|der|den|le|la)"
+ROLE_NAME_RE = re.compile(
+    rf"(?<![\w])(?P<label>(?i:(?:{_ROLE_LABELS}){_ROLE_FOR}))(?:{_ROLE_SEP}){_HONORIFIC}?"
+    rf"(?P<name>{_NAME_TOKEN}(?:[ \t]+(?:{_PARTICLE}[ \t]+)*(?:{_NAME_TOKEN}|{_INITIAL})){{1,5}})"
+    r"(?![\w'’-])"
+)
+_NAME_WORD_RE = re.compile(rf"{_NAME_TOKEN}|{_INITIAL}|{_PARTICLE}")
+# Capitalised words that are not part of a person's name after these labels: offices, roles,
+# form labels, instructions ("Attention: All Bidders"). A name stops at the first of these.
+_NOT_NAME_WORDS = frozenset("""
+    the this these that all any each every please note notes for if in on to of and et or ou
+    see refer voir same above below not none tbd tba n/a will shall must your our their
+    bidder bidders supplier suppliers vendor vendors offeror offerors contractor contractors
+    soumissionnaire soumissionnaires fournisseur fournisseurs entrepreneur entrepreneurs
+    name nom title titre telephone téléphone tel phone fax email e-mail courriel address adresse
+    information details person required requirement mandatory section part annex appendix
+    article clause inquiries questions project projet technical technique contracting
+    authority autorité client contact attention responsable senior junior manager director
+    directeur directrice chief head lead coordinator advisor adviser analyst engineer
+    officer agent specialist representative supervisor
+    public works government gouvernement travaux publics shared national defence défense
+    ministry ministère minister ministre agency agence program programme programs
+    committee council board commission bureau direction région region regional régional
+    corporate federal fédéral provincial municipal city ville town county small business
+    clearance level
+    royal canadian coast guard garde côtière fisheries oceans pêches océans health santé
+    environment environnement transport transports parks parcs heritage patrimoine
+    navy army air force marine military militaire police
+    newfoundland labrador nova scotia brunswick prince edward island quebec québec ontario
+    manitoba saskatchewan alberta british columbia yukon nunavut northwest territories
+    atlantic atlantique pacific pacifique ottawa gatineau halifax moncton toronto montreal
+    montréal winnipeg edmonton vancouver victoria
+    """.split())  # noqa: SIM905 - a word list reads better as text
+MIN_NAME_WORDS = 2  # "Attention: Jane" alone is too ambiguous to scrub
+# What may precede a label that has no ":" or dash: nothing but indentation or a bullet. So
+# "...questions through to the Contracting Authority\nSSC Magnet" and "Jane Doe, Technical
+# Authority\nCabling Team" are left alone.
+_LINE_START_RE = re.compile(r"(?:^|\n)[ \t]*(?:[-*•▪·][ \t]*)?\Z")
+
+
+def _is_not_name(word: str) -> bool:
+    return word.lower() in _NOT_NAME_WORDS or bool(GENERIC_NAME_RE.fullmatch(word))
+
+
+def _person_name_end(candidate: str) -> int | None:
+    """End offset of the person's name that ``candidate`` starts with, or None if it doesn't
+    start with one. The name is the words before the first non-name word (office, role,
+    place, instruction); it needs 2+ words, and isn't an acronym or acronym-led ("SSC
+    Magnet")."""
+    keep = []
+    for w in _NAME_WORD_RE.finditer(candidate):
+        if _is_not_name(w.group(0)):
+            break
+        keep.append(w)
+    while keep and not re.fullmatch(_NAME_TOKEN, keep[-1].group(0)):
+        keep.pop()  # never end on a particle or an initial
+    tokens = [w.group(0) for w in keep if re.fullmatch(_NAME_TOKEN, w.group(0))]
+    if (len(tokens) < MIN_NAME_WORDS
+            or all(t.isupper() for t in tokens)  # "NRC IT", "PWGSC ATL": acronyms
+            or tokens[0].isupper() and not tokens[-1].isupper()):  # "SSC Magnet": an org
+        return None
+    return keep[-1].end()
+
+
+def _scrub_role_names(text: str, counts: dict[str, int]) -> str:
+    def repl(m: re.Match[str]) -> str:
+        whole, offset = m.group(0), m.start("name") - m.start()
+        if m.group("punct") is None and not _LINE_START_RE.search(m.string, 0, m.start()):
+            return whole
+        if (end := _person_name_end(m.group("name"))) is None:
+            return whole
+        counts[NAME] += 1
+        return whole[:offset] + PLACEHOLDER[NAME] + whole[offset + end:]
+
+    return ROLE_NAME_RE.sub(repl, text)
+
+
+# A signature block: a line that is only a 2-3 word name, directly above a job-title line
+# ("Jane Doe\nSupply Team Leader", "Jean Roy\nGestionnaire de l'approvisionnement"). Same
+# guards as above, and the whole line must be the name. The title line starts with a
+# capitalised word, never a code: "Clearance Level\nB.12 Network Support Specialist" is a
+# table header, not a signature.
+_TITLE_FIRST = r"[A-ZÀ-Ý][a-zà-ÿ][\w'’&/-]*"
+_TITLE_WORD = rf"(?:{_TITLE_FIRST}|[A-ZÀ-Ý]{{2,}}|of|and|for|de|du|des|d['’][\w-]+|&)"
+TITLE_LINE_RE = (
+    rf"[ \t]*(?:(?:{_TITLE_FIRST})(?:[ \t,]+{_TITLE_WORD}){{0,5}}[ \t]+)?"
+    r"(?:Officer|Leader|Specialist|Manager|Authority)s?\b"
+    r"|[ \t]*(?:Agente?|Gestionnaire|Cheffe?)\b"
+)
+SIGNATURE_RE = re.compile(
+    rf"^(?P<lead>[ \t]*{_HONORIFIC}?)"
+    rf"(?P<name>{_NAME_TOKEN}(?:[ \t]+(?:{_NAME_TOKEN}|{_INITIAL})){{1,2}})"
+    rf"(?P<trail>[ \t]*)\n(?=(?:{TITLE_LINE_RE}))",
+    re.MULTILINE,
+)
+
+
+def _scrub_signature_names(text: str, counts: dict[str, int]) -> str:
+    def repl(m: re.Match[str]) -> str:
+        if _person_name_end(m.group("name")) != len(m.group("name")):
+            return m.group(0)  # the whole line must be the name
+        counts[NAME] += 1
+        return f"{m.group('lead')}{PLACEHOLDER[NAME]}{m.group('trail')}\n"
+
+    return SIGNATURE_RE.sub(repl, text)
+
+
+
 MAX_BLOCK_LINES = 4
 MAX_BLOCK_LINE_LEN = 100  # longer lines are prose, not address/contact lines
 MAX_BLOCK_LINE_WORDS = 10  # "Inquiries regarding this requirement must be ..." is prose too
@@ -276,6 +425,8 @@ def redact(text: str | None, hints: ContactHints | None = None) -> tuple[str, di
     masked = _sub(PHONE_RE, PHONE, masked, counts)
     masked = _GLUED_CONTACT_LABEL_RE.sub("\n", masked)
     masked = _scrub_blocks(masked, counts)
+    masked = _scrub_role_names(masked, counts)
+    masked = _scrub_signature_names(masked, counts)
     return _unmask_urls(masked, urls), counts
 
 

@@ -68,7 +68,9 @@ class TenderDocument(models.Model):
     Holds only the redacted text, never the PDF. Not shown on any public page and not in
     the prompt yet. One row per (tender, url) once it was looked at, including skipped
     and failed ones. Only transient failures are tried again, on later runs, up to 3
-    attempts (tenders.documents.service.RETRYABLE, MAX_ATTEMPTS).
+    attempts (tenders.documents.service.RETRYABLE, MAX_ATTEMPTS); an over_tender_limit
+    row is downloaded once it ranks within the per-tender limit, and an ok row cleaned by an
+    older redact() is downloaded again and re-cleaned (service.plan).
     """
 
     class Status(models.TextChoices):
@@ -94,6 +96,9 @@ class TenderDocument(models.Model):
     # Rule names from tenders.ingest.injection.scan_text, never the matched text.
     injection_patterns = models.JSONField(default=list, blank=True)
     attempts = models.PositiveSmallIntegerField(default=1)  # downloads tried, retries included
+    # tenders.ingest.redact.REDACT_VERSION that cleaned ``text``. No default on purpose: the
+    # fetcher always sets it, and rows from before the field were cleaned by version 1.
+    redact_version = models.PositiveSmallIntegerField()
     fetched_at = models.DateTimeField()  # of the latest attempt
 
     class Meta:
