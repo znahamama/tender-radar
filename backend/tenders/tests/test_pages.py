@@ -333,6 +333,29 @@ def test_detail_404_for_unknown_reference(client):
     assert "Content-Security-Policy" in r
 
 
+def test_detail_shows_no_link_when_the_csv_has_none(client):
+    make_tender("PW-__HN-446-81465", notice_url="")
+    html = client.get(reverse("tender-detail", args=["PW-__HN-446-81465"])).content.decode()
+    assert "No link available" in html
+    assert "/tender-notice/" not in html and "canadabuys.canada.ca" not in html
+
+
+def test_detail_never_links_a_guessed_url(client):
+    """Rows stored before migration 0012 may still hold a URL the old ingest built."""
+    ref = "PW-_NCS-030-11940"
+    make_tender(ref, notice_url_derived=True)  # make_tender's default URL is the guessed shape
+    html = client.get(reverse("tender-detail", args=[ref])).content.decode()
+    assert "No link available" in html
+    assert "/tender-notice/" not in html
+
+
+def test_detail_links_the_csv_url_even_off_canadabuys(client):
+    url = "https://discovery.ariba.com/rfx/19419533"
+    make_tender("WS1", notice_url=url)
+    html = client.get(reverse("tender-detail", args=["WS1"])).content.decode()
+    assert f'href="{url}"' in html
+
+
 def test_detail_never_links_a_non_https_url(client):
     make_tender("JS", notice_url="javascript:alert(1)")
     html = client.get(reverse("tender-detail", args=["JS"])).content.decode()

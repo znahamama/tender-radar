@@ -308,7 +308,12 @@ def tender_is_open(tender: Tender) -> bool:
 
 
 def official_url(tender: Tender) -> str | None:
-    """Only ever an https link: autoescaping doesn't stop a javascript: URL."""
+    """The CSV's own notice link, and only an https one (autoescaping doesn't stop a
+    javascript: URL). Never a guessed one: a row flagged notice_url_derived holds a URL that
+    an old ingest built from the reference number, which often 404s on CanadaBuys. Migration
+    0012 clears those; this covers the time between a deploy and that migration."""
+    if tender.notice_url_derived:
+        return None
     url = (tender.notice_url or "").strip()
     return url if url.lower().startswith("https://") else None
 

@@ -35,8 +35,8 @@ class Tender(models.Model):
     regions_of_opportunity = models.JSONField(default=list, blank=True)
     trade_agreements = models.JSONField(default=list, blank=True)
     limited_tendering_reason = models.CharField(max_length=200, blank=True)
-    notice_url = models.TextField()
-    notice_url_derived = models.BooleanField(default=False)
+    notice_url = models.TextField()  # the CSV's own link, or "" (never a guessed URL)
+    notice_url_derived = models.BooleanField(default=False)  # legacy, always False: see 0012
     buyer_org_name = models.CharField(max_length=300, blank=True)
 
     is_nl = models.BooleanField(default=False)

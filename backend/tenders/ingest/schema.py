@@ -31,7 +31,6 @@ from .injection import INJECTION_PATTERN, scan_notice
 # is shown as "2026/12/02 16:00 EST" on the notice page, so naive values are Eastern Time.
 # Parsed values are converted to UTC. St. John's is 1.5 h ahead of Eastern.
 SOURCE_TZ = ZoneInfo("America/Toronto")
-NOTICE_URL_TEMPLATE = "https://canadabuys.canada.ca/en/tender-opportunities/tender-notice/{ref}"
 PLACEHOLDER_YEAR = 2099
 PLACEHOLDER_HORIZON_YEARS = 3  # closing more than this long after publication
 
@@ -133,12 +132,19 @@ class TenderNotice(BaseModel):
     limited_tendering_reason: Str = Field(
         None, alias="limitedTenderingReason-raisonAppelOffresLimite-eng"
     )
+    # The CSV's own link, or None. Never built from the reference number: CanadaBuys page
+    # slugs aren't the reference (checked 2026-11-18: "PW-_NCS-030-11940" is at
+    # .../tender-notice/pw-ncs-030-11940, "PW-__HN-446-81465" at no guessable path), and its
+    # search finds none of them by reference number. No link beats a dead one.
     notice_url: Str = Field(None, alias="noticeURL-URLavis-eng")
     # Department/agency name only (e.g. "Shared Services Canada"); never a person.
     buyer_org_name: Str = Field(None, alias="contractingEntityName-nomEntitContractante-eng")
 
-    # Derived (no CSV column).
+    # Always False now. Ingest used to fill a missing notice_url with a guessed CanadaBuys
+    # URL and set this; migration 0012 cleared those. Kept only because Tender has the column.
     notice_url_derived: bool = False
+
+    # Derived (no CSV column).
     data_quality: list[str] = Field(default_factory=list)
     redaction_counts: dict[str, int] = Field(default_factory=dict)
 
@@ -149,9 +155,6 @@ class TenderNotice(BaseModel):
 
     @model_validator(mode="after")
     def _derive(self) -> TenderNotice:
-        if not self.notice_url:
-            self.notice_url = NOTICE_URL_TEMPLATE.format(ref=self.reference_number)
-            self.notice_url_derived = True
         self.data_quality = quality_flags(self.publication_date, self.closing_date, self.description)
         if scan_notice(self):  # code-side tripwire, before any LLM call
             self.data_quality.append(INJECTION_PATTERN)

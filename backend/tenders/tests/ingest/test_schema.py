@@ -103,10 +103,15 @@ def test_description_is_normalized_in_pipeline():
     assert "services & support" in d
 
 
-def test_notice_url_falls_back_to_canadabuys_page():
-    n = _notices()["FAKE-EMPTY-1"]  # whitespace-only URL in the CSV
-    assert n.notice_url == "https://canadabuys.canada.ca/en/tender-opportunities/tender-notice/FAKE-EMPTY-1"
-    assert n.notice_url_derived is True
+@pytest.mark.parametrize("ref", ["FAKE-EMPTY-1", "FAKE-GSIN-1"])  # whitespace-only, empty
+def test_missing_notice_url_stays_missing(ref):
+    """Never a URL built from the reference number: CanadaBuys slugs aren't the reference."""
+    n = _notices()[ref]
+    assert n.notice_url is None
+    assert n.notice_url_derived is False
+
+
+def test_csv_notice_url_is_kept_as_given():
     kept = _notices()["FAKE-NL-1"]
     assert kept.notice_url == "https://example.com/notice/FAKE-NL-1"
     assert kept.notice_url_derived is False

@@ -43,6 +43,9 @@ locals {
     # so), and the autumn clock change in America/St_Johns makes one gap 25 h. The first
     # evaluation after apply looks back 26 h, so it's OK if anything ran in that time.
     # (Period x evaluation periods may be up to 7 days for periods of 1 h or more.)
+    # Over a day, so CloudWatch checks it hourly, on data up to the top of the hour: a
+    # missed 06:15 run alarms around 09:00 St. John's time that morning (the day after the
+    # last good run), not within minutes.
     worker-not-run = {
       description = "No worker invocation in the last 26 h: the daily schedule didn't fire (disabled, deleted, or Scheduler couldn't invoke)."
       namespace   = "AWS/Lambda"

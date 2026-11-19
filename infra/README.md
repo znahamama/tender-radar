@@ -283,6 +283,11 @@ One SNS topic, `tender-radar-alerts`, with one email subscription, and four alar
 
 A budget cap is not an error: `extract_tenders` stops cleanly, the run is `"ok": true`.
 
+`worker-not-run` is slow by design: a window over one day is checked hourly, on data up to
+the top of the hour, so a missed 06:15 run alarms around 09:00 St. John's time that morning
+(the day after the last good run). A new alarm shows INSUFFICIENT_DATA until its first
+hourly check.
+
 Add or change them:
 
 ```sh

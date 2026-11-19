@@ -35,7 +35,7 @@ def tender_fields(n: TenderNotice) -> dict:
     data = n.model_dump(exclude={"description"})
     data["description"] = n.description or ""  # already redacted by the pipeline
     for k in ("solicitation_number", "tender_status", "notice_type",
-              "limited_tendering_reason", "buyer_org_name"):
+              "limited_tendering_reason", "buyer_org_name", "notice_url"):
         data[k] = data[k] or ""
     data["is_nl"] = filters.is_nl(n.regions_of_delivery)
     data["is_it"] = filters.notice_is_it(n)

@@ -81,8 +81,9 @@ def test_stored_values():
     assert gsin.data_quality == ["placeholder_closing_date", "mentions_standing_offer"]
     dup = Tender.objects.get(reference_number="FAKE-DUP-1")
     assert dup.notice_kind == "against_sa" and dup.sa_required_from_metadata is True
-    assert gsin.notice_url_derived
-    assert gsin.notice_url.endswith("/tender-notice/FAKE-GSIN-1")
+    assert gsin.notice_url == "" and not gsin.notice_url_derived  # no URL in the CSV
+    assert Tender.objects.get(reference_number="FAKE-NL-1").notice_url == \
+        "https://example.com/notice/FAKE-NL-1"
     assert gsin.redaction_counts == {"name": 0, "email": 1, "phone": 1, "contact_block": 0}
     nl = Tender.objects.get(reference_number="FAKE-NL-1")
     assert "[CONTACT_BLOCK]" in nl.description and "[PHONE]" in nl.description
@@ -197,3 +198,36 @@ def test_migration_0011_rehashes_stored_rows_without_changing_values():
     mig.backwards(apps, None)
     t.refresh_from_db()
     assert t.content_hash == old
+
+
+GUESSED = "https://canadabuys.canada.ca/en/tender-opportunities/tender-notice/FAKE-GSIN-1"
+
+
+@pytest.mark.django_db
+def test_migration_0012_clears_guessed_urls_and_the_next_ingest_is_unchanged():
+    import importlib
+
+    from django.apps import apps
+
+    from tenders.ingest.storage import CONTENT_FIELDS, content_hash
+
+    mig = importlib.import_module("tenders.migrations.0012_clear_guessed_notice_urls")
+    upsert(_kept(), now=NOW)
+    # A row as the old ingest stored it: guessed URL, flag set, hash over those values.
+    guessed = Tender.objects.get(reference_number="FAKE-GSIN-1")
+    legacy = {f: getattr(guessed, f) for f in CONTENT_FIELDS}
+    legacy.update(notice_url=GUESSED, notice_url_derived=True)
+    Tender.objects.filter(pk=guessed.pk).update(
+        notice_url=GUESSED, notice_url_derived=True, content_hash=content_hash(legacy))
+    real = Tender.objects.get(reference_number="FAKE-NL-1")
+
+    mig.forwards(apps, None)
+
+    guessed.refresh_from_db()
+    assert guessed.notice_url == "" and guessed.notice_url_derived is False
+    assert guessed.content_hash == content_hash({f: getattr(guessed, f) for f in CONTENT_FIELDS})
+    untouched = Tender.objects.get(pk=real.pk)
+    assert (untouched.notice_url, untouched.content_hash) == (real.notice_url, real.content_hash)
+    # The new ingest stores the same values, so nothing counts as updated.
+    r = upsert(_kept(), now=NOW + timedelta(days=1))
+    assert (r.created, r.updated) == (0, 0)
