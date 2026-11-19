@@ -36,6 +36,8 @@ class Tender(models.Model):
     trade_agreements = models.JSONField(default=list, blank=True)
     limited_tendering_reason = models.CharField(max_length=200, blank=True)
     notice_url = models.TextField()  # the CSV's own link, or "" (never a guessed URL)
+    # The CSV's attachment URLs, any host. tenders.documents fetches only CanadaBuys ones.
+    attachment_urls = models.JSONField(default=list, blank=True)
     notice_url_derived = models.BooleanField(default=False)  # legacy, always False: see 0012
     buyer_org_name = models.CharField(max_length=300, blank=True)
 
@@ -58,6 +60,48 @@ class Tender(models.Model):
 
     def __str__(self) -> str:
         return f"{self.reference_number}: {self.title}"
+
+
+class TenderDocument(models.Model):
+    """One attachment URL of a tender, and what fetching it gave (tenders.documents).
+
+    Holds only the redacted text, never the PDF. Not shown on any public page and not in
+    the prompt yet. One row per (tender, url) once it was looked at, including skipped
+    and failed ones. Only transient failures are tried again, on later runs, up to 3
+    attempts (tenders.documents.service.RETRYABLE, MAX_ATTEMPTS).
+    """
+
+    class Status(models.TextChoices):
+        OK = "ok", "OK"
+        SKIPPED_HOST = "skipped_host", "Skipped: not a CanadaBuys attachment URL"
+        OVER_TENDER_LIMIT = "over_tender_limit", "Skipped: over the per-tender limit"
+        TOO_BIG = "too_big", "Too big"
+        TOO_MANY_PAGES = "too_many_pages", "Too many pages"
+        NOT_PDF = "not_pdf", "Not a PDF"
+        TIMEOUT = "timeout", "Download timed out"
+        REDIRECTED = "redirected", "Redirected (not followed)"
+        HTTP_ERROR = "http_error", "HTTP error"
+        NETWORK_ERROR = "network_error", "Network error"
+        PARSE_TIMEOUT = "parse_timeout", "PDF parsing timed out"
+        PARSE_ERROR = "parse_error", "PDF parsing failed"
+
+    tender = models.ForeignKey(Tender, on_delete=models.CASCADE, related_name="documents")
+    url = models.TextField()
+    status = models.CharField(max_length=24, choices=Status.choices)
+    text = models.TextField(blank=True, help_text="Redacted. Never served publicly.")
+    pages = models.PositiveIntegerField(null=True, blank=True)
+    sha256 = models.CharField(max_length=64, blank=True)  # of the downloaded bytes
+    # Rule names from tenders.ingest.injection.scan_text, never the matched text.
+    injection_patterns = models.JSONField(default=list, blank=True)
+    attempts = models.PositiveSmallIntegerField(default=1)  # downloads tried, retries included
+    fetched_at = models.DateTimeField()  # of the latest attempt
+
+    class Meta:
+        constraints = (models.UniqueConstraint(fields=["tender", "url"],
+                                               name="uniq_tender_document_url"),)
+
+    def __str__(self) -> str:
+        return f"{self.tender_id}: {self.status} {self.url.rsplit('/', 1)[-1]}"
 
 
 class Extraction(models.Model):

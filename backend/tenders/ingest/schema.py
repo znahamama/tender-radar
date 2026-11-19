@@ -1,8 +1,8 @@
 """Allowlist schema for CanadaBuys tender-notice CSV rows.
 
 Only the fields declared here survive parsing; every other column (contact name, email,
-phone, fax, addresses, end-user entities, French duplicates, attachments) is dropped by
-``extra="ignore"``. Header names were taken from the real 2026 files (67 columns).
+phone, fax, addresses, end-user entities, French duplicates) is dropped by
+``extra="ignore"``. The English attachment URLs are kept (tenders.documents fetches some). Header names were taken from the real 2026 files (67 columns).
 
 The description arrives here already normalised and redacted by the pipeline (see
 ``redact.py``); this model never sees raw contact columns as fields.
@@ -95,9 +95,20 @@ def _to_utc_datetime(v: Any) -> Any:
     return v
 
 
+def _split_url_list(v: Any) -> Any:
+    """The attachment cell is comma-separated URLs. Blanks and repeats are dropped; the
+    CSV's order is kept (content_hash ignores it, see storage.UNORDERED_FIELDS)."""
+    if v is None:
+        return []
+    if isinstance(v, str):
+        return list(dict.fromkeys(u.strip() for u in v.split(",") if u.strip()))
+    return v
+
+
 Str = Annotated[str | None, BeforeValidator(_optional_str)]
 RequiredStr = Annotated[str, BeforeValidator(_blank_to_none)]
 StrList = Annotated[list[str], BeforeValidator(_split_star_list)]
+UrlList = Annotated[list[str], BeforeValidator(_split_url_list)]
 UtcDT = Annotated[datetime | None, BeforeValidator(_to_utc_datetime)]
 
 
@@ -137,6 +148,7 @@ class TenderNotice(BaseModel):
     # .../tender-notice/pw-ncs-030-11940, "PW-__HN-446-81465" at no guessable path), and its
     # search finds none of them by reference number. No link beats a dead one.
     notice_url: Str = Field(None, alias="noticeURL-URLavis-eng")
+    attachment_urls: UrlList = Field(default_factory=list, alias="attachment-piecesJointes-eng")
     # Department/agency name only (e.g. "Shared Services Canada"); never a person.
     buyer_org_name: Str = Field(None, alias="contractingEntityName-nomEntitContractante-eng")
 

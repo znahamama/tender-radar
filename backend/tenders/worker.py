@@ -3,7 +3,8 @@
 Events:
     {"task": "migrate"}  apply migrations over Neon's DIRECT url (SSM database_url_direct)
     {"task": "daily"}    ingest --save, keyword baseline then LLM on Open tenders (LLM caps
-                         apply), reassess
+                         apply), reassess, then fetch new CanadaBuys attachment PDFs (last,
+                         so it can't hold up or stop the steps the site depends on)
     {"task": "create_admin", "username": "<name>"}
                          create or update that superuser with the password in the one-time
                          SecureString <SSM_PREFIX>admin_bootstrap_password (infra/README.md)
@@ -42,6 +43,8 @@ TASKS: dict[str, list[tuple[str, list[str]]]] = {
         ("extract_tenders", ["--status", "Open", "--baseline"]),
         ("extract_tenders", ["--status", "Open"]),
         ("assess_tenders", []),
+        # Reads the CSVs ingest left in DOWNLOAD_DIR, for the redaction hints only.
+        ("fetch_documents", ["--csv-dir", DOWNLOAD_DIR]),
     ],
     "create_admin": [("create_admin", [])],  # a Python step, not a command: STEPS below
 }

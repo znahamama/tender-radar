@@ -137,9 +137,11 @@ def _with_lists(n, **lists):
     return n.model_copy(update=lists)
 
 
+ATT = "https://canadabuys.canada.ca/documents/pub/att/2026/11/01/abc/"
 LISTS = {"trade_agreements": ["CFTA", "CETA", "WTO-AGP"],
          "regions_of_delivery": ["Newfoundland and Labrador", "National Capital Region"],
-         "unspsc_codes": ["*81110000", "*43230000"]}
+         "unspsc_codes": ["*81110000", "*43230000"],
+         "attachment_urls": [ATT + "A.PDF", ATT + "B.PDF"]}
 
 
 def _seed():
@@ -165,6 +167,7 @@ def test_reorder_only_is_unchanged_and_keeps_the_stored_order():
 @pytest.mark.parametrize("change", [
     {"trade_agreements": ["CFTA", "CETA", "WTO-AGP", "CUSMA"]},   # added
     {"regions_of_delivery": ["Newfoundland and Labrador"]},       # removed
+    {"attachment_urls": [ATT + "A.PDF", ATT + "B.PDF", ATT + "C.PDF"]},  # a new document
     {"description": "Amended: the scope now includes a second site."},
 ])
 def test_real_changes_are_updated(change):
@@ -231,3 +234,31 @@ def test_migration_0012_clears_guessed_urls_and_the_next_ingest_is_unchanged():
     # The new ingest stores the same values, so nothing counts as updated.
     r = upsert(_kept(), now=NOW + timedelta(days=1))
     assert (r.created, r.updated) == (0, 0)
+
+
+@pytest.mark.django_db
+def test_migration_0013_rehash_makes_the_next_ingest_unchanged():
+    import importlib
+
+    from django.apps import apps
+
+    from tenders.ingest.storage import CONTENT_FIELDS, content_hash
+
+    mig = importlib.import_module("tenders.migrations.0013_attachment_urls_tender_documents")
+    upsert(_kept(), now=NOW)
+    # Rows as stored before 0013: hashed without the attachment_urls key at all.
+    for t in Tender.objects.all():
+        old = {f: getattr(t, f) for f in CONTENT_FIELDS if f != "attachment_urls"}
+        Tender.objects.filter(pk=t.pk).update(content_hash=content_hash(old))
+    r = upsert(_kept(), now=NOW + timedelta(hours=1))
+    assert r.updated == 6  # what the first ingest after deploy would see without the rehash
+    for t in Tender.objects.all():
+        old = {f: getattr(t, f) for f in CONTENT_FIELDS if f != "attachment_urls"}
+        Tender.objects.filter(pk=t.pk).update(content_hash=content_hash(old))
+
+    mig.rehash(apps, None)
+
+    for t in Tender.objects.all():
+        assert t.content_hash == content_hash({f: getattr(t, f) for f in CONTENT_FIELDS})
+    r = upsert(_kept(), now=NOW + timedelta(hours=2))
+    assert (r.created, r.updated, r.unchanged) == (0, 0, 6)

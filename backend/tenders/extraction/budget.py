@@ -14,7 +14,9 @@ from tenders.models import LlmCall
 
 MILLION = Decimal(1_000_000)
 MICRODOLLAR = Decimal("0.000001")  # LlmCall.cost_usd precision
-CHARS_PER_TOKEN = 3.5  # deliberately pessimistic, for worst-case estimates
+# Real requests measured ~2.3 chars/token (2026-11-18: 2.25-2.53 on 4 calls, system prompt
+# and schema included). 2.0 is rounded down on purpose: worst-case estimates stay high.
+CHARS_PER_TOKEN = 2.0
 LONG_PROMPT_TOKENS = 100_000
 # USD per million tokens: (input, output) for prompts up to 100k tokens, then above that.
 PRICES = {

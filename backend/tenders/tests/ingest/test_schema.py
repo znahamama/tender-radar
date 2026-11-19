@@ -111,6 +111,15 @@ def test_missing_notice_url_stays_missing(ref):
     assert n.notice_url_derived is False
 
 
+def test_attachment_urls_are_split_on_commas_blank_and_repeats_dropped():
+    a = "https://canadabuys.canada.ca/documents/pub/att/2026/a.PDF"
+    b = "https://sscp2pspc.ssc-spc.gc.ca/page.aspx/en/fil/download_public/B"
+    n = _minimal(**{"attachment-piecesJointes-eng": f" {a},{b}, ,{a}"})
+    assert n.attachment_urls == [a, b]  # CSV order kept; the hash ignores it
+    assert _minimal().attachment_urls == []
+    assert _minimal(**{"attachment-piecesJointes-eng": "  "}).attachment_urls == []
+
+
 def test_csv_notice_url_is_kept_as_given():
     kept = _notices()["FAKE-NL-1"]
     assert kept.notice_url == "https://example.com/notice/FAKE-NL-1"

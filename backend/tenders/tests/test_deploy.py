@@ -174,16 +174,19 @@ def test_daily_runs_ingest_baseline_extract_assess_in_order(calls, capsys):
 
     out = handler({"task": "daily"})
     assert [c[0] for c in calls] == ["ingest_canadabuys", "extract_tenders", "extract_tenders",
-                                     "assess_tenders"]
+                                     "assess_tenders", "fetch_documents"]
     ingest_args = calls[0][1]
     assert "--save" in ingest_args and "--url-defaults" in ingest_args
     assert ingest_args[ingest_args.index("--download-dir") + 1].startswith("/tmp/")
     # The free keyword baseline first, so a capped or failed LLM step can't skip it.
     assert calls[1][1] == ("--status", "Open", "--baseline")
     assert calls[2][1] == ("--status", "Open")
+    # Documents last, reading the CSVs ingest downloaded (for redaction hints only).
+    assert calls[4][1] == ("--csv-dir", ingest_args[ingest_args.index("--download-dir") + 1])
     assert out["ok"] is True
     assert [s["step"] for s in out["steps"]] == [
-        "ingest_canadabuys", "extract_tenders --baseline", "extract_tenders", "assess_tenders"]
+        "ingest_canadabuys", "extract_tenders --baseline", "extract_tenders", "assess_tenders",
+        "fetch_documents"]
     assert _summary(capsys) == out
 
 

@@ -139,7 +139,7 @@ def test_timeout_logs_worst_case_cost_then_retries(make_tender, meter):
     first, second = LlmCall.objects.order_by("id")
     chars = (len(SYSTEM_PROMPT) + len(json.dumps(OUTPUT_SCHEMA)) + len(build_notice(t).text))
     assert first.status == "error" and first.estimated
-    assert (first.input_tokens, first.output_tokens) == (math.ceil(chars / 3.5), 2000)
+    assert (first.input_tokens, first.output_tokens) == (math.ceil(chars / 2.0), 2000)
     assert first.cost_usd == cost_usd("claude-haiku-5-5", first.input_tokens, 2000) > 0
     assert not second.estimated
     assert spent_today() == first.cost_usd + second.cost_usd  # the cap sees the estimate

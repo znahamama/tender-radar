@@ -51,7 +51,7 @@ def tender_fields(n: TenderNotice) -> dict:
 # (same items, new order). The hash ignores their order; stored values keep theirs.
 UNORDERED_FIELDS = (
     "trade_agreements", "regions_of_delivery", "regions_of_opportunity",
-    "procurement_categories", "unspsc_codes", "gsin_codes",
+    "procurement_categories", "unspsc_codes", "gsin_codes", "attachment_urls",
 )
 
 
@@ -59,7 +59,7 @@ def content_hash(fields: dict) -> str:
     """Hash of the content columns. A reorder-only change to an UNORDERED_FIELDS list hashes
     the same, so upsert() counts it unchanged and does not save it: the stored order, and
     with it the LLM input, stays as it was. Sorts a copy; ``fields`` is not changed.
-    Migration 0011 recomputed stored hashes with this rule (keep the two in step)."""
+    Migrations 0011 and 0013 recomputed stored hashes with this rule (keep them in step)."""
     canon_fields = {**fields, **{f: sorted(fields[f]) for f in UNORDERED_FIELDS if f in fields}}
     canon = json.dumps(canon_fields, sort_keys=True, default=lambda v: v.isoformat(),
                        ensure_ascii=False)

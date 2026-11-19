@@ -1,0 +1,93 @@
+"""Download one CanadaBuys attachment PDF, with every guard applied before parsing.
+
+Only https://canadabuys.canada.ca/documents/pub/att/... is fetched. Redirects are never
+followed (one could leave the allowlisted host), and nothing here tries to get past a
+login or a captcha: an SSC, Ariba or other URL is not requested at all.
+"""
+
+from __future__ import annotations
+
+import http.client
+import time
+import urllib.error
+import urllib.request
+from collections.abc import Callable
+from urllib.parse import unquote, urlsplit
+
+from tenders.ingest.fetch import USER_AGENT
+
+ALLOWED_HOST = "canadabuys.canada.ca"
+ALLOWED_PATH_PREFIX = "/documents/pub/att/"
+# CanadaBuys serves its attachment PDFs as application/octet-stream (checked 2026-11-18),
+# so that counts too; the %PDF- magic bytes are always required.
+PDF_CONTENT_TYPES = frozenset({"application/pdf", "application/octet-stream"})
+PDF_MAGIC = b"%PDF-"
+CHUNK = 64 * 1024
+
+
+class FetchFailed(Exception):
+    def __init__(self, status: str):
+        super().__init__(status)
+        self.status = status  # a TenderDocument.Status value
+
+
+def is_allowed_url(url: str) -> bool:
+    """https, exactly canadabuys.canada.ca (no port, no user info), under the attachment
+    path, and no "." or ".." segment (even percent-encoded) that could climb out of it."""
+    try:
+        parts = urlsplit(url)
+    except ValueError:
+        return False
+    if parts.scheme != "https" or parts.netloc != ALLOWED_HOST:
+        return False
+    if not parts.path.startswith(ALLOWED_PATH_PREFIX):
+        return False
+    return not any(seg in (".", "..") for seg in unquote(parts.path).split("/"))
+
+
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None  # urllib then raises HTTPError(3xx): reported as "redirected"
+
+
+def default_opener() -> urllib.request.OpenerDirector:
+    return urllib.request.build_opener(_NoRedirect)
+
+
+def download_pdf(url: str, *, opener, max_bytes: int, timeout_s: float,
+                 clock: Callable[[], float] = time.monotonic) -> bytes:
+    """The file's bytes, or FetchFailed with the reason. ``timeout_s`` bounds the whole
+    download (a slow trickle too), not only each socket read."""
+    if not is_allowed_url(url):
+        raise FetchFailed("skipped_host")
+    request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
+    deadline = clock() + timeout_s
+    body = bytearray()
+    try:
+        with opener.open(request, timeout=timeout_s) as resp:
+            ctype = (resp.headers.get("Content-Type") or "").split(";")[0].strip().lower()
+            if ctype not in PDF_CONTENT_TYPES:
+                raise FetchFailed("not_pdf")
+            declared = (resp.headers.get("Content-Length") or "").strip()
+            if declared.isdigit() and int(declared) > max_bytes:
+                raise FetchFailed("too_big")
+            while chunk := resp.read(CHUNK):
+                body += chunk
+                if len(body) > max_bytes:
+                    raise FetchFailed("too_big")
+                if clock() > deadline:
+                    raise FetchFailed("timeout")
+    except FetchFailed:
+        raise
+    except urllib.error.HTTPError as e:
+        raise FetchFailed("redirected" if 300 <= e.code < 400 else "http_error") from None
+    except urllib.error.URLError as e:
+        status = "timeout" if isinstance(e.reason, TimeoutError) else "network_error"
+        raise FetchFailed(status) from None
+    except TimeoutError:
+        raise FetchFailed("timeout") from None
+    except (ConnectionError, http.client.HTTPException, OSError):
+        raise FetchFailed("network_error") from None
+    if not body.startswith(PDF_MAGIC):
+        raise FetchFailed("not_pdf")
+    return bytes(body)
