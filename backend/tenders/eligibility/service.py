@@ -3,6 +3,8 @@
 Human review overrides the model here, not in the frozen rules: the latest review decision
 per gate (tenders.review), including decisions carried from earlier extractions of the same
 notice that still hold, is applied to the post-validated extraction before evaluate().
+A v4 extraction is first combined per gate with the tender's v3 one (eligibility.combine),
+so review decisions still override either version.
 """
 
 from __future__ import annotations
@@ -17,6 +19,7 @@ from tenders.extraction.service import refresh
 from tenders.models import Assessment, Extraction, SupplierProfile
 from tenders.review import apply_reviews, carry_forward, reviews_for
 
+from .combine import combine, notice_only_partner
 from .rules import RULES_VERSION, Profile, TenderFacts, evaluate
 
 
@@ -43,6 +46,11 @@ def assess(extraction: Extraction, profile: SupplierProfile | None = None) -> As
                         tender.notice_kind or "")
     prof = Profile.from_model(profile)
     data = extraction.data if extraction.status == Extraction.Status.OK else None
+    partner = notice_only_partner(extraction) if data is not None else None
+    if partner is not None:
+        refresh(partner, tender=tender)
+    combined = combine(data, partner.data if partner else None)
+    data = combined.data
     carry_forward(extraction)  # decisions on earlier extractions of this notice, re-checked
     reviews = reviews_for(extraction).applied
     data = apply_reviews(data, reviews)
@@ -53,10 +61,13 @@ def assess(extraction: Extraction, profile: SupplierProfile | None = None) -> As
                         facts.notice_kind],
               "profile": [prof.supply_arrangements, prof.corporate_clearance,
                           prof.personnel_clearance], "rules": RULES_VERSION}
+    if partner is not None:  # only then, so assessments of other extractions keep their hash
+        inputs["combined"] = [partner.pk, partner.data, partner.flags]
     if reviews:  # only when there are any, so unreviewed assessments keep their hash
         inputs["reviews"] = {g: [d.action, d.pk, d.extraction_id != extraction.pk]
                              for g, d in sorted(reviews.items())}
     fields = {**decision.as_fields(), "rules_version": RULES_VERSION,
+              "combined": combined.record(partner),
               "inputs_hash": hashlib.sha256(
                   json.dumps(inputs, sort_keys=True, default=str).encode()).hexdigest()}
 

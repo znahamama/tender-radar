@@ -68,7 +68,8 @@ class _Grounding:
     """Where a quote may come from. Schema 1 output (v2, v3) has no ``source``: every quote
     is checked against the notice. In schema 2 (v4) only gate evidence names one: "notice"
     checks the notice; a document name checks that document's whole stored text, and only a
-    document the model was given (full or partial). Any other source is ungrounded. A list
+    document the model was given (full or partial). A gate quote not in the source it names
+    but in another source given is kept, with its source corrected (``locate``). A list
     item's quote (no source) is grounded in the notice or in any document given."""
 
     def __init__(self, notice: Notice):
@@ -80,6 +81,7 @@ class _Grounding:
                                       for form in (text, f"{label}: {text}"))
         given = [d for d in notice.documents if d.status != NOT_READ]
         self.documents = {normalize(d.name): normalize(d.text) for d in given}
+        self.names = {normalize(d.name): d.name for d in given}  # in input order
         doc_loose = [normalize_loose(d.text) for d in given]
         self.details = [normalize_loose(text) for _, text in notice.sources] + doc_loose
         self.places = [normalize_loose(text) for kind, text in notice.sources
@@ -90,6 +92,15 @@ class _Grounding:
             return is_grounded(evidence, self.notice, self.whole_values)
         text = self.documents.get(normalize(source))
         return text is not None and is_grounded(evidence, [text])
+
+    def locate(self, evidence: str | None) -> str | None:
+        """The first source given (the notice, then the documents in input order) that the
+        quote is grounded in, same thresholds; None if none. A whole metadata value counts
+        only for the notice, as in quote()."""
+        if is_grounded(evidence, self.notice, self.whole_values):
+            return NOTICE_SOURCE
+        return next((self.names[key] for key, text in self.documents.items()
+                     if is_grounded(evidence, [text])), None)
 
     def anywhere(self, evidence: str | None) -> bool:
         """In the notice or in any document given; with no documents (v2, v3), the notice."""
@@ -112,6 +123,9 @@ def postvalidate(data: ExtractionData, notice: Notice,
     With prompt v4, also the documents the model was given: a gate quote must sit in the
     one source it names, a list item's quote in the notice or any document given (see
     _Grounding), with the same word and character thresholds.
+    - Gate evidence not in the source it names (v4) but in another source given: kept,
+      source -> where it was found (notice first, then documents in input order), flag
+      ``source_corrected:eligibility.<gate>``.
     - Gate evidence not grounded: evidence -> None, values -> "unknown", details -> None,
       flag ``ungrounded:eligibility.<gate>``. A non-unknown value with no evidence counts.
     - A quote equal to a whole metadata value is grounded whatever its length.
@@ -130,8 +144,13 @@ def postvalidate(data: ExtractionData, notice: Notice,
         g = getattr(data.eligibility, gate)
         claims = any(getattr(g, f) != "unknown" for f in value_fields)
         source = getattr(g, "source", None)
+        if ((g.evidence is not None or claims) and source is not None
+                and not where.quote(g.evidence, source)
+                and (found := where.locate(g.evidence)) is not None):
+            g.source = found  # schema 2 only: schema 1 quotes name no source
+            flags.append(f"source_corrected:eligibility.{gate}")
         if ((g.evidence is not None or claims)
-                and not where.quote(g.evidence, source)):
+                and not where.quote(g.evidence, getattr(g, "source", None))):
             _drop_evidence(g)
             for f in value_fields:
                 setattr(g, f, "unknown")

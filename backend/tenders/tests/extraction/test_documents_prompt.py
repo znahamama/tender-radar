@@ -32,7 +32,7 @@ from tenders.extraction.prompt import (
     prompt_version_for,
 )
 from tenders.extraction.providers import OUTPUT_SCHEMA, AnthropicExtractor
-from tenders.extraction.schema import ExtractionData2
+from tenders.extraction.schema import ExtractionData, ExtractionData2
 from tenders.extraction.service import extract_tender, revalidate
 from tenders.extraction.validate import postvalidate
 from tenders.ingest.redact import REDACT_VERSION
@@ -270,34 +270,77 @@ def _clearance(evidence, source):
     return d
 
 
-@pytest.mark.parametrize(("evidence", "source", "grounded"), [
+FSC = "must hold a valid Facility Security Clearance"
+DOS = "The Contractor must hold a valid Designated Organization Screening (DOS)."
+MAIN_NAME = "PW-1.EBSU000.PDF"
+
+
+@pytest.mark.parametrize(("evidence", "source", "outcome", "shown_source"), [
     # In the document it names: kept, whatever the case and spacing.
-    ("must hold a valid Facility Security Clearance at the level of SECRET",
-     "PW-1.EBSU000.PDF", True),
-    ("MUST HOLD a valid   Facility Security Clearance", "PW-1.EBSU000.PDF", True),
-    # True text, wrong document named.
-    ("must hold a valid Facility Security Clearance", "PW-1.EBSU001.PDF", False),
-    # Notice text claimed for a document, and document text claimed for the notice.
-    ("The Contractor must hold a valid Designated Organization Screening (DOS).",
-     "PW-1.EBSU000.PDF", False),
-    ("must hold a valid Facility Security Clearance", "notice", False),
-    # A document the model wasn't given, and one that doesn't exist.
-    ("must hold a valid Facility Security Clearance", "nope.pdf", False),
-    # Same thresholds: 3+ words and 15+ characters, and a whole metadata value counts only
-    # for the notice.
-    ("level of SECRET", "PW-1.EBSU000.PDF", True),
-    ("SECRET.", "PW-1.EBSU000.PDF", False),
-    ("Facility Security", "PW-1.EBSU000.PDF", False),
+    (FSC + " at the level of SECRET", MAIN_NAME, "kept", MAIN_NAME),
+    ("MUST HOLD a valid   Facility Security Clearance", MAIN_NAME, "kept", MAIN_NAME),
+    # True text, wrong source named: kept, source corrected to where it was found.
+    (FSC, "PW-1.EBSU001.PDF", "corrected", MAIN_NAME),
+    (DOS, MAIN_NAME, "corrected", "notice"),  # notice text claimed for a document
+    (FSC, "notice", "corrected", MAIN_NAME),  # document text claimed for the notice
+    (FSC, "nope.pdf", "corrected", MAIN_NAME),  # a document that doesn't exist
+    # In no source: dropped, nothing to correct.
+    ("must hold an invented quantum clearance", MAIN_NAME, "dropped", "notice"),
+    ("must hold an invented quantum clearance", "notice", "dropped", "notice"),
+    # Same thresholds: 3+ words and 15+ characters, also when correcting.
+    ("level of SECRET", MAIN_NAME, "kept", MAIN_NAME),
+    ("level of SECRET", "notice", "corrected", MAIN_NAME),
+    ("SECRET.", MAIN_NAME, "dropped", "notice"),
+    ("Facility Security", "notice", "dropped", "notice"),
 ])
-def test_gate_quote_must_be_in_the_source_it_names(make_tender, evidence, source, grounded):
+def test_gate_quote_source_is_checked_and_corrected(make_tender, evidence, source, outcome,
+                                                     shown_source):
     t = doc_tender(make_tender)
     checked, flags = _postvalidate(t, _clearance(evidence, source))
     g = checked.eligibility.clearance
-    assert ("ungrounded:eligibility.clearance" not in flags) is grounded
-    if grounded:
-        assert (g.evidence, g.source, g.corporate) == (evidence, source, "secret")
+    assert ("ungrounded:eligibility.clearance" in flags) is (outcome == "dropped")
+    assert ("source_corrected:eligibility.clearance" in flags) is (outcome == "corrected")
+    assert g.source == shown_source
+    if outcome == "dropped":
+        assert (g.evidence, g.corporate) == (None, "unknown")
     else:
-        assert (g.evidence, g.source, g.corporate) == (None, "notice", "unknown")
+        assert (g.evidence, g.corporate) == (evidence, "secret")
+
+
+def test_source_correction_prefers_the_notice_then_documents_in_input_order(make_tender):
+    """The same sentence in the notice and two documents, the model naming a third."""
+    t = make_tender(attachment_urls=[ANNEX, AMEND1, MAIN])
+    for url in (ANNEX, AMEND1, MAIN):
+        add_doc(t, url, "Personnel must hold Secret clearance.")
+    order = [d.name for d in build_notice_with_documents(t).documents]
+    checked, _ = _postvalidate(t, _clearance("Personnel must hold Secret clearance.",
+                                             "nope.pdf"))
+    assert checked.eligibility.clearance.source == order[0]
+    checked, _ = _postvalidate(t, _clearance(
+        "Bidders must hold a valid TBIPS supply arrangement.", order[0]))
+    assert checked.eligibility.clearance.source == "notice"
+
+
+def test_source_correction_never_reaches_a_document_left_out(make_tender):
+    t = _sized(make_tender, 50_000, 80_000)  # EBSU001 is not given to the model
+    TenderDocument.objects.filter(url=ATT + "PW-1.EBSU001.PDF").update(
+        text="Personnel must hold Secret clearance. " + "word " * 16_000)
+    _, flags = _postvalidate(t, _clearance("Personnel must hold Secret clearance.",
+                                           "notice"))
+    assert "ungrounded:eligibility.clearance" in flags
+    assert not [f for f in flags if f.startswith("source_corrected")]
+
+
+def test_v3_quotes_are_never_source_corrected(make_tender):
+    """Schema 1 has no source: a v3 quote not in the notice is dropped, even if a stored
+    document holds it (v3 never read the documents)."""
+    t = doc_tender(make_tender)
+    d = valid_data()
+    d["eligibility"]["clearance"] = {"corporate": "secret", "personnel": "secret",
+                                     "evidence": FSC}
+    _, flags = postvalidate(ExtractionData.model_validate(d), build_notice(t), None)
+    assert "ungrounded:eligibility.clearance" in flags
+    assert not [f for f in flags if f.startswith("source_corrected")]
 
 
 def test_schema_2_sources_are_never_null(make_tender):
@@ -310,13 +353,17 @@ def test_schema_2_sources_are_never_null(make_tender):
 
 
 def test_whole_metadata_value_counts_only_for_the_notice(make_tender):
+    """A short whole metadata value named as from a document is corrected to the notice."""
     t = doc_tender(make_tender, notice_type="RFP")
-    for source, grounded in (("notice", True), ("PW-1.EBSU000.PDF", False)):
+    for source, corrected in (("notice", False), ("PW-1.EBSU000.PDF", True)):
         d = with_sources(valid_data())
         d["eligibility"]["supply_arrangement_required"] = {
             "value": "yes", "name": None, "evidence": "RFP", "source": source}
-        flags = _postvalidate(t, d)[1]
-        assert ("ungrounded:eligibility.supply_arrangement_required" not in flags) is grounded
+        checked, flags = _postvalidate(t, d)
+        assert "ungrounded:eligibility.supply_arrangement_required" not in flags
+        assert ("source_corrected:eligibility.supply_arrangement_required" in flags) \
+            is corrected
+        assert checked.eligibility.supply_arrangement_required.source == "notice"
 
 
 def test_quote_from_a_document_left_out_is_ungrounded(make_tender):

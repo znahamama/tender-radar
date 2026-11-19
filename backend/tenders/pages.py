@@ -21,6 +21,7 @@ from django.utils import timezone
 from django.views.decorators.http import require_GET
 
 from tenders.documents.fetch import is_allowed_url
+from tenders.eligibility.combine import V3, V4, Combined, combined_for
 from tenders.extraction.schema import GATES, NOTICE_SOURCE
 from tenders.ingest.injection import INJECTION_PATTERN
 from tenders.ingest.schema import SOURCE_TZ
@@ -189,6 +190,9 @@ def gate_flags(gate: str, flags: list[str], with_documents: bool = False) -> lis
         if kind == "ungrounded" and where == f"eligibility.{gate}":
             out.append(f"quote not found in {'its source' if with_documents else searched}: "
                        "treated as unknown")
+        elif kind == "source_corrected" and where == f"eligibility.{gate}":
+            out.append("quote found in a different source than the model named: source "
+                       "corrected")
         elif kind == "ungrounded_detail" and where.startswith(f"eligibility.{gate}."):
             field = where.rsplit(".", 1)[1]
             out.append(f"{_DETAIL_FIELDS.get(field, field)} not found in {searched}: dropped")
@@ -249,25 +253,41 @@ class GateRow:
     baseline: str
     reviewed: str = ""  # set when a person corrected or rejected the model's answer
     document: DocumentSource | None = None  # the quote is from this solicitation document
+    version: str = ""  # which extraction the answer came from, when two were combined
+
+
+VERSION_LABELS = {V4: "v4 (notice and documents)", V3: "v3 (notice only)"}
 
 
 def gate_rows(llm: Extraction | None, baseline: Extraction | None,
-              reviews: dict[str, ReviewDecision] | None = None) -> list[GateRow]:
-    """The values shown are the ones the assessment used: post-validated, then reviewed."""
+              reviews: dict[str, ReviewDecision] | None = None,
+              combined: Combined | None = None,
+              partner: Extraction | None = None) -> list[GateRow]:
+    """The values shown are the ones the assessment used: post-validated, combined per gate
+    with the v3 extraction when there is one (``combined``, ``partner``), then reviewed."""
     reviews = reviews or {}
-    reviewed = apply_reviews(llm.data, reviews) if llm and llm.data else None
+    combined = combined or Combined(llm.data if llm else None)
+    reviewed = apply_reviews(combined.data, reviews) if llm and combined.data else None
     checked = (reviewed or {}).get("eligibility") or {}
-    raw = _eligibility(llm, "raw_output")
+    raw, raw_v3 = _eligibility(llm, "raw_output"), _eligibility(partner, "raw_output")
+    v3_checked = _eligibility(partner, "data")
     base = _eligibility(baseline, "data")
     flags = list(llm.flags) if llm else []
     sources = document_sources(llm)
     rows = []
     for gate in GATES:
+        version = combined.versions.get(gate, "")
+        from_v3 = version == V3
         value = gate_value(gate, checked.get(gate))
-        said = gate_value(gate, raw.get(gate))
+        said = gate_value(gate, (raw_v3 if from_v3 else raw).get(gate))
         decision = reviews.get(gate)
         overridden = bool(decision and decision.action in REVIEWED)
         model_flags = gate_flags(gate, flags, bool(sources))
+        if from_v3:  # v4's flags explain why v3's answer is shown
+            model_flags = [f"v4: {f}" for f in model_flags] + gate_flags(gate, partner.flags)
+        if f"versions_disagree:eligibility.{gate}" in combined.flags:
+            model_flags.append(f"v3 (notice only) said {gate_value(gate, v3_checked.get(gate))}:"
+                               " versions disagree, in the review queue")
         rows.append(GateRow(
             gate=gate, label=GATE_LABELS[gate], value=value,
             # A person's value can match the model's words (e.g. a correct answer whose
@@ -279,6 +299,7 @@ def gate_rows(llm: Extraction | None, baseline: Extraction | None,
             baseline=gate_value(gate, base.get(gate)),
             reviewed=REVIEWED.get(decision.action, "") if decision else "",
             document=quote_source(checked.get(gate), sources),
+            version=VERSION_LABELS.get(version, ""),
         ))
     return rows
 
@@ -396,7 +417,9 @@ def tender_detail(request, reference: str):
                 .order_by("-created_at", "-id").first())
     # Only decisions in effect: own ones, and carried ones that still hold.
     reviews = reviews_for(llm).applied if llm else {}
-    eligibility = ((apply_reviews(llm.data, reviews) or {}).get("eligibility") or {}) if llm else {}
+    combined, partner = combined_for(llm, assessment.combined if assessment else None)
+    eligibility = ((apply_reviews(combined.data, reviews) or {}).get("eligibility") or {}
+                   if llm else {})
     sources = document_sources(llm)
     return render(request, "tenders/detail.html", {
         "tender": tender,
@@ -413,7 +436,9 @@ def tender_detail(request, reference: str):
         "documents_read": list(sources.values()),
         "llm": llm,
         "baseline": baseline,
-        "rows": gate_rows(llm, baseline, reviews),
+        "rows": gate_rows(llm, baseline, reviews, combined, partner),
+        "combined_from_v3": sum(v == V3 for v in combined.versions.values()),
+        "versions_shown": bool(combined.versions),
         "reviewed_count": sum(d.action != ReviewDecision.Action.ACCEPT for d in reviews.values()),
         "other_flags": extraction_flags(llm.flags if llm else []),
         "injection_caution": INJECTION_CAUTION if injection_caution(tender, llm) else "",

@@ -23,6 +23,7 @@ from django.urls import path, reverse
 from django.utils.html import format_html
 
 from . import review
+from .eligibility.combine import V3, VERSIONS_DISAGREE, combined_for
 from .ingest.injection import INJECTION_PATTERN
 from .models import (
     Assessment,
@@ -128,7 +129,8 @@ QUEUE_FLAGS = ("ungrounded:eligibility.", "ungrounded_detail:eligibility.",
                "sa_metadata_disagrees", "injection_suspected", "truncated")
 
 
-def queue_flags(flags: list[str], data_quality: list[str]) -> list[str]:
+def queue_flags(flags: list[str], data_quality: list[str],
+                combined_flags: list[str] | None = None) -> list[str]:
     out = []
     if any(f.startswith(("ungrounded:eligibility.", "ungrounded_detail:eligibility."))
            for f in flags):
@@ -137,6 +139,10 @@ def queue_flags(flags: list[str], data_quality: list[str]) -> list[str]:
             if f in flags]
     if INJECTION_PATTERN in (data_quality or []):
         out.append(INJECTION_PATTERN)
+    disagree = [f.removeprefix(f"{VERSIONS_DISAGREE}:eligibility.")
+                for f in combined_flags or [] if f.startswith(f"{VERSIONS_DISAGREE}:")]
+    if disagree:  # v3 and v4 both quoted an answer for these gates, and the answers differ
+        out.append(f"{VERSIONS_DISAGREE} ({', '.join(disagree)})")
     return out
 
 
@@ -152,10 +158,14 @@ def review_queue():
     # jsonb as text ('["ungrounded:eligibility.clearance", ...]'): one LIKE per flag.
     flag_text = Subquery(newest.annotate(t=Cast("flags", TextField())).values("t")[:1],
                          output_field=TextField())
+    combined_text = Subquery(primary_assessments().filter(tender=OuterRef("pk"))
+                             .annotate(t=Cast("combined", TextField())).values("t")[:1],
+                             output_field=TextField())
     qs = NeedsReview.objects.filter(is_open()).annotate(
         review_extraction_id=Subquery(newest.values("id")[:1]),
         review_extraction_status=Subquery(newest.values("status")[:1]),
         review_flags=flag_text,
+        review_combined=combined_text,
         review_status=Subquery(status),
     ).annotate(
         gates_reviewed=Coalesce(Subquery(gates_reviewed, output_field=IntegerField()), 0),
@@ -170,6 +180,7 @@ def review_queue():
     flagged = Q(data_quality__contains=[INJECTION_PATTERN])
     for f in QUEUE_FLAGS:
         flagged |= Q(review_flags__contains=f'"{f}')
+    flagged |= Q(review_combined__contains=f'"{VERSIONS_DISAGREE}:')
     return qs.annotate(review_priority=Case(
         When(review_status=Assessment.Status.BLOCKED, then=0), When(flagged, then=1),
         default=2, output_field=IntegerField()))
@@ -267,7 +278,8 @@ class NeedsReviewAdmin(admin.ModelAdmin):
     @admin.display(description="flags")
     def flags(self, obj):
         flags = json.loads(obj.review_flags) if obj.review_flags else []
-        return ", ".join(queue_flags(flags, obj.data_quality)) or "-"
+        combined = json.loads(obj.review_combined) if obj.review_combined else {}
+        return ", ".join(queue_flags(flags, obj.data_quality, combined.get("flags"))) or "-"
 
     @admin.display(description="reviewed")
     def reviewed(self, obj):
@@ -346,6 +358,9 @@ class NeedsReviewAdmin(admin.ModelAdmin):
         latest = review.latest_decisions(extraction)
         effective = review.apply_reviews(extraction.data, reviews.applied)
         labels = {**GATE_LABELS, **dict(ReviewDecision.GATE_CHOICES)}
+        assessment = extraction.assessments.filter(profile_id=_default_profile_id()).first()
+        combined, partner = combined_for(extraction, assessment.combined if assessment else None)
+        v3_data = ((partner.data if partner else None) or {}).get("eligibility") or {}
         rows = []
         for gate in review.REVIEW_GATES:
             if gate == review.CRITERIA:
@@ -355,7 +370,12 @@ class NeedsReviewAdmin(admin.ModelAdmin):
                 model = extraction.data["eligibility"][gate]
                 now = effective["eligibility"][gate]
                 model_text, evidence = gate_value(gate, model), model.get("evidence")
-                flags = gate_flags(gate, extraction.flags)
+                flags = gate_flags(gate, extraction.flags, bool(extraction.documents))
+                v3_said = gate_value(gate, v3_data.get(gate))
+                if combined.versions.get(gate) == V3:
+                    flags.append(f"the site shows the v3 answer (notice only): {v3_said}")
+                if f"{VERSIONS_DISAGREE}:eligibility.{gate}" in combined.flags:
+                    flags.append(f"v3 (notice only) said {v3_said}: versions disagree")
             decision = latest.get(gate)
             in_effect = reviews.applied.get(gate)
             rows.append({

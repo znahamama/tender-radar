@@ -264,6 +264,9 @@ class Assessment(models.Model):
     rules_version = models.CharField(max_length=20)
     inputs_hash = models.CharField(max_length=64)
     computed_at = models.DateTimeField()
+    # A v4 extraction combined per gate with the tender's v3 one (eligibility.combine):
+    # {"v3_extraction": id, "gates": {gate: "v4" | "v3"}, "flags": [...]}; {} otherwise.
+    combined = models.JSONField(default=dict, blank=True)
 
     class Meta:
         constraints = (
