@@ -82,14 +82,33 @@ class Command(BaseCommand):
         counts: Counter = Counter()
         verdicts: Counter = Counter()
         stopped: StopRun | None = None
+        v4_failed = 0
         for t in tenders:
             chosen = by_version[prompt_version_for(t)] if by_version else extractor
+            with_docs = chosen is by_version.get(DOCUMENTS_PROMPT_VERSION)
             try:
                 o = extract_tender(t, chosen, meter)
-            except StopRun as e:  # caps, bad key/model, 400 on the first call
+            except CapReached as e:  # the budget working as designed, v3 or v4
                 out(self.style.WARNING(f"stopped: {e}"))
                 stopped = e
                 break
+            except StopRun as e:  # bad key/model, 400 on the first call
+                if with_docs:
+                    v4_failed += 1
+                    self._v4_failed(t, str(e))
+                    continue
+                out(self.style.WARNING(f"stopped: {e}"))
+                stopped = e
+                break
+            if with_docs and o.status == "failed":
+                v4_failed += 1
+                self._v4_failed(t, o.extraction.error.splitlines()[0] if o.extraction.error
+                                else "failed")
+                # Removed so it never becomes the tender's newest extraction: the v3 one
+                # and its assessment stay what the site and assess_tenders use. The next
+                # run tries v4 again (only an ok row is a cache hit).
+                o.extraction.delete()
+                continue
             counts[o.status] += 1
             x = o.extraction
             a = assess(x, profile)
@@ -107,9 +126,17 @@ class Command(BaseCommand):
             f"failed {counts['failed']}")
         out(f"tokens in {meter.input_tokens}  out {meter.output_tokens}  "
             f"cost ${meter.cost:.6f}  (worst-case estimates included for failed connections)")
+        if v4_failed:
+            out(self.style.WARNING(f"v4 failed {v4_failed}: kept their v3 extraction and "
+                                   "assessment (see the lines above)"))
 
         # A cap is the budget working as designed: a clean exit. Any other stop (bad key or
         # model, 400 on the first call) is a broken run; failing here fails the worker
         # invocation, which is what the CloudWatch Errors alarm watches.
+        # A v4 failure is isolated: logged, the tender keeps its v3 answer, the run goes on.
         if stopped is not None and not isinstance(stopped, CapReached):
             raise CommandError(f"stopped: {stopped}") from stopped
+
+    def _v4_failed(self, tender: Tender, reason: str) -> None:
+        self.stdout.write(self.style.WARNING(
+            f"{tender.reference_number}  v4 failed, kept v3: {reason}"))

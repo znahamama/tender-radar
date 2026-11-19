@@ -66,9 +66,10 @@ def _appears(detail: str, loose_sources: list[str]) -> bool:
 
 class _Grounding:
     """Where a quote may come from. Schema 1 output (v2, v3) has no ``source``: every quote
-    is checked against the notice. Schema 2 (v4) names one: "notice" (or null) checks the
-    notice; a document name checks that document's whole stored text, and only a document
-    the model was given (full or partial). Any other source is ungrounded."""
+    is checked against the notice. In schema 2 (v4) only gate evidence names one: "notice"
+    checks the notice; a document name checks that document's whole stored text, and only a
+    document the model was given (full or partial). Any other source is ungrounded. A list
+    item's quote (no source) is grounded in the notice or in any document given."""
 
     def __init__(self, notice: Notice):
         self.notice = [normalize(text) for _, text in notice.sources]
@@ -90,11 +91,17 @@ class _Grounding:
         text = self.documents.get(normalize(source))
         return text is not None and is_grounded(evidence, [text])
 
+    def anywhere(self, evidence: str | None) -> bool:
+        """In the notice or in any document given; with no documents (v2, v3), the notice."""
+        return (is_grounded(evidence, self.notice, self.whole_values)
+                or is_grounded(evidence, list(self.documents.values())))
+
 
 def _drop_evidence(item) -> None:
+    """Schema 2 sources are never null: no quote means "notice" (schema.SOURCE_GATE)."""
     item.evidence = None
     if hasattr(item, "source"):
-        item.source = None
+        item.source = NOTICE_SOURCE
 
 
 def postvalidate(data: ExtractionData, notice: Notice,
@@ -102,8 +109,9 @@ def postvalidate(data: ExtractionData, notice: Notice,
     """Return a corrected copy of ``data`` and the flags raised.
 
     Sources are the title, each metadata value and the description; never labels or tags.
-    With prompt v4, also the documents the model was given: a quote must sit in the one
-    source it names (see _Grounding), with the same word and character thresholds.
+    With prompt v4, also the documents the model was given: a gate quote must sit in the
+    one source it names, a list item's quote in the notice or any document given (see
+    _Grounding), with the same word and character thresholds.
     - Gate evidence not grounded: evidence -> None, values -> "unknown", details -> None,
       flag ``ungrounded:eligibility.<gate>``. A non-unknown value with no evidence counts.
     - A quote equal to a whole metadata value is grounded whatever its length.
@@ -130,8 +138,8 @@ def postvalidate(data: ExtractionData, notice: Notice,
             for f in detail_fields:
                 setattr(g, f, None)
             flags.append(f"ungrounded:eligibility.{gate}")
-        elif g.evidence is None and getattr(g, "source", None) is not None:
-            g.source = None  # a source with no quote names nothing
+        elif g.evidence is None and getattr(g, "source", NOTICE_SOURCE) != NOTICE_SOURCE:
+            g.source = NOTICE_SOURCE  # a source with no quote names nothing
         for f in detail_fields:
             value = getattr(g, f)
             allowed = where.places if f == "place" else where.details
@@ -142,7 +150,7 @@ def postvalidate(data: ExtractionData, notice: Notice,
     for name in _LISTS:
         kept = []
         for i, item in enumerate(getattr(data, name)):
-            if where.quote(item.evidence, getattr(item, "source", None)):
+            if where.anywhere(item.evidence):
                 kept.append(item)
             else:
                 flags.append(f"ungrounded:{name}[{i}]")

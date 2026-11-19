@@ -7,6 +7,9 @@ import hashlib
 import json
 from pathlib import Path
 
+import anthropic
+import pytest
+
 from tenders.eligibility import places, rules
 from tenders.evals.harness import PINNED_PROMPTS
 from tenders.extraction.keyword import KEYWORD_RULES_VERSION, KeywordExtractor
@@ -31,12 +34,18 @@ FROZEN = {
     # Re-pinned the same day (before any test scoring) after removing the "Invitation to
     # Qualify" wording, which traced to a test case (docs/eval-protocol.md, change 6).
     ("prompt", "v3"): "12c49a099a676105545196d36881831b0b31e8ec1e02b488900d2ca0bf129039",
-    # v4: pinned 2026-11-19. v3 for a notice read with its solicitation documents; every
-    # quote names its source. Only for tenders with ok documents (not in the eval set).
-    ("prompt", "v4"): "5c5d8ba86fbd86e24d4c4ceed6cffa8b1c23c42322077012f68be2a753227abc",
+    # v4: pinned 2026-11-19. v3 for a notice read with its solicitation documents; gate
+    # evidence names its source. Only for tenders with ok documents (not in the eval set).
+    # Re-pinned the same day, before any successful call: "every quote names a source"
+    # became gate evidence only, to fit schema 2 (below).
+    ("prompt", "v4"): "50f72e984c708f4e9f24715d220c2fd6fb7c44ec4b37fd1a1b09b353634a7c15",
     ("schema", "1"): "4fab443b3ee8a8fe91e28637fb68762324c50751c78531fd4abc57531898e83e",
-    # Schema 2 (prompt v4): schema 1 plus a source on every quote.
-    ("schema", "2"): "6f0aaa8bade3457eda95f6b26211cd7075da525a6f762f39a11e9277a783c528",
+    # Schema 2 (prompt v4): schema 1 plus a source on each gate's evidence. Re-pinned twice
+    # on 2026-11-19, before any successful use. First version: nullable sources on every
+    # quote, 17 union-typed fields (the API allows 16), every v4 request a 400. Second:
+    # plain-string sources on every quote, "The compiled grammar is too large" (400). Now:
+    # plain-string sources on the six gates only, which compiles.
+    ("schema", "2"): "15cdff96e435116f2a032a8affb2df108c692bb38e5d20bb70a0802d4e7bf287",
     ("baseline", "rules-v1"): "04590c85d129cbcff3b584289eac8437938d76677ee1ad58b40444a4a9f76441",
     # rules.py + places.py source (the gazetteer decides on-site blockers).
     ("eligibility", "3"): "69f130cd4bb6823d0a30e49b570fe5249513c039be1fd683ea0e5721a1f02b63",
@@ -92,3 +101,42 @@ def test_eligibility_rules_v3_are_frozen():
     assert rules.RULES_VERSION == "3"
     source = b"".join(Path(m.__file__).read_bytes() for m in (rules, places))
     assert hashlib.sha256(source).hexdigest() == FROZEN[("eligibility", rules.RULES_VERSION)]
+
+
+# Structured outputs' published limits per request (docs: "Schema complexity limits").
+# Over either one, every request with that schema is a 400.
+MAX_UNION_TYPED = 16  # fields using anyOf or a type array, e.g. ["string", "null"]
+MAX_OPTIONAL = 24  # properties not listed in "required"
+
+
+def _complexity(node) -> tuple[int, int]:
+    unions = optional = 0
+    if isinstance(node, dict):
+        if "anyOf" in node or isinstance(node.get("type"), list):
+            unions += 1
+        if isinstance(node.get("properties"), dict):
+            optional += len(set(node["properties"]) - set(node.get("required", [])))
+        children = node.values()
+    elif isinstance(node, list):
+        children = node
+    else:
+        return 0, 0
+    for child in children:
+        u, o = _complexity(child)
+        unions, optional = unions + u, optional + o
+    return unions, optional
+
+
+@pytest.mark.parametrize("version", sorted(SCHEMAS))
+def test_schema_fits_structured_output_limits(version):
+    """Measured on what the SDK sends (transform_schema), as providers.py does."""
+    unions, optional = _complexity(anthropic.transform_schema(SCHEMAS[version]))
+    assert unions <= MAX_UNION_TYPED, f"schema {version}: {unions} union-typed fields"
+    assert optional <= MAX_OPTIONAL, f"schema {version}: {optional} optional fields"
+
+
+def test_complexity_counter_counts_unions_and_optionals():
+    schema = {"type": "object", "required": ["a"], "properties": {
+        "a": {"anyOf": [{"type": "string"}, {"type": "null"}]},
+        "b": {"type": ["string", "null"]}, "c": {"type": "string"}}}
+    assert _complexity(schema) == (2, 2)

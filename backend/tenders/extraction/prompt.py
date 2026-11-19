@@ -25,7 +25,7 @@ if TYPE_CHECKING:
 # docs/eval-protocol.md, "Prompt v3 changes".
 #
 
-# v4 (2026-11-19): v3 for a notice read with its solicitation documents. Every quote names
+# v4 (2026-11-19): v3 for a notice read with its solicitation documents. Gate evidence names
 # its source ("notice" or a document name), documents are untrusted data like the notice,
 # a later amendment wins over earlier text, and criteria_location counts the documents
 # given. Used only for tenders with at least one ok TenderDocument (DOCUMENTS_PROMPT_VERSION);
@@ -232,10 +232,11 @@ title, from a metadata value, from the description, or from one document: same w
 paraphrase, no ellipses. Prefer one sentence or clause. A whole metadata value copied exactly \
 (such as a closing date or a notice type) is also a valid quote, even if shorter. Never \
 include metadata field names (such as "closing_date:"), tag text or document names in a quote.
-- Every evidence field has a source: "notice" for a quote from the title, a metadata value or \
-the description; otherwise the name of the document the quote was copied from, exactly as in \
-its name attribute. A quote comes from one source only. If the notice and a document state the \
-same thing, prefer the notice.
+- Each eligibility gate's evidence has a source: "notice" for a quote from the title, a \
+metadata value or the description; otherwise the name of the document the quote was copied \
+from, exactly as in its name attribute; "notice" when the evidence is null. List items have no \
+source. A quote comes from one source only. If the notice and a document state the same thing, \
+prefer the notice.
 - Copy quotes character for character, including symbols, brackets and numbers such as "#", \
 "(SA)" and "/": never drop, add or tidy a character. Prefer a whole metadata value or a short \
 exact phrase over a long passage. Never join text from different places (different sentences, \
@@ -300,7 +301,7 @@ registration or login, and which portal. "no" if the notice states the documents
 another way, such as being sent directly to the invited suppliers.
 
 Two worked examples. Their notices are invented; never quote them for a real notice. In both, \
-every quote is from the notice (source "notice").
+every quote is from the notice (gate source "notice").
 
 Example 1 notice: notice_type "RFP against Supply Arrangement"; procurement_categories "SRV"; \
 description "Two help desk analysts must work on-site at the Gander regional office. Personnel \

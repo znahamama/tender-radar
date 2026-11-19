@@ -113,8 +113,15 @@ class ExtractionData(_Strict):
 
 # --- schema 2: prompt v4, notices read with their solicitation documents ------------------
 # Schema 1 above is frozen (test_frozen.py) and stays what prompts v2/v3 use, so notices
-# without documents keep their cache keys. Schema 2 adds a ``source`` to every quote:
-# "notice" (title, metadata or description) or the name of the document it came from.
+# without documents keep their cache keys. Schema 2 lets quotes come from the documents too.
+# Only the six gates' evidence names a source: "notice" (title, metadata or description)
+# or the name of the document it came from. Two API limits shaped this (2026-11-19):
+# - structured outputs allow at most 16 union-typed fields (anyOf, or a type array such as
+#   ["string", "null"]) per request, and schema 1 already has 11, so a source is a plain
+#   string, never nullable ("notice" when a gate has no evidence; test_frozen.py checks);
+# - with a source on the list items as well, the API refused the schema: "The compiled
+#   grammar is too large". Gate sources alone compile. A list item's quote is grounded if it
+#   is in the notice or in any document the model was given (validate.py).
 
 SCHEMA_VERSION_DOCUMENTS = "2"
 NOTICE_SOURCE = "notice"
@@ -123,57 +130,54 @@ QUOTE_2 = ("Verbatim quote from the notice or from one of its solicitation docum
 QUOTE_2_REQUIRED = "Verbatim quote from the notice or from one of its solicitation documents."
 SOURCE = ('Where the quote is from: "notice" for the title, a metadata value or the '
           "description; otherwise the exact name of the document it was copied from.")
-SOURCE_OPTIONAL = SOURCE + " Null when evidence is null."
+SOURCE_GATE = SOURCE + ' "notice" when evidence is null.'
 
 
+# List items: same fields as schema 1 (no source), the quote may come from a document.
 class Deliverable2(Deliverable):
     evidence: str = Field(description=QUOTE_2_REQUIRED)
-    source: str = Field(description=SOURCE)
 
 
 class Deadline2(Deadline):
     evidence: str = Field(description=QUOTE_2_REQUIRED)
-    source: str = Field(description=SOURCE)
 
 
 class MandatoryRequirement2(MandatoryRequirement):
     evidence: str = Field(description=QUOTE_2_REQUIRED)
-    source: str = Field(description=SOURCE)
 
 
 class Certification2(Certification):
     evidence: str = Field(description=QUOTE_2_REQUIRED)
-    source: str = Field(description=SOURCE)
 
 
 class SupplyArrangementGate2(SupplyArrangementGate):
     evidence: str | None = Field(description=QUOTE_2)
-    source: str | None = Field(description=SOURCE_OPTIONAL)
+    source: str = Field(description=SOURCE_GATE)
 
 
 class SupplierOriginGate2(SupplierOriginGate):
     evidence: str | None = Field(description=QUOTE_2)
-    source: str | None = Field(description=SOURCE_OPTIONAL)
+    source: str = Field(description=SOURCE_GATE)
 
 
 class ClearanceGate2(ClearanceGate):
     evidence: str | None = Field(description=QUOTE_2)
-    source: str | None = Field(description=SOURCE_OPTIONAL)
+    source: str = Field(description=SOURCE_GATE)
 
 
 class WorkLocationGate2(WorkLocationGate):
     evidence: str | None = Field(description=QUOTE_2)
-    source: str | None = Field(description=SOURCE_OPTIONAL)
+    source: str = Field(description=SOURCE_GATE)
 
 
 class LandClaimsGate2(LandClaimsGate):
     evidence: str | None = Field(description=QUOTE_2)
-    source: str | None = Field(description=SOURCE_OPTIONAL)
+    source: str = Field(description=SOURCE_GATE)
 
 
 class DocumentsBehindLoginGate2(DocumentsBehindLoginGate):
     evidence: str | None = Field(description=QUOTE_2)
-    source: str | None = Field(description=SOURCE_OPTIONAL)
+    source: str = Field(description=SOURCE_GATE)
 
 
 class Eligibility2(Eligibility):

@@ -67,6 +67,15 @@ class Extractor(Protocol):
                 tender: Tender | None = None) -> ExtractionResult: ...
 
 
+def api_message(e: anthropic.APIError, limit: int = 300) -> str:
+    """The API's own error message (e.g. why a request was a 400), one line, capped. It
+    describes the request (schema, parameters), not the notice text."""
+    body = getattr(e, "body", None)
+    err = body.get("error") if isinstance(body, dict) else None
+    msg = err.get("message") if isinstance(err, dict) else None
+    return " ".join(str(msg or getattr(e, "message", "") or "").split())[:limit]
+
+
 def config_fingerprint(**parts: object) -> str:
     return hashlib.sha256(json.dumps(parts, sort_keys=True, default=str).encode()).hexdigest()
 
@@ -167,6 +176,9 @@ class AnthropicExtractor:
                                          else settings.LLM_MAX_TOKENS)
         self.system_prompt = PROMPTS[prompt_version] if system_prompt is None else system_prompt
         self.retry_wait_s = retry_wait_s
+        # API attempts by this extractor. "The first call of the run" is per extractor, so
+        # a v4 failure (isolated by extract_tenders) never changes what v3's first call means.
+        self.api_calls = 0
         effort = effort or settings.LLM_EFFORT
         self.output_config = {"format": {"type": "json_schema", "schema": self.output_schema},
                               "effort": effort}
@@ -208,7 +220,8 @@ class AnthropicExtractor:
         for attempt in range(1, MAX_ATTEMPTS + 1):
             last = attempt == MAX_ATTEMPTS
             meter.check()
-            first_call_of_run = meter.api_calls == 0
+            first_call_of_run = self.api_calls == 0
+            self.api_calls += 1
             t0 = time.monotonic()
             try:
                 resp = self.client.messages.create(
@@ -230,18 +243,20 @@ class AnthropicExtractor:
             except FATAL_ERRORS as e:
                 self._record(meter, tender, "error", t0, request_id=e.request_id or "")
                 raise StopRun(f"{type(e).__name__} ({e.status_code}): check the API key "
-                              "and LLM_MODEL") from e
+                              f"and LLM_MODEL. API said: {api_message(e)}") from e
             except anthropic.BadRequestError as e:
                 self._record(meter, tender, "error", t0, request_id=e.request_id or "")
                 if first_call_of_run:
                     raise StopRun("BadRequestError (400) on the first call of the run: "
-                                  "check the LLM_* settings") from e
-                return ExtractionResult.failed("api_error: BadRequestError (400)",
-                                               flags=[*flags, "api_error"])
+                                  f"check the LLM_* settings. API said: {api_message(e)}") from e
+                return ExtractionResult.failed(
+                    f"api_error: BadRequestError (400): {api_message(e)}",
+                    flags=[*flags, "api_error"])
             except anthropic.APIStatusError as e:
                 self._record(meter, tender, "error", t0, request_id=e.request_id or "")
                 failure = ExtractionResult.failed(
-                    f"api_error: {type(e).__name__} ({e.status_code})", flags=[*flags, "api_error"])
+                    f"api_error: {type(e).__name__} ({e.status_code}): {api_message(e)}",
+                    flags=[*flags, "api_error"])
                 if _is_retryable(e) and not last:
                     flags.append("api_retry")
                     self._wait(retry_after_s(e))

@@ -77,8 +77,10 @@ flowchart LR
 - **Backend:** Python 3.12, Django 5.2, server-rendered pages (no JavaScript on public pages).
 - **LLM:** `claude-haiku-5-5`, prompt v3, structured outputs, effort low, max 2000 tokens.
   A notice with stored solicitation documents is read with them instead (prompt v4: the
-  notice, then the documents in rank order, at most 120,000 characters in all; every quote
-  names its source and must be found in that source; max 4000 output tokens). Not in the
+  notice, then the documents in rank order, at most 120,000 characters in all; each
+  eligibility gate's quote names its source and must be found in that source, and a list
+  item's quote must be found in the notice or a document given; max 4000 output tokens).
+  If a v4 call fails, the tender keeps its v3 answer and the run carries on. Not in the
   eval set below.
 - **Database:** Neon Postgres (free tier), pooled connections from Lambda.
 - **Infra:** AWS Lambda (arm64 container images, ECR), API Gateway HTTP API, EventBridge

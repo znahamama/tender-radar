@@ -170,7 +170,7 @@ def test_retryable_error_twice_fails(make_tender, meter):
     ex = extractor(api_error(anthropic.RateLimitError, 429),
                    api_error(anthropic.InternalServerError, 500))
     r = ex.extract(build_notice(t), meter, tender=t)
-    assert r.status == "failed" and r.error == "api_error: InternalServerError (500)"
+    assert r.status == "failed" and r.error == "api_error: InternalServerError (500): boom"
     assert statuses() == ["error", "error"]
 
 
@@ -234,8 +234,31 @@ def test_bad_request_later_in_run_fails_only_that_notice(make_tender, meter):
     ex = extractor(response(valid_data()), api_error(anthropic.BadRequestError, 400))
     assert ex.extract(build_notice(a), meter, tender=a).status == "ok"
     r = ex.extract(build_notice(b), meter, tender=b)
-    assert r.status == "failed" and r.error == "api_error: BadRequestError (400)"
+    assert r.status == "failed" and r.error == "api_error: BadRequestError (400): boom"
     assert len(ex.client.calls) == 2  # no retry of a 400
+
+
+def test_api_error_message_is_read_from_the_body_and_capped():
+    body = {"type": "error", "error": {"type": "invalid_request_error",
+                                       "message": "Schema is too\ncomplex " + "x" * 400}}
+    e = anthropic.BadRequestError("Error code: 400", body=body,
+                                  response=httpx2.Response(400, request=REQ))
+    msg = providers.api_message(e)
+    assert msg.startswith("Schema is too complex x") and len(msg) == 300
+    assert providers.api_message(api_error(anthropic.BadRequestError, 400)) == "boom"
+
+
+def test_first_call_of_the_run_is_per_extractor(make_tender, meter):
+    """A call by another extractor (v4) doesn't make this one's (v3) first 400 a
+    per-notice failure: a bad v3 setting still stops the run."""
+    t = make_tender()
+    other = extractor(response(valid_data()))
+    other.extract(build_notice(t), meter, tender=t)
+    assert meter.api_calls == 1
+    ex = extractor(api_error(anthropic.BadRequestError, 400))
+    with pytest.raises(StopRun, match="first call of the run: check the LLM_\\* settings. "
+                                      "API said: boom"):
+        ex.extract(build_notice(t), meter, tender=t)
 
 
 def test_auth_error_stops_the_run(make_tender, meter):
