@@ -14,6 +14,7 @@
   <dt>Notice type</dt><dd>{{ tender.notice_type|default:"Not stated" }} ({{ tender.get_notice_kind_display }})</dd>
   <dt>Region scope</dt><dd>{{ tender.get_region_scope_display }}</dd>
   <dt>Official notice</dt><dd>{% if official_url %}<a href="{{ official_url }}" rel="external noreferrer">{{ official_url }}</a>{% else %}No link available{% endif %}</dd>
+  {% if search_url %}<dt>Search</dt><dd><a href="{{ search_url }}" rel="external noreferrer">Search CanadaBuys for solicitation {{ tender.solicitation_number }}</a> <span class="small">(a search on CanadaBuys, not a link to this notice)</span></dd>{% endif %}
 </dl>
 
 {% if injection_caution %}<p class="caution" role="note">{{ injection_caution }}</p>{% endif %}
@@ -26,7 +27,7 @@
     <ul class="findings">
       {% for f in blockers %}
       <li><span class="gate">{{ f.gate_label }}</span>: {{ f.reason }}
-        {% if f.evidence %}<blockquote>{{ f.evidence }}</blockquote>{% endif %}</li>
+        {% if f.evidence %}<blockquote>{{ f.evidence }}</blockquote>{% if f.document %}<p class="small doc-source">From the solicitation documents: {% if f.document.url %}<a href="{{ f.document.url }}" rel="external noreferrer">{{ f.document.name }}</a>{% else %}{{ f.document.name }}{% endif %}</p>{% endif %}{% endif %}</li>
       {% endfor %}
     </ul>
     {% endif %}
@@ -35,7 +36,7 @@
     <ul class="findings">
       {% for f in warnings %}
       <li><span class="gate">{{ f.gate_label }}</span>: {{ f.reason }}
-        {% if f.evidence %}<blockquote>{{ f.evidence }}</blockquote>{% endif %}</li>
+        {% if f.evidence %}<blockquote>{{ f.evidence }}</blockquote>{% if f.document %}<p class="small doc-source">From the solicitation documents: {% if f.document.url %}<a href="{{ f.document.url }}" rel="external noreferrer">{{ f.document.name }}</a>{% else %}{{ f.document.name }}{% endif %}</p>{% endif %}{% endif %}</li>
       {% endfor %}
     </ul>
     {% endif %}
@@ -45,11 +46,11 @@
     <ul class="findings">
       {% for f in notes %}
       <li><span class="gate">{{ f.gate_label }}</span>: {{ f.reason }}
-        {% if f.evidence %}<blockquote>{{ f.evidence }}</blockquote>{% endif %}</li>
+        {% if f.evidence %}<blockquote>{{ f.evidence }}</blockquote>{% if f.document %}<p class="small doc-source">From the solicitation documents: {% if f.document.url %}<a href="{{ f.document.url }}" rel="external noreferrer">{{ f.document.name }}</a>{% else %}{{ f.document.name }}{% endif %}</p>{% endif %}{% endif %}</li>
       {% endfor %}
     </ul>
     {% endif %}
-    <h3>Not stated in the notice</h3>
+    <h3>Not stated in the notice{% if documents_read %} or its documents{% endif %}</h3>
     {% if not_stated %}
     <ul class="plain">{% for label in not_stated %}<li>{{ label }}</li>{% endfor %}</ul>
     {% else %}<p>Every gate is stated.</p>{% endif %}
@@ -78,7 +79,7 @@
       <tr>
         <th scope="row">{{ r.label }}</th>
         <td data-label="LLM value">{{ r.value|default:"—" }}{% if r.reviewed %}<br><span class="reviewed">{{ r.reviewed }}</span>{% endif %}{% if r.raw_value %}<br><span class="small">model said: {{ r.raw_value }}</span>{% endif %}</td>
-        <td data-label="Evidence">{% if r.evidence %}<blockquote>{{ r.evidence }}</blockquote>{% else %}—{% endif %}</td>
+        <td data-label="Evidence">{% if r.evidence %}<blockquote>{{ r.evidence }}</blockquote>{% if r.document %}<p class="small doc-source">From the solicitation documents: {% if r.document.url %}<a href="{{ r.document.url }}" rel="external noreferrer">{{ r.document.name }}</a>{% else %}{{ r.document.name }}{% endif %}</p>{% endif %}{% else %}—{% endif %}</td>
         <td data-label="Flags">{% for flag in r.flags %}<span class="flag">{{ flag }}</span>{% empty %}—{% endfor %}</td>
         <td data-label="Keyword baseline" class="baseline">{{ r.baseline|default:"—" }}</td>
       </tr>
@@ -94,6 +95,9 @@
   {% endif %}
   {% else %}
   <p>No extraction yet.</p>
+  {% endif %}
+  {% if documents_read %}
+  <p class="small documents-note">Besides the notice, the model read {{ documents_read|length }} solicitation document{{ documents_read|length|pluralize }} published on CanadaBuys: {% for d in documents_read %}{% if d.url %}<a href="{{ d.url }}" rel="external noreferrer">{{ d.name }}</a>{% else %}{{ d.name }}{% endif %}{% if not forloop.last %}, {% endif %}{% endfor %}. Copyright in these documents stays with the Government of Canada; this page shows only the short quotes above, never their text.</p>
   {% endif %}
 </section>
 

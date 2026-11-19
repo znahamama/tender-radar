@@ -6,6 +6,11 @@ from django.core.management.base import BaseCommand, CommandError
 from tenders.eligibility.service import assess, default_profile
 from tenders.extraction.budget import CallMeter, CapReached, StopRun
 from tenders.extraction.keyword import KeywordExtractor
+from tenders.extraction.prompt import (
+    DOCUMENTS_PROMPT_VERSION,
+    PROMPT_VERSION,
+    prompt_version_for,
+)
 from tenders.extraction.providers import AnthropicExtractor, FakeExtractor
 from tenders.extraction.schema import GATES
 from tenders.extraction.service import extract_tender
@@ -56,12 +61,19 @@ class Command(BaseCommand):
         if not tenders:
             raise CommandError("No tenders match.")
 
+        by_version: dict = {}
         if fake:
             extractor = FakeExtractor()
         elif baseline:
             extractor = KeywordExtractor()
         else:
             extractor = AnthropicExtractor()
+            # A tender with ok solicitation documents is read with them (prompt v4); every
+            # other tender stays on v3 and keeps its cache. One client, one meter: v4 calls
+            # count against the same per-run and daily caps.
+            with_documents = AnthropicExtractor(extractor.client,
+                                                prompt_version=DOCUMENTS_PROMPT_VERSION)
+            by_version = {PROMPT_VERSION: extractor, DOCUMENTS_PROMPT_VERSION: with_documents}
         profile = default_profile()
         meter = CallMeter(max_calls=settings.LLM_MAX_CALLS_PER_RUN,
                           daily_budget_usd=settings.LLM_DAILY_BUDGET_USD)
@@ -71,8 +83,9 @@ class Command(BaseCommand):
         verdicts: Counter = Counter()
         stopped: StopRun | None = None
         for t in tenders:
+            chosen = by_version[prompt_version_for(t)] if by_version else extractor
             try:
-                o = extract_tender(t, extractor, meter)
+                o = extract_tender(t, chosen, meter)
             except StopRun as e:  # caps, bad key/model, 400 on the first call
                 out(self.style.WARNING(f"stopped: {e}"))
                 stopped = e
@@ -81,7 +94,10 @@ class Command(BaseCommand):
             x = o.extraction
             a = assess(x, profile)
             verdicts[a.status] += 1
-            out(f"{o.reference}  {o.status}  {a.status}  {gate_summary(x.data)}")
+            read = sum(d["status"] != "not_read" for d in x.documents)
+            docs = f"  [{x.prompt_version}: {read} of {len(x.documents)} document(s) read]" \
+                if x.documents else ""
+            out(f"{o.reference}  {o.status}  {a.status}  {gate_summary(x.data)}{docs}")
             out(f"    flags: {', '.join(x.flags) or '-'}"
                 + (f"  error: {x.error.splitlines()[0]}" if x.error else ""))
 

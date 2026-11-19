@@ -23,8 +23,12 @@ since the raw text is never kept: first those of the open, kept tenders above (a
 their plan), then those of any other tender, whatever its status. They count toward the run
 caps like any download. If that download now fails, the failure replaces the row and drops
 its old text (an open, kept tender then retries it normally). A stale row whose tender has
-no row in the CSVs is left as it is: re-cleaning without the CSV's contact hints could
-expose names the old cleaning caught.
+no row in the CSVs is never re-cleaned without the CSV's contact hints (that could expose
+names the old cleaning caught); see below.
+
+Leaving the CSVs: every run deletes all document rows, and so all stored text, of tenders
+that are in none of the CSVs any more (remove_documents_not_in_csvs), whatever their
+status. If the CSVs list no reference at all (a broken download), nothing is deleted.
 
 Retries: a transient failure (RETRYABLE: download timeout, HTTP or network error, parse
 timeout) is tried again on later runs, one attempt per run, up to MAX_ATTEMPTS in all
@@ -137,6 +141,11 @@ class FetchSummary:
     ok_chars: int = 0
     ok_stale: int = 0  # ok documents still cleaned by an older redact()
     stale_no_csv_row: int = 0  # stale ok documents left as they are: tender not in the CSVs
+    # Rows deleted (their stored text with them) because the tender is in no CSV any more:
+    removed_documents: int = 0
+    removed_with_text: int = 0
+    removed_tenders: int = 0
+    removal_skipped: str = ""  # why nothing was removed although it might have been
 
 
 @dataclass(frozen=True)
@@ -200,6 +209,35 @@ def contact_hints(csv_paths: Iterable[Path], refs: set[str]) -> dict[str, list[C
                 if ref in refs:
                     found.setdefault(ref, {})[ContactHints.from_row(row)] = None
     return {ref: list(hints) for ref, hints in found.items()}
+
+
+def csv_references(csv_paths: Iterable[Path]) -> set[str]:
+    """Every reference number with a row in the CSVs."""
+    refs: set[str] = set()
+    for path in csv_paths:
+        with open(path, encoding="utf-8-sig", newline="") as fh:
+            refs.update(ref for row in csv.DictReader(fh)
+                        if (ref := (row.get(REF_HEADER) or "").strip()))
+    return refs
+
+
+def remove_documents_not_in_csvs(csv_paths: Iterable[Path], summary: FetchSummary) -> None:
+    """Delete the document rows, and so the stored text, of every tender that is in none
+    of the CSVs any more. No reference at all in the CSVs means a broken download, not an
+    empty source: then nothing is deleted."""
+    refs = csv_references(csv_paths)
+    if not refs:
+        summary.removal_skipped = "the CSVs list no reference numbers"
+        return
+    stored = dict(TenderDocument.objects.values_list("tender_id", "tender__reference_number")
+                  .distinct())
+    gone = [pk for pk, ref in stored.items() if ref not in refs]
+    if not gone:
+        return
+    rows = TenderDocument.objects.filter(tender_id__in=gone)
+    summary.removed_with_text = rows.exclude(text="").count()
+    summary.removed_tenders = len(gone)
+    summary.removed_documents, _ = rows.delete()
 
 
 def clean_text(text: str, hints: list[ContactHints]) -> tuple[str, list[str]]:
@@ -307,6 +345,8 @@ def fetch_documents(csv_paths: Iterable[Path], *, limits: Limits | None = None, 
             if not run.tender(t, todo, hints[t.reference_number]):
                 stopped = True
                 break
+    # Not a download: runs even when the run stopped at a cap.
+    remove_documents_not_in_csvs(csv_paths, summary)
     if not stopped:
         _reclean_other_tenders(run, csv_paths, exclude={t.pk for t, _ in pending})
     _stored_totals(summary)

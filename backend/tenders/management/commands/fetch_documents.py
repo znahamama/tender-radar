@@ -8,8 +8,9 @@ from tenders.documents.service import fetch_documents
 class Command(BaseCommand):
     help = ("Fetch CanadaBuys attachment PDFs of open, kept tenders whose attachment URL set "
             "changed, a failure to retry, or a document that now fits the per-tender "
-            "limit, and store their redacted text (tenders.documents). Then re-clean any stored "
-            "document, on any tender, cleaned by an older redact(). No API calls.")
+            "limit, and store their redacted text (tenders.documents). Delete the documents of "
+            "tenders no longer in the CSVs, then re-clean any stored document, on any "
+            "tender, cleaned by an older redact(). No API calls.")
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -33,5 +34,10 @@ class Command(BaseCommand):
         out(f"stored ok: {s.ok_tenders} tender(s) with >= 1 ok document, {s.ok_documents} "
             f"document(s), {s.ok_chars:,} characters; {s.ok_stale} still cleaned by an "
             f"older redact() ({s.stale_no_csv_row} left: tender not in the CSVs)")
+        if s.removal_skipped:
+            out(self.style.WARNING(f"removed nothing: {s.removal_skipped}"))
+        else:
+            out(f"removed: {s.removed_documents} document row(s) ({s.removed_with_text} with "
+                f"stored text) of {s.removed_tenders} tender(s) no longer in the CSVs")
         if s.stopped:
             out(self.style.WARNING(f"stopped early: {s.stopped} (the rest go next run)"))

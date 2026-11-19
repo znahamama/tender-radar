@@ -8,8 +8,8 @@ from __future__ import annotations
 
 import unicodedata
 
-from .prompt import META_PREFIX, Notice
-from .schema import ExtractionData
+from .prompt import META_PREFIX, NOT_READ, Notice
+from .schema import NOTICE_SOURCE, ExtractionData
 
 # Read at call time (not bound as defaults) so tests and future tuning can change them.
 MIN_EVIDENCE_WORDS = 3
@@ -64,47 +64,77 @@ def _appears(detail: str, loose_sources: list[str]) -> bool:
     return bool(d) and any(d in s for s in loose_sources)
 
 
+class _Grounding:
+    """Where a quote may come from. Schema 1 output (v2, v3) has no ``source``: every quote
+    is checked against the notice. Schema 2 (v4) names one: "notice" (or null) checks the
+    notice; a document name checks that document's whole stored text, and only a document
+    the model was given (full or partial). Any other source is ungrounded."""
+
+    def __init__(self, notice: Notice):
+        self.notice = [normalize(text) for _, text in notice.sources]
+        # A whole metadata value, bare or as the exact "label: value" line the notice renders.
+        meta = [(kind.removeprefix(META_PREFIX), text) for kind, text in notice.sources
+                if kind.startswith(META_PREFIX)]
+        self.whole_values = frozenset(normalize(form) for label, text in meta
+                                      for form in (text, f"{label}: {text}"))
+        given = [d for d in notice.documents if d.status != NOT_READ]
+        self.documents = {normalize(d.name): normalize(d.text) for d in given}
+        doc_loose = [normalize_loose(d.text) for d in given]
+        self.details = [normalize_loose(text) for _, text in notice.sources] + doc_loose
+        self.places = [normalize_loose(text) for kind, text in notice.sources
+                       if kind not in REGION_SOURCES] + doc_loose
+
+    def quote(self, evidence: str | None, source: str | None) -> bool:
+        if source is None or normalize(source) == NOTICE_SOURCE:
+            return is_grounded(evidence, self.notice, self.whole_values)
+        text = self.documents.get(normalize(source))
+        return text is not None and is_grounded(evidence, [text])
+
+
+def _drop_evidence(item) -> None:
+    item.evidence = None
+    if hasattr(item, "source"):
+        item.source = None
+
+
 def postvalidate(data: ExtractionData, notice: Notice,
                  sa_required_from_metadata: bool | None) -> tuple[ExtractionData, list[str]]:
     """Return a corrected copy of ``data`` and the flags raised.
 
     Sources are the title, each metadata value and the description; never labels or tags.
+    With prompt v4, also the documents the model was given: a quote must sit in the one
+    source it names (see _Grounding), with the same word and character thresholds.
     - Gate evidence not grounded: evidence -> None, values -> "unknown", details -> None,
       flag ``ungrounded:eligibility.<gate>``. A non-unknown value with no evidence counts.
     - A quote equal to a whole metadata value is grounded whatever its length.
-    - A detail (SA name, work place, portal) not found in the notice, ignoring punctuation
-      and case: -> None, flag
+    - A detail (SA name, work place, portal) not found in the notice (or, with v4, in a
+      document given), ignoring punctuation and case: -> None, flag
       ``ungrounded_detail:eligibility.<gate>.<field>``. A work place found only in a regions
       metadata value does not count. (A grounded quote is itself inside a source, so
       "in its own quote or in the notice" reduces to "in a permitted source".)
     - List items with ungrounded evidence are dropped, flag ``ungrounded:<list>[<i>]``.
     """
     data = data.model_copy(deep=True)
-    all_sources = [normalize(text) for _, text in notice.sources]
-    # A whole metadata value, bare or as the exact "label: value" line the notice renders.
-    meta = [(kind.removeprefix(META_PREFIX), text) for kind, text in notice.sources
-            if kind.startswith(META_PREFIX)]
-    whole_values = frozenset(normalize(form) for label, text in meta
-                             for form in (text, f"{label}: {text}"))
-    detail_sources = [normalize_loose(text) for _, text in notice.sources]
-    place_sources = [normalize_loose(text) for kind, text in notice.sources
-                     if kind not in REGION_SOURCES]
+    where = _Grounding(notice)
     flags: list[str] = []
 
     for gate, (value_fields, detail_fields) in _GATES.items():
         g = getattr(data.eligibility, gate)
         claims = any(getattr(g, f) != "unknown" for f in value_fields)
+        source = getattr(g, "source", None)
         if ((g.evidence is not None or claims)
-                and not is_grounded(g.evidence, all_sources, whole_values)):
-            g.evidence = None
+                and not where.quote(g.evidence, source)):
+            _drop_evidence(g)
             for f in value_fields:
                 setattr(g, f, "unknown")
             for f in detail_fields:
                 setattr(g, f, None)
             flags.append(f"ungrounded:eligibility.{gate}")
+        elif g.evidence is None and getattr(g, "source", None) is not None:
+            g.source = None  # a source with no quote names nothing
         for f in detail_fields:
             value = getattr(g, f)
-            allowed = place_sources if f == "place" else detail_sources
+            allowed = where.places if f == "place" else where.details
             if value is not None and not _appears(value, allowed):
                 setattr(g, f, None)
                 flags.append(f"ungrounded_detail:eligibility.{gate}.{f}")
@@ -112,7 +142,7 @@ def postvalidate(data: ExtractionData, notice: Notice,
     for name in _LISTS:
         kept = []
         for i, item in enumerate(getattr(data, name)):
-            if is_grounded(item.evidence, all_sources, whole_values):
+            if where.quote(item.evidence, getattr(item, "source", None)):
                 kept.append(item)
             else:
                 flags.append(f"ungrounded:{name}[{i}]")

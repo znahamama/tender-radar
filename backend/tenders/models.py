@@ -138,6 +138,11 @@ class Extraction(models.Model):
     data = models.JSONField(null=True, blank=True, help_text="Latest post-validated output.")
     flags = models.JSONField(default=list, blank=True, help_text="call_flags + latest checks.")
     error = models.TextField(blank=True)
+    documents = models.JSONField(
+        default=list, blank=True,
+        help_text="Prompt v4 only: each solicitation document in the input, in order: name, "
+                  "url, status (full, partial, not_read), chars given, total chars, "
+                  "injection. Never its text.")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date
+from urllib.parse import urlencode
 
 from django.conf import settings
 from django.core.paginator import Paginator
@@ -19,7 +20,8 @@ from django.shortcuts import get_object_or_404, render
 from django.utils import timezone
 from django.views.decorators.http import require_GET
 
-from tenders.extraction.schema import GATES
+from tenders.documents.fetch import is_allowed_url
+from tenders.extraction.schema import GATES, NOTICE_SOURCE
 from tenders.ingest.injection import INJECTION_PATTERN
 from tenders.ingest.schema import SOURCE_TZ
 from tenders.models import (
@@ -177,16 +179,19 @@ def gate_value(gate: str, g: dict | None) -> str:
     return g.get("value", "")
 
 
-def gate_flags(gate: str, flags: list[str]) -> list[str]:
-    """The post-validation flags about one gate, in words."""
+def gate_flags(gate: str, flags: list[str], with_documents: bool = False) -> list[str]:
+    """The post-validation flags about one gate, in words. ``with_documents``: the model
+    also read solicitation documents (prompt v4), so a quote may name one as its source."""
+    searched = "the notice or its documents" if with_documents else "the notice"
     out = []
     for flag in flags:
         kind, _, where = flag.partition(":")
         if kind == "ungrounded" and where == f"eligibility.{gate}":
-            out.append("quote not found in the notice: treated as unknown")
+            out.append(f"quote not found in {'its source' if with_documents else searched}: "
+                       "treated as unknown")
         elif kind == "ungrounded_detail" and where.startswith(f"eligibility.{gate}."):
             field = where.rsplit(".", 1)[1]
-            out.append(f"{_DETAIL_FIELDS.get(field, field)} not found in the notice: dropped")
+            out.append(f"{_DETAIL_FIELDS.get(field, field)} not found in {searched}: dropped")
     if gate == "supply_arrangement_required" and "sa_metadata_disagrees" in flags:
         out.append("disagrees with the notice metadata, which requires an arrangement")
     return out
@@ -204,6 +209,36 @@ REVIEWED = {
 
 
 @dataclass(frozen=True)
+class DocumentSource:
+    """A solicitation document a quote came from: its name and CanadaBuys link (None when
+    the stored URL isn't an allowed CanadaBuys document URL). Never its text."""
+
+    name: str
+    url: str | None
+
+
+def document_sources(llm: Extraction | None) -> dict[str, DocumentSource]:
+    """Name -> DocumentSource for the documents the model was given (prompt v4)."""
+    out = {}
+    for d in (llm.documents if llm else None) or []:
+        if d.get("status") != "not_read":
+            url = d.get("url") or ""
+            out[d["name"]] = DocumentSource(d["name"], url if is_allowed_url(url) else None)
+    return out
+
+
+def quote_source(g: dict | None, sources: dict[str, DocumentSource]) -> DocumentSource | None:
+    """The document a gate's quote came from; None for the notice, no quote, or a
+    reviewer's value (a correction has no source: it quotes the notice)."""
+    if not g or not g.get("evidence"):
+        return None
+    name = g.get("source")
+    if not name or name == NOTICE_SOURCE:
+        return None
+    return sources.get(name)
+
+
+@dataclass(frozen=True)
 class GateRow:
     gate: str
     label: str
@@ -213,6 +248,7 @@ class GateRow:
     flags: list[str]
     baseline: str
     reviewed: str = ""  # set when a person corrected or rejected the model's answer
+    document: DocumentSource | None = None  # the quote is from this solicitation document
 
 
 def gate_rows(llm: Extraction | None, baseline: Extraction | None,
@@ -224,13 +260,14 @@ def gate_rows(llm: Extraction | None, baseline: Extraction | None,
     raw = _eligibility(llm, "raw_output")
     base = _eligibility(baseline, "data")
     flags = list(llm.flags) if llm else []
+    sources = document_sources(llm)
     rows = []
     for gate in GATES:
         value = gate_value(gate, checked.get(gate))
         said = gate_value(gate, raw.get(gate))
         decision = reviews.get(gate)
         overridden = bool(decision and decision.action in REVIEWED)
-        model_flags = gate_flags(gate, flags)
+        model_flags = gate_flags(gate, flags, bool(sources))
         rows.append(GateRow(
             gate=gate, label=GATE_LABELS[gate], value=value,
             # A person's value can match the model's words (e.g. a correct answer whose
@@ -241,6 +278,7 @@ def gate_rows(llm: Extraction | None, baseline: Extraction | None,
             flags=[f"model's answer: {f}" for f in model_flags] if overridden else model_flags,
             baseline=gate_value(gate, base.get(gate)),
             reviewed=REVIEWED.get(decision.action, "") if decision else "",
+            document=quote_source(checked.get(gate), sources),
         ))
     return rows
 
@@ -262,6 +300,8 @@ def not_stated_labels(not_stated: list[str], eligibility: dict) -> list[str]:
 
 _EXTRACTION_FLAGS = {
     "truncated": "The description was too long and was cut before extraction.",
+    "documents_cut": "Some solicitation documents were too long to read in full; the "
+                     "documents read are listed below.",
     "stale_input": "The notice text changed after this extraction.",
     "injection_suspected": "The notice text may try to instruct the model; read it yourself.",
     "api_retry": "The API call was retried.",
@@ -282,15 +322,27 @@ INJECTION_CAUTION = ("Parts of this notice look like instructions to an AI syste
 
 
 def injection_caution(tender: Tender, llm: Extraction | None) -> bool:
-    """The code-side detector flagged the notice at ingest, or the model said the notice
-    tries to instruct it. Either way the page shows one neutral note; nothing else changes."""
+    """The code-side detector flagged the notice at ingest or a document the model read,
+    or the model said the input tries to instruct it. Either way the page shows one
+    neutral note; nothing else changes."""
     return (INJECTION_PATTERN in (tender.data_quality or [])
-            or bool(llm and "injection_suspected" in (llm.flags or [])))
+            or bool(llm and "injection_suspected" in (llm.flags or []))
+            or any(d.get("injection") and d.get("status") != "not_read"
+                   for d in ((llm.documents if llm else None) or [])))
 
 
-def labelled(findings: list[dict]) -> list[dict]:
-    """Assessment findings ({gate, reason, evidence}) with a readable gate label."""
-    return [{**f, "gate_label": GATE_LABELS.get(f.get("gate"), f.get("gate"))} for f in findings]
+def labelled(findings: list[dict], eligibility: dict | None = None,
+             sources: dict[str, DocumentSource] | None = None) -> list[dict]:
+    """Assessment findings ({gate, reason, evidence}) with a readable gate label, and the
+    solicitation document the evidence came from when it is the gate's document quote."""
+    out = []
+    for f in findings:
+        g = (eligibility or {}).get(f.get("gate")) or {}
+        doc = quote_source(g, sources or {})
+        out.append({**f, "gate_label": GATE_LABELS.get(f.get("gate"), f.get("gate")),
+                    "document": doc if doc and f.get("evidence") == g.get("evidence")
+                    else None})
+    return out
 
 
 def published_date(tender: Tender) -> date | None:
@@ -318,6 +370,19 @@ def official_url(tender: Tender) -> str | None:
     return url if url.lower().startswith("https://") else None
 
 
+CANADABUYS_SEARCH = "https://canadabuys.canada.ca/en/tender-opportunities"
+
+
+def search_url(tender: Tender) -> str | None:
+    """When the CSV gives no notice link: a CanadaBuys keyword search for the solicitation
+    number (the page labels it a search, never the notice). The reference number finds
+    nothing there, so no solicitation number means no link."""
+    if official_url(tender):
+        return None
+    number = " ".join((tender.solicitation_number or "").split())
+    return f"{CANADABUYS_SEARCH}?{urlencode({'words': number})}" if number else None
+
+
 @require_GET
 def tender_detail(request, reference: str):
     tender = get_object_or_404(Tender, reference_number=reference)
@@ -331,18 +396,21 @@ def tender_detail(request, reference: str):
                 .order_by("-created_at", "-id").first())
     # Only decisions in effect: own ones, and carried ones that still hold.
     reviews = reviews_for(llm).applied if llm else {}
+    eligibility = ((apply_reviews(llm.data, reviews) or {}).get("eligibility") or {}) if llm else {}
+    sources = document_sources(llm)
     return render(request, "tenders/detail.html", {
         "tender": tender,
         "published": published_date(tender),
         "official_url": official_url(tender),
+        "search_url": search_url(tender),
         "is_open": tender_is_open(tender),
         "assessment": assessment,
-        "blockers": labelled(assessment.blockers if assessment else []),
-        "warnings": labelled(assessment.warnings if assessment else []),
-        "notes": labelled(assessment.notes if assessment else []),
-        "not_stated": not_stated_labels(
-            assessment.not_stated if assessment else [],
-            ((apply_reviews(llm.data, reviews) or {}).get("eligibility") or {}) if llm else {}),
+        "blockers": labelled(assessment.blockers if assessment else [], eligibility, sources),
+        "warnings": labelled(assessment.warnings if assessment else [], eligibility, sources),
+        "notes": labelled(assessment.notes if assessment else [], eligibility, sources),
+        "not_stated": not_stated_labels(assessment.not_stated if assessment else [],
+                                        eligibility),
+        "documents_read": list(sources.values()),
         "llm": llm,
         "baseline": baseline,
         "rows": gate_rows(llm, baseline, reviews),

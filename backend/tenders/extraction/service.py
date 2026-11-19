@@ -11,9 +11,9 @@ from pydantic import ValidationError
 from tenders.models import Extraction, Tender
 
 from .budget import CallMeter
-from .prompt import Notice, build_notice
+from .prompt import Notice, build_input
 from .providers import Extractor
-from .schema import SCHEMA_VERSION, ExtractionData
+from .schema import SCHEMA_VERSION, SCHEMAS, ExtractionData
 from .validate import postvalidate
 
 
@@ -44,12 +44,14 @@ def revalidate(extraction: Extraction, notice: Notice | None = None,
     if extraction.status != Extraction.Status.OK or extraction.raw_output is None:
         return Revalidation(extraction.data, list(extraction.flags))
     tender = tender or extraction.tender
-    notice = notice or build_notice(tender)
+    # The input this extraction's prompt version reads: v4 rebuilds it with the documents.
+    notice = notice or build_input(tender, extraction.prompt_version)
     flags = list(extraction.call_flags)
     if extraction.input_hash and notice.content_hash != extraction.input_hash:
         flags.append("stale_input")  # tender text changed since this extraction
     try:
-        raw = ExtractionData.model_validate(extraction.raw_output)
+        schema = SCHEMAS.get(extraction.schema_version, ExtractionData)
+        raw = schema.model_validate(extraction.raw_output)
     except ValidationError:
         return Revalidation(None, [*flags, "raw_output_invalid"])
     checked, post_flags = postvalidate(raw, notice, tender.sa_required_from_metadata)
@@ -67,8 +69,12 @@ def refresh(extraction: Extraction, notice: Notice | None = None,
 
 
 def extract_tender(tender: Tender, extractor: Extractor, meter: CallMeter) -> Outcome:
-    """Raises budget.StopRun (incl. CapReached) when the run must stop."""
-    notice = build_notice(tender)
+    """Raises budget.StopRun (incl. CapReached) when the run must stop.
+
+    The input is the one ``extractor.prompt_version`` reads (build_input); the caller picks
+    the extractor per tender (extract_tenders: v4 for a tender with ok documents).
+    """
+    notice = build_input(tender, extractor.prompt_version)
     key = {"tender": tender, "content_hash": cache_hash(notice, extractor),
            "model_id": extractor.model_id, "prompt_version": extractor.prompt_version}
     cached = Extraction.objects.filter(**key, status=Extraction.Status.OK).first()
@@ -76,13 +82,15 @@ def extract_tender(tender: Tender, extractor: Extractor, meter: CallMeter) -> Ou
         return Outcome(tender.reference_number, "cache_hit", refresh(cached, notice, tender))
 
     result = extractor.extract(notice, meter, tender=tender)
-    call_flags = (["truncated"] if notice.truncated else []) + result.flags
+    call_flags = ((["truncated"] if notice.truncated else [])
+                  + (["documents_cut"] if notice.documents_cut else []) + result.flags)
     # A failed row is retried on the next run (only status=ok counts as a cache hit).
     extraction, _ = Extraction.objects.update_or_create(
         **key,
         defaults={
-            "schema_version": SCHEMA_VERSION, "status": result.status,
-            "input_hash": notice.content_hash,
+            "schema_version": getattr(extractor, "schema_version", SCHEMA_VERSION),
+            "status": result.status, "input_hash": notice.content_hash,
+            "documents": notice.documents_record(),
             "raw_output": result.data.model_dump(mode="json") if result.data else None,
             "call_flags": call_flags, "data": None, "flags": call_flags, "error": result.error,
         },

@@ -643,7 +643,8 @@ def test_stale_documents_of_any_tender_are_recleaned(csv_dir, fields):
     assert d.redact_version == REDACT_VERSION and "Jane" not in d.text
 
 
-def test_a_stale_document_without_a_csv_row_is_left_as_it_is(csv_dir):
+def test_a_stale_document_without_a_csv_row_is_deleted_never_recleaned(csv_dir):
+    """Re-cleaning without the CSV's hints could expose names: the row goes instead."""
     url = ATT + "a.pdf"
     tender("PW-9", [url])
     run(csv_dir("PW-9"), {url: PDF})
@@ -651,8 +652,64 @@ def test_a_stale_document_without_a_csv_row_is_left_as_it_is(csv_dir):
     Tender.objects.filter(reference_number="PW-9").update(
         tender_status="Expired", closing_date=NOW - timedelta(days=30))
     summary, opener = run(csv_dir("PW-1"), {url: PDF})  # PW-9 is not in these CSVs
-    assert opener.calls == [] and summary.stale_no_csv_row == 1 and summary.ok_stale == 1
-    assert (doc(url).text, doc(url).redact_version) == ("old text", 1)
+    assert opener.calls == [] and summary.recleaned == 0 and summary.ok_stale == 0
+    assert not TenderDocument.objects.filter(url=url).exists()
+
+
+# --- tenders no longer in the CSVs ------------------------------------------------------
+
+def test_documents_of_tenders_gone_from_the_csvs_are_deleted(csv_dir):
+    kept, gone = ATT + "kept.pdf", ATT + "gone.pdf"
+    tender("PW-1", [kept])
+    tender("PW-2", [gone, "https://sscp2pspc.ssc-spc.gc.ca/x"])
+    run(csv_dir("PW-1", "PW-2"), {kept: PDF, gone: PDF})
+    assert TenderDocument.objects.count() == 3  # two ok, one skipped_host
+    # PW-2 leaves the CSVs; it is still open here: status doesn't matter, only the CSVs.
+    summary, opener = run(csv_dir("PW-1"), {kept: PDF, gone: PDF})
+    assert opener.calls == []
+    assert (summary.removed_documents, summary.removed_with_text,
+            summary.removed_tenders) == (2, 1, 1)
+    assert list(TenderDocument.objects.values_list("url", flat=True)) == [kept]
+    assert doc(kept).text  # the tender still in the CSVs keeps its text
+    assert summary.ok_tenders == 1 and summary.ok_documents == 1
+    # Nothing left to remove on the next run.
+    summary, _ = run(csv_dir("PW-1"), {})
+    assert summary.removed_documents == 0
+
+
+def test_removal_runs_even_when_the_run_stops_at_a_cap(csv_dir):
+    a, b, gone = ATT + "a.pdf", ATT + "b.pdf", ATT + "gone.pdf"
+    tender("PW-2", [gone])
+    run(csv_dir("PW-2"), {gone: PDF})
+    tender("PW-1", [a, b])
+    summary, _ = run(csv_dir("PW-1"), {a: PDF, b: PDF}, per_run=1)
+    assert summary.stopped and summary.removed_documents == 1
+    assert not TenderDocument.objects.filter(url=gone).exists()
+
+
+def test_csvs_without_any_reference_delete_nothing(csv_dir):
+    url = ATT + "a.pdf"
+    tender("PW-1", [url])
+    run(csv_dir("PW-1"), {url: PDF})
+    summary, _ = run(csv_dir(), {url: PDF})  # a header and no rows: a broken download
+    assert summary.removal_skipped == "the CSVs list no reference numbers"
+    assert summary.removed_documents == 0 and doc(url).text
+
+
+def test_command_reports_removed_documents(csv_dir, monkeypatch):
+    url = ATT + "a.pdf"
+    tender("PW-2", [url])
+    run(csv_dir("PW-2"), {url: PDF})
+    paths = csv_dir("PW-1")
+    monkeypatch.setattr(service, "default_opener", lambda: FakeOpener({}))
+    out = StringIO()
+    call_command("fetch_documents", "--csv-dir", str(Path(paths[0]).parent), stdout=out)
+    assert ("removed: 1 document row(s) (1 with stored text) of 1 tender(s) no longer in "
+            "the CSVs") in out.getvalue()
+    paths = csv_dir()
+    out = StringIO()
+    call_command("fetch_documents", "--csv-dir", str(Path(paths[0]).parent), stdout=out)
+    assert "removed nothing: the CSVs list no reference numbers" in out.getvalue()
 
 
 def test_open_tenders_come_first_and_other_recleans_share_the_run_cap(csv_dir):

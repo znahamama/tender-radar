@@ -234,12 +234,13 @@ def reviews_for(extraction: Extraction) -> Reviews:
 
 
 def _model_answer(extraction: Extraction, gate: str):
-    """The model's post-validated answer for a gate, without its evidence."""
+    """The model's post-validated answer for a gate, without its evidence or the evidence's
+    source (prompt v4 names one; a v3 answer has none, and the answer itself is the same)."""
     data = extraction.data or {}
     if gate == CRITERIA:
         return data.get(CRITERIA)
     g = (data.get("eligibility") or {}).get(gate) or {}
-    return {k: v for k, v in g.items() if k != "evidence"}
+    return {k: v for k, v in g.items() if k not in ("evidence", "source")}
 
 
 def _judge(source: ReviewDecision, inherited: CarriedReview | None, prev: Extraction,

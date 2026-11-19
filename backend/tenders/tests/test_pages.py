@@ -504,3 +504,140 @@ def test_daily_baseline_step_fills_the_baseline_column_without_the_api(client):
     r = client.get(reverse("tender-detail", args=["cb-base-1"]))
     assert "No keyword baseline run for this notice." not in r.content.decode()
     assert r.context["baseline"] == x
+
+
+# --- solicitation documents (prompt v4) and the search link -------------------------------
+
+DOC_URL = "https://canadabuys.canada.ca/documents/pub/att/2026/11/01/abc123/PW-1.EBSU000.PDF"
+# Invented: never shown on the page except the quoted clause.
+DOC_TEXT_UNQUOTED = "Section 9 describes the invented pricing schedule in full detail."
+
+
+def assess_v4(tender, documents, *, quote_source="PW-1.EBSU000.PDF", injection=False):
+    data = valid_data()
+    for g in data["eligibility"].values():
+        g["source"] = "notice" if g.get("evidence") else None
+    data["eligibility"]["clearance"] = {
+        "corporate": "secret", "personnel": "secret", "source": quote_source,
+        "evidence": "must hold a valid Facility Security Clearance at the level of SECRET"}
+    a = assess(tender, "check_solicitation", data=data,
+               blockers=[blocker("Needs a Secret FSC; the profile holds Reliability.",
+                                 evidence=data["eligibility"]["clearance"]["evidence"])])
+    Extraction.objects.filter(pk=a.extraction_id).update(
+        prompt_version="v4", schema_version="2",
+        documents=[{"name": n, "url": u, "status": s, "chars": 10, "total_chars": 10,
+                    "injection": injection} for n, u, s in documents])
+    return a
+
+
+def test_detail_names_the_document_a_gate_was_answered_from(client):
+    t = make_tender("PW-1")
+    assess_v4(t, [("PW-1.EBSU000.PDF", DOC_URL, "full"),
+                  ("annex.pdf", DOC_URL.replace("PW-1.EBSU000.PDF", "annex.pdf"), "full"),
+                  ("left-out.pdf", DOC_URL.replace("PW-1.EBSU000.PDF", "x.pdf"), "not_read")])
+    r = client.get(reverse("tender-detail", args=["PW-1"]))
+    html = r.content.decode()
+    rows = {row.gate: row for row in r.context["rows"]}
+    assert rows["clearance"].document.name == "PW-1.EBSU000.PDF"
+    assert rows["clearance"].document.url == DOC_URL
+    # Notice-sourced gates name no document.
+    assert rows["work_location"].document is None and rows["work_location"].evidence
+    line = (f'From the solicitation documents: <a href="{DOC_URL}" rel="external noreferrer">'
+            "PW-1.EBSU000.PDF</a>")
+    assert html.count(line) == 2  # the gate row and the blocker that quotes it
+    # Footer: the documents read (not the one left out) and the copyright line.
+    assert r.context["documents_read"][1].name == "annex.pdf"
+    assert len(r.context["documents_read"]) == 2 and "left-out.pdf" not in html
+    assert "the model read 2 solicitation documents published on CanadaBuys" in html
+    assert "Copyright in these documents stays with the Government of Canada" in html
+    assert "Not stated in the notice or its documents" in html
+
+
+def test_detail_never_shows_document_text_beyond_quotes(client, monkeypatch):
+    """The page reads Extraction.documents (names and links), never TenderDocument.text."""
+    from tenders.models import TenderDocument
+
+    t = make_tender("PW-1")
+    TenderDocument.objects.create(tender=t, url=DOC_URL, status="ok", text=DOC_TEXT_UNQUOTED,
+                                  redact_version=3, fetched_at=timezone.now())
+    assess_v4(t, [("PW-1.EBSU000.PDF", DOC_URL, "full")])
+    html = client.get(reverse("tender-detail", args=["PW-1"])).content.decode()
+    assert "invented pricing schedule" not in html
+    assert "at the level of SECRET" in html  # the quote itself is shown
+
+
+def test_detail_document_link_only_for_canadabuys_document_urls(client):
+    t = make_tender("PW-1")
+    assess_v4(t, [("PW-1.EBSU000.PDF", "javascript:alert(1)", "full")])
+    html = client.get(reverse("tender-detail", args=["PW-1"])).content.decode()
+    assert "javascript:" not in html
+    assert "From the solicitation documents: PW-1.EBSU000.PDF" in html
+
+
+def test_detail_unknown_source_name_shows_no_document_line(client):
+    t = make_tender("PW-1")
+    assess_v4(t, [("PW-1.EBSU000.PDF", DOC_URL, "full")], quote_source="other.pdf")
+    html = client.get(reverse("tender-detail", args=["PW-1"])).content.decode()
+    assert "From the solicitation documents" not in html
+
+
+def test_detail_without_documents_has_no_document_lines(client):
+    t = make_tender("PW-1")
+    assess(t, "eligible", data=valid_data())
+    html = client.get(reverse("tender-detail", args=["PW-1"])).content.decode()
+    assert "From the solicitation documents" not in html and "Copyright" not in html
+    assert "Not stated in the notice</h3>" in html
+
+
+def test_detail_cautions_when_a_document_read_was_flagged(client):
+    t = make_tender("PW-1")
+    assess_v4(t, [("PW-1.EBSU000.PDF", DOC_URL, "full")], injection=True)
+    r = client.get(reverse("tender-detail", args=["PW-1"]))
+    assert r.context["injection_caution"]
+    t2 = make_tender("PW-2")
+    assess_v4(t2, [("PW-1.EBSU000.PDF", DOC_URL, "not_read")], injection=True)
+    assert not client.get(reverse("tender-detail", args=["PW-2"])).context["injection_caution"]
+
+
+def test_detail_v4_flag_wording():
+    from tenders.pages import gate_flags
+
+    flags = ["ungrounded:eligibility.clearance", "ungrounded_detail:eligibility.work_location.place"]
+    assert gate_flags("clearance", flags) == ["quote not found in the notice: treated as unknown"]
+    assert gate_flags("clearance", flags, True) == [
+        "quote not found in its source: treated as unknown"]
+    assert gate_flags("work_location", flags, True) == [
+        "place not found in the notice or its documents: dropped"]
+
+
+def test_detail_search_link_when_the_csv_has_no_url(client):
+    make_tender("PW-1", notice_url="", solicitation_number="EW479-162880/C")
+    r = client.get(reverse("tender-detail", args=["PW-1"]))
+    html = r.content.decode()
+    url = "https://canadabuys.canada.ca/en/tender-opportunities?words=EW479-162880%2FC"
+    assert r.context["search_url"] == url
+    assert (f'<a href="{url}" rel="external noreferrer">Search CanadaBuys for solicitation '
+            "EW479-162880/C</a>") in html
+    assert "a search on CanadaBuys, not a link to this notice" in html
+    assert "No link available" in html  # the official-notice field stays honest
+
+
+@pytest.mark.parametrize(("fields", "shown"), [
+    ({"solicitation_number": "EW479-162880/C"}, False),  # the CSV gave a notice URL
+    ({"notice_url": "", "solicitation_number": ""}, False),  # nothing to search for
+    ({"notice_url": "", "solicitation_number": "  "}, False),
+    ({"notice_url": "", "reference_number": "cb-461-59595377"}, False),  # never the reference
+])
+def test_detail_no_search_link(client, fields, shown):
+    ref = fields.pop("reference_number", "PW-9")
+    make_tender(ref, **fields)
+    r = client.get(reverse("tender-detail", args=[ref]))
+    assert (r.context["search_url"] is not None) is shown
+    assert "Search CanadaBuys" not in r.content.decode()
+
+
+def test_search_link_escapes_odd_characters(client):
+    make_tender("PW-1", notice_url="", solicitation_number='A&B "x" <y>')
+    r = client.get(reverse("tender-detail", args=["PW-1"]))
+    assert r.context["search_url"].endswith("?words=A%26B+%22x%22+%3Cy%3E")
+    assert "<y>" not in r.content.decode()

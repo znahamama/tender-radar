@@ -19,15 +19,18 @@ from django.core.exceptions import ImproperlyConfigured
 from pydantic import ValidationError
 
 from .budget import CallMeter, StopRun, estimate_tokens, is_priced
-from .prompt import PROMPT_VERSION, PROMPTS, SYSTEM_PROMPT, Notice
-from .schema import ExtractionData
+from .prompt import PROMPT_SCHEMAS, PROMPT_VERSION, PROMPTS, SYSTEM_PROMPT, Notice
+from .schema import SCHEMAS, ExtractionData
 
 if TYPE_CHECKING:
     from tenders.models import Tender
 
 FIXTURES_DIR = Path(__file__).resolve().parent / "fixtures"
-OUTPUT_SCHEMA = anthropic.transform_schema(ExtractionData)
+OUTPUT_SCHEMA = anthropic.transform_schema(ExtractionData)  # schema 1 (prompts v2, v3)
 MAX_ATTEMPTS = 2  # every API attempt and the validation retry share this budget
+# Prompt v4 (notice + documents, schema 2) answers with more quotes, each with a source:
+# its output cap. v2/v3 keep settings.LLM_MAX_TOKENS (2,000), and with it their cache keys.
+DOCUMENTS_MAX_TOKENS = 4000
 RETRYABLE_STATUS = frozenset({408, 409, 429})  # plus any 5xx
 MAX_RETRY_AFTER_S = 30.0
 RETRY_MESSAGE = (
@@ -136,7 +139,9 @@ class AnthropicExtractor:
     """Messages API with native structured outputs (``output_config.format`` json_schema).
 
     ``prompt_version`` picks a pinned prompt from ``prompt.PROMPTS`` (default: the site's
-    PROMPT_VERSION). ``system_prompt`` overrides the text (tests only).
+    PROMPT_VERSION) and with it the output schema (``prompt.PROMPT_SCHEMAS``: v4 asks for
+    schema 2, which names each quote's source). ``system_prompt`` overrides the text (tests
+    only).
     """
 
     def __init__(self, client: anthropic.Anthropic | None = None, *, model_id: str | None = None,
@@ -147,24 +152,30 @@ class AnthropicExtractor:
             raise ImproperlyConfigured(f"Unknown prompt version {prompt_version!r}; "
                                        f"pinned: {', '.join(PROMPTS)}")
         self.prompt_version = prompt_version
+        self.schema_version = PROMPT_SCHEMAS[prompt_version]
+        self.schema = SCHEMAS[self.schema_version]
+        # Schema 1 keeps the module constant, so v2/v3 fingerprints (cache keys) don't move.
+        self.output_schema = (OUTPUT_SCHEMA if self.schema is ExtractionData
+                              else anthropic.transform_schema(self.schema))
         self.model_id = model_id or settings.LLM_MODEL
         if not is_priced(self.model_id):
             raise ImproperlyConfigured(
                 f"No price for {self.model_id!r} in tenders.extraction.budget.PRICES; "
                 "the cost cap can't work without one.")
         self.client = client if client is not None else _default_client()
-        self.max_tokens = max_tokens or settings.LLM_MAX_TOKENS
+        self.max_tokens = max_tokens or (DOCUMENTS_MAX_TOKENS if self.schema_version == "2"
+                                         else settings.LLM_MAX_TOKENS)
         self.system_prompt = PROMPTS[prompt_version] if system_prompt is None else system_prompt
         self.retry_wait_s = retry_wait_s
         effort = effort or settings.LLM_EFFORT
-        self.output_config = {"format": {"type": "json_schema", "schema": OUTPUT_SCHEMA},
+        self.output_config = {"format": {"type": "json_schema", "schema": self.output_schema},
                               "effort": effort}
         self.fingerprint = config_fingerprint(
-            model=self.model_id, system=self.system_prompt, schema=OUTPUT_SCHEMA,
+            model=self.model_id, system=self.system_prompt, schema=self.output_schema,
             effort=effort, max_tokens=self.max_tokens)
 
     def _request_chars(self, messages: list[dict]) -> int:
-        return (len(self.system_prompt) + len(json.dumps(OUTPUT_SCHEMA))
+        return (len(self.system_prompt) + len(json.dumps(self.output_schema))
                 + sum(len(m["content"]) for m in messages))
 
     def _record(self, meter: CallMeter, tender: Tender | None, status: str, t0: float, *,
@@ -247,7 +258,7 @@ class AnthropicExtractor:
 
             text = "".join(b.text for b in resp.content if b.type == "text")
             try:
-                data = ExtractionData.model_validate_json(text)
+                data = self.schema.model_validate_json(text)
             except ValidationError as e:
                 self._record(meter, tender, "invalid", t0, resp=resp)
                 errors = describe_validation_error(e)
