@@ -10,7 +10,7 @@ from datetime import UTC, datetime
 
 from django.db import transaction
 
-from tenders.models import Tender
+from tenders.models import CategoryCode, Tender
 
 from . import filters
 from .schema import TenderNotice
@@ -30,9 +30,13 @@ class UpsertResult:
     unchanged: int = 0
 
 
+# Code titles: saved to CategoryCode by save_code_descriptions, never to Tender.
+DESCRIPTION_FIELDS = ("unspsc_descriptions", "gsin_descriptions")
+
+
 def tender_fields(n: TenderNotice) -> dict:
     """Map a (redacted) notice to Tender column values. None -> "" for text columns."""
-    data = n.model_dump(exclude={"description"})
+    data = n.model_dump(exclude={"description", *DESCRIPTION_FIELDS})
     data["description"] = n.description or ""  # already redacted by the pipeline
     for k in ("solicitation_number", "tender_status", "notice_type",
               "limited_tendering_reason", "buyer_org_name", "notice_url"):
@@ -107,3 +111,28 @@ def upsert(notices: Iterable[TenderNotice], now: datetime | None = None) -> Upse
             Tender.objects.filter(id__in=chunk).update(last_seen_at=now)
 
     return UpsertResult(len(to_create), len(to_update), len(unchanged_ids))
+
+
+def code_descriptions(notices: Iterable[TenderNotice]) -> dict[tuple[str, str], str]:
+    """(scheme, code) -> title, from rows whose code and title lists line up (same length);
+    a row where they don't is skipped rather than guessed. The first title seen wins."""
+    out: dict[tuple[str, str], str] = {}
+    for n in notices:
+        for scheme, codes, titles in (("unspsc", n.unspsc_codes, n.unspsc_descriptions),
+                                      ("gsin", n.gsin_codes, n.gsin_descriptions)):
+            if len(codes) != len(titles):
+                continue
+            for code, title in zip(codes, titles, strict=True):
+                out.setdefault((scheme, code.upper() if scheme == "gsin" else code),
+                               title[:300])
+    return out
+
+
+def save_code_descriptions(notices: Iterable[TenderNotice]) -> int:
+    """Upsert the code titles of every parsed notice (kept or not). Returns how many."""
+    titles = code_descriptions(notices)
+    rows = [CategoryCode(scheme=s, code=c, description=d) for (s, c), d in titles.items()]
+    CategoryCode.objects.bulk_create(
+        rows, batch_size=BATCH, update_conflicts=True, unique_fields=["scheme", "code"],
+        update_fields=["description"])
+    return len(rows)

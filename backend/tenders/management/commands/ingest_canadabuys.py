@@ -96,10 +96,11 @@ class Command(BaseCommand):
             out("dry run: nothing written (use --save)")
             return
         # Imported here so a dry run never loads the storage layer.
-        from tenders.ingest.storage import upsert
+        from tenders.ingest.storage import save_code_descriptions, upsert
 
         r = upsert(kept, now=now)
         out(f"saved: created {r.created}, updated {r.updated}, unchanged {r.unchanged}")
+        out(f"code titles saved: {save_code_descriptions(result.notices.values())}")
 
     def _counter(self, label: str, c: Counter) -> None:
         self.stdout.write(label + (", ".join(f"{k} {v}" for k, v in c.most_common()) or "-"))

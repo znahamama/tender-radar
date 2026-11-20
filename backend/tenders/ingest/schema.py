@@ -131,6 +131,11 @@ class TenderNotice(BaseModel):
     notice_type: Str = Field(None, alias="noticeType-avisType-eng")
     unspsc_codes: StrList = Field(default_factory=list, alias="unspsc")
     gsin_codes: StrList = Field(default_factory=list, alias="gsin-nibs")
+    # The codes' published titles, in the same order. Not Tender columns (storage.
+    # tender_fields drops them, so content_hash is unchanged): saved to CategoryCode.
+    unspsc_descriptions: StrList = Field(default_factory=list, alias="unspscDescription-eng")
+    gsin_descriptions: StrList = Field(
+        default_factory=list, alias="gsinDescription-nibsDescription-eng")
     regions_of_delivery: StrList = Field(
         default_factory=list, alias="regionsOfDelivery-regionsLivraison-eng"
     )

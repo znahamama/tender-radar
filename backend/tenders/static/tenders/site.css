@@ -11,6 +11,7 @@
   --check-bg: #fff4d6;   --check: #6b4a00;
   --clear-bg: #e3f4e6;   --clear: #1e5a2a;
   --none-bg: #eceff2;    --none: #4a525a;
+  --scope-bg: #e6f0fa;   --scope: #0b4a8a;
 }
 
 * { box-sizing: border-box; }
@@ -95,6 +96,9 @@ thead th { font-size: .875rem; color: var(--muted); border-bottom-width: 2px; }
 .badge-check   { background: var(--check-bg);   color: var(--check); }
 .badge-clear   { background: var(--clear-bg);   color: var(--clear); }
 .badge-none    { background: var(--none-bg);    color: var(--none); }
+.badge-scope-in  { background: var(--scope-bg); color: var(--scope); }
+.badge-scope-out { background: transparent; color: var(--none); border: 1px solid var(--line); }
+.scope-line { margin: 0 0 1rem; }
 
 .pager { display: flex; gap: 1rem; align-items: center; justify-content: center; margin: 1rem 0; }
 

@@ -36,6 +36,36 @@ The LLM never makes the decision. It only extracts quoted facts; the status come
 versioned, unit-tested rules. Where CanadaBuys metadata already says a notice is "against a
 supply arrangement", that metadata overrides whatever the LLM extracted.
 
+## Scope
+
+Ingest keeps every notice delivered in NL, whatever it buys (snow clearing, ship valves,
+catering), so the site also says whether a notice is IT work at all. **Scope rules v1**
+(`backend/tenders/scope.py`, pinned by hash) decide from the notice's UNSPSC and GSIN
+category codes only, with no LLM:
+
+- **IT work:** at least one code in an IT family: UNSPSC 43 (IT and telecom equipment and
+  software), 8111 (computer services), 8116 (IT service delivery, cloud), 8311
+  (telecommunications services), 451119 (audio and video conferencing); GSIN D302, N70, JX70,
+  WL70, D304, D316, D399.
+- **Exclusions inside those families:** UNSPSC 811119 (information retrieval and online
+  database services: on the 2026-11-19 data these were purchases of data, such as satellite
+  imagery and subscriptions), 811623 (business process as a service), and TV and radio
+  broadcasting (831118, 831119).
+- **Outside IT work:** codes present, none in an IT family. **Unknown:** no code at all.
+
+Scope is a separate line on each notice and never changes the eligibility status. The list
+shows IT notices by default, with a link to show all.
+
+**On 2026-11-19:** of 80 open notices, **41 IT, 39 outside, 0 unknown** (every notice had a
+code). National notices: 39 of 47 IT; NL notices: 2 of 33.
+
+**Known edge cases.** One IT code is enough, so a notice that lists IT among other goods is
+in scope and a person reads it. That puts "Security Equipment" and "Access Control and
+Intrusion Detection Services" in scope (through network security equipment, 43222500), and
+"Energy Efficiency Regulated Products Testing" (one IT code among 27). "Internal
+Communications System – Zenitel Marine Components", a ship's intercom, stays out: its codes
+are in no telecom family.
+
 ## Human review
 
 - **Review queue:** staff accept, correct or reject each gate in the admin, blocked and
@@ -78,10 +108,12 @@ flowchart LR
 - **LLM:** `claude-haiku-5-5`, prompt v3, structured outputs, effort low, max 2000 tokens.
   A notice with stored solicitation documents is read with them instead (prompt v4: the
   notice, then the documents in rank order, at most 120,000 characters in all; each
-  eligibility gate's quote names its source and must be found in that source, and a list
-  item's quote must be found in the notice or a document given; max 4000 output tokens).
-  If a v4 call fails, the tender keeps its v3 answer and the run carries on. Not in the
-  eval set below.
+  eligibility gate's quote names its source and must be found in a source given (a wrong
+  name is corrected and flagged), and a list item's quote must be found in the notice or a
+  document given; max 4000 output tokens). Per gate, the v4 answer is used when its quote
+  holds, otherwise the v3 answer from the notice; when both hold and differ, v4 decides and
+  the notice goes to the review queue. If a v4 call fails, the tender keeps its v3 answer and
+  the run carries on. Not in the eval set below; see the documents check under Evaluation.
 - **Database:** Neon Postgres (free tier), pooled connections from Lambda.
 - **Infra:** AWS Lambda (arm64 container images, ECR), API Gateway HTTP API, EventBridge
   Scheduler, SSM Parameter Store, CloudWatch Logs. All Terraform; no VPC, NAT or RDS.
@@ -171,6 +203,22 @@ side; same data in `.json`).
 
 Report: [eval/reports/injection-2026-11-18.md](eval/reports/injection-2026-11-18.md).
 
+**Solicitation documents (prompt v4), precision check, 2026-11-19.** A small sample: 8
+answers on 4 tenders, checked by hand by the person who built the tool, not blind. It
+measures precision only; recall (what the documents say that the model missed) isn't
+measured.
+
+- **Document-sourced gate answers: 5.** 4 supported, 1 right but weakly evidenced
+  (PW-__HN-446-81465's supply arrangement, quoting only "Request for Supply Arrangement"),
+  0 wrong.
+- **Review decisions: 3.** 2 supply-arrangement answers on requests for a supply arrangement
+  were wrong and corrected: PW-__PQ-992-74154 (v4), and PW-__HP-539-79947 (v3, resolved by
+  accepting v4's answer). 1 v3 work-location answer was rejected (PW-_ERD-005-26943).
+- **Coverage:** 4 of 80 open notices had solicitation documents the tool could download
+  and read. Most attachments sit behind supplier portals.
+
+Report: [eval/reports/documents-precision-2026-11-19.md](eval/reports/documents-precision-2026-11-19.md).
+
 ## Findings
 
 - **v3 overclaims less and quotes better than v2.** On the test set it stated something the
@@ -233,7 +281,8 @@ Report: [eval/reports/injection-2026-11-18.md](eval/reports/injection-2026-11-18
 
 - One fictional firm profile; no real users or client data.
 - Federal notices from CanadaBuys only; no provincial or municipal sources.
-- No attachment parsing, so most notices end at "check solicitation".
+- Solicitation documents are read only when CanadaBuys publishes them as downloadable
+  PDFs: 4 of 80 open notices on 2026-11-19. Most notices still end at "check solicitation".
 - LLM output varies run to run (status stable in 19/20 test cases).
 - Small evaluation: 20 test cases scored once, plus 10 dev cases; per-field intervals are wide.
 - Indigenous set-asides (PSIB) aren't assessed for the fictional firm: they're a real blocker

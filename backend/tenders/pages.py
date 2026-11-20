@@ -8,7 +8,7 @@ detail page for comparison only.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import date
 from urllib.parse import urlencode
 
@@ -27,6 +27,7 @@ from tenders.ingest.injection import INJECTION_PATTERN
 from tenders.ingest.schema import SOURCE_TZ
 from tenders.models import (
     Assessment,
+    CategoryCode,
     Extraction,
     ReviewDecision,
     SupplierProfile,
@@ -35,6 +36,8 @@ from tenders.models import (
 from tenders.review import apply_reviews, reviews_for
 
 PAGE_SIZE = 25
+IN_SCOPE = "in"  # tenders.scope.IN; tests/test_scope.py pins the two equal
+SCOPE_LIST_MAX = 10  # codes listed on the detail page's scope line
 # KeywordExtractor.model_id, as a literal: importing keyword.py pulls in providers.py and
 # the Anthropic SDK (~0.6 s of every API cold start). tests/test_pages.py pins the two equal.
 BASELINE_MODEL_ID = "keyword-baseline"
@@ -90,6 +93,7 @@ def tender_rows() -> QuerySet[Tender]:
         first_blocker_label=Subquery(
             newest.annotate(r=KT("blockers__0__label")).values("r")[:1]),
         first_blocker_gate=Subquery(newest.annotate(r=KT("blockers__0__gate")).values("r")[:1]),
+        scope_status=Subquery(newest.annotate(r=KT("scope__status")).values("r")[:1]),
     )
 
 
@@ -111,6 +115,7 @@ class Filters:
     status: str
     region: str
     q: str
+    scope: str = "it"  # "it" (in scope for an IT firm, the default) or "all"
 
     @classmethod
     def from_request(cls, get) -> Filters:
@@ -123,6 +128,7 @@ class Filters:
             status=status if status in STATUS_LABELS else "",
             region=region if region in Tender.RegionScope.values else "",
             q=" ".join(get.get("q", "").split())[:MAX_QUERY_CHARS],
+            scope="all" if get.get("scope") == "all" else "it",
         )
 
     def apply(self, qs: QuerySet[Tender]) -> QuerySet[Tender]:
@@ -138,12 +144,18 @@ class Filters:
             qs = qs.filter(region_scope=self.region)
         if self.q:
             qs = qs.filter(title__icontains=self.q)
+        if self.scope == "it":
+            qs = qs.filter(scope_status=IN_SCOPE)
         return qs
 
 
 @require_GET
 def tender_list(request):
     filters = Filters.from_request(request.GET)
+    # The scope toggle's two counts, under the same other filters.
+    any_scope = replace(filters, scope="all").apply(tender_rows())
+    scope_counts = {"it": any_scope.filter(scope_status=IN_SCOPE).count(),
+                    "all": any_scope.count()}
     page = Paginator(filters.apply(tender_rows()), PAGE_SIZE).get_page(request.GET.get("page"))
     page.object_list = list(page.object_list)
     for row in page.object_list:
@@ -154,6 +166,7 @@ def tender_list(request):
         "status_choices": list(STATUS_LABELS.items()),
         "region_choices": Tender.RegionScope.choices,
         "filtered": bool(filters.status or filters.region or filters.q),
+        "scope_counts": scope_counts,
     })
 
 
@@ -257,6 +270,19 @@ class GateRow:
 
 
 VERSION_LABELS = {V4: "v4 (notice and documents)", V3: "v3 (notice only)"}
+_DECIDED = {
+    ReviewDecision.Action.ACCEPT: "a person reviewed it and accepted the v4 answer",
+    ReviewDecision.Action.CORRECT: "a person reviewed it and corrected the answer",
+    ReviewDecision.Action.REJECT: "a person reviewed it and marked the answer wrong",
+}
+
+
+def versions_note(v3_said: str, decision: ReviewDecision | None) -> str:
+    """A gate where v3 and v4 both quoted different answers: in the review queue until a
+    decision on it is in effect (own or carried), then what that decision was."""
+    if decision is None:
+        return f"v3 (notice only) said {v3_said}: versions disagree, in the review queue"
+    return f"v3 (notice only) said {v3_said}: versions disagreed; {_DECIDED[decision.action]}"
 
 
 def gate_rows(llm: Extraction | None, baseline: Extraction | None,
@@ -285,9 +311,8 @@ def gate_rows(llm: Extraction | None, baseline: Extraction | None,
         model_flags = gate_flags(gate, flags, bool(sources))
         if from_v3:  # v4's flags explain why v3's answer is shown
             model_flags = [f"v4: {f}" for f in model_flags] + gate_flags(gate, partner.flags)
-        if f"versions_disagree:eligibility.{gate}" in combined.flags:
-            model_flags.append(f"v3 (notice only) said {gate_value(gate, v3_checked.get(gate))}:"
-                               " versions disagree, in the review queue")
+        disagree = (f"versions_disagree:eligibility.{gate}" in combined.flags
+                    and versions_note(gate_value(gate, v3_checked.get(gate)), decision))
         rows.append(GateRow(
             gate=gate, label=GATE_LABELS[gate], value=value,
             # A person's value can match the model's words (e.g. a correct answer whose
@@ -295,7 +320,8 @@ def gate_rows(llm: Extraction | None, baseline: Extraction | None,
             raw_value=said if overridden or said != value else "",
             evidence=(checked.get(gate) or {}).get("evidence"),
             # The flags are about the model's answer, not the person's value shown here.
-            flags=[f"model's answer: {f}" for f in model_flags] if overridden else model_flags,
+            flags=([f"model's answer: {f}" for f in model_flags] if overridden else model_flags)
+            + ([disagree] if disagree else []),
             baseline=gate_value(gate, base.get(gate)),
             reviewed=REVIEWED.get(decision.action, "") if decision else "",
             document=quote_source(checked.get(gate), sources),
@@ -404,6 +430,40 @@ def search_url(tender: Tender) -> str | None:
     return f"{CANADABUYS_SEARCH}?{urlencode({'words': number})}" if number else None
 
 
+@dataclass(frozen=True)
+class ScopeCode:
+    scheme: str  # "UNSPSC" or "GSIN"
+    code: str
+    description: str
+
+
+@dataclass(frozen=True)
+class ScopeLine:
+    status: str  # "in", "out" or "unknown"
+    codes: list[ScopeCode]  # matched codes (in) or the notice's codes (out)
+    more: int = 0  # codes not listed
+
+
+def scope_line(tender: Tender, assessment: Assessment | None) -> ScopeLine | None:
+    """The detail page's scope line, from the stored assessment (None if not assessed yet).
+    Code titles come from CategoryCode; a matched code without one shows its IT family."""
+    stored = (assessment.scope if assessment else None) or {}
+    status = stored.get("status")
+    if status not in ("in", "out", "unknown"):
+        return None
+    if status == "in":
+        pairs = [(m["scheme"], m["code"], m["family"]) for m in stored.get("matches", [])]
+    else:
+        pairs = ([("unspsc", c, "") for c in tender.unspsc_codes]
+                 + [("gsin", c.upper(), "") for c in tender.gsin_codes])
+    shown = pairs[:SCOPE_LIST_MAX]
+    titles = {(c.scheme, c.code): c.description for c in CategoryCode.objects.filter(
+        code__in={code for _, code, _ in shown})}
+    codes = [ScopeCode(scheme.upper(), code, titles.get((scheme, code)) or family)
+             for scheme, code, family in shown]
+    return ScopeLine(status, codes, len(pairs) - len(shown))
+
+
 @require_GET
 def tender_detail(request, reference: str):
     tender = get_object_or_404(Tender, reference_number=reference)
@@ -437,6 +497,7 @@ def tender_detail(request, reference: str):
         "llm": llm,
         "baseline": baseline,
         "rows": gate_rows(llm, baseline, reviews, combined, partner),
+        "scope": scope_line(tender, assessment),
         "combined_from_v3": sum(v == V3 for v in combined.versions.values()),
         "versions_shown": bool(combined.versions),
         "reviewed_count": sum(d.action != ReviewDecision.Action.ACCEPT for d in reviews.values()),

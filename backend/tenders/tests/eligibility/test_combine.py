@@ -283,3 +283,33 @@ def test_review_page_says_when_the_site_shows_the_v3_answer(make_tender, meter):
             "personnel: unknown") in rows["clearance"]["flags"]
     assert ("v3 (notice only) said Canadian only: versions disagree"
             in rows["supplier_origin_restriction"]["flags"])
+
+
+@pytest.mark.parametrize(("action", "said"), [
+    ("accept", "a person reviewed it and accepted the v4 answer"),
+    ("correct", "a person reviewed it and corrected the answer"),
+    ("reject", "a person reviewed it and marked the answer wrong"),
+])
+def test_a_decided_disagreement_no_longer_says_in_the_review_queue(
+        make_tender, meter, client, django_user_model, action, said):
+    """Once a decision on the flagged gate is in effect, the page says what it was."""
+    v3_data = neutral(supplier_origin_restriction={"value": "canadian_only",
+                                                   "evidence": CFTA})
+    v4_data = as_v4(neutral(supplier_origin_restriction={
+        "value": "canadian_and_trading_partners", "evidence": PARTNERS}),
+        {"supplier_origin_restriction": MAIN_NAME})
+    t, _, v4 = v3_then_v4(make_tender, meter, v3_data, v4_data)
+    assess(v4)
+    queued = "v3 (notice only) said Canadian only: versions disagree, in the review queue"
+    assert queued in _page(client, t)
+    reviewer = django_user_model.objects.create_user("r", is_staff=True)
+    extra = ({"corrected_value": {"value": "canadian_only"}, "evidence": CFTA}
+             if action == "correct" else {})
+    ReviewDecision.objects.create(extraction=v4, gate="supplier_origin_restriction",
+                                  action=action, reviewer=reviewer, **extra)
+    assess(v4)
+    html = _page(client, t)
+    assert "in the review queue" not in html
+    assert f"v3 (notice only) said Canadian only: versions disagreed; {said}" in html
+    # The note is about the decision, not the model's answer: never prefixed.
+    assert "model&#x27;s answer: v3 (notice only)" not in html

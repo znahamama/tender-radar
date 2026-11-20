@@ -10,6 +10,7 @@ from pathlib import Path
 import anthropic
 import pytest
 
+from tenders import scope
 from tenders.eligibility import places, rules
 from tenders.evals.harness import PINNED_PROMPTS
 from tenders.extraction.keyword import KEYWORD_RULES_VERSION, KeywordExtractor
@@ -49,6 +50,8 @@ FROZEN = {
     ("baseline", "rules-v1"): "04590c85d129cbcff3b584289eac8437938d76677ee1ad58b40444a4a9f76441",
     # rules.py + places.py source (the gazetteer decides on-site blockers).
     ("eligibility", "3"): "69f130cd4bb6823d0a30e49b570fe5249513c039be1fd683ea0e5721a1f02b63",
+    # scope.py source: which notices are in scope for an IT firm (category codes only).
+    ("scope", "1"): "8edb35a113f6dc0c385b712faa870fc2340239cf575438abc2a1784d85165703",
 }
 
 
@@ -101,6 +104,12 @@ def test_eligibility_rules_v3_are_frozen():
     assert rules.RULES_VERSION == "3"
     source = b"".join(Path(m.__file__).read_bytes() for m in (rules, places))
     assert hashlib.sha256(source).hexdigest() == FROZEN[("eligibility", rules.RULES_VERSION)]
+
+
+def test_scope_rules_v1_are_frozen():
+    assert scope.SCOPE_RULES_VERSION == "1"
+    source = Path(scope.__file__).read_bytes()
+    assert hashlib.sha256(source).hexdigest() == FROZEN[("scope", scope.SCOPE_RULES_VERSION)]
 
 
 # Structured outputs' published limits per request (docs: "Schema complexity limits").

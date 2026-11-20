@@ -19,6 +19,15 @@
 
 {% if injection_caution %}<p class="caution" role="note">{{ injection_caution }}</p>{% endif %}
 
+{% if scope %}
+<p class="scope-line">{% include "tenders/_scope_badge.html" with scope=scope.status %} <strong>Scope:</strong>
+  {% if scope.status == "in" %}IT work (matched {% for c in scope.codes %}{{ c.scheme }} {{ c.code }}{% if c.description %} {{ c.description }}{% endif %}{% if not forloop.last %}; {% endif %}{% endfor %}{% if scope.more %}; and {{ scope.more }} more{% endif %})
+  {% elif scope.status == "out" %}outside IT work for this firm (codes: {% for c in scope.codes %}{{ c.scheme }} {{ c.code }}{% if c.description %} {{ c.description }}{% endif %}{% if not forloop.last %}; {% endif %}{% endfor %}{% if scope.more %}; and {{ scope.more }} more{% endif %})
+  {% else %}unknown: the notice lists no UNSPSC or GSIN category code{% endif %}
+  <br><span class="small">From the notice's category codes (scope rules v1). Scope doesn't change the eligibility status below.</span>
+</p>
+{% endif %}
+
 <section class="card" aria-labelledby="elig-heading">
   <h2 id="elig-heading">Eligibility {% include "tenders/_badge.html" with status=assessment.status %}</h2>
   {% if assessment %}

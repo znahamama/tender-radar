@@ -5,6 +5,9 @@ per gate (tenders.review), including decisions carried from earlier extractions 
 notice that still hold, is applied to the post-validated extraction before evaluate().
 A v4 extraction is first combined per gate with the tender's v3 one (eligibility.combine),
 so review decisions still override either version.
+
+Scope (tenders.scope: is this IT work, from the category codes) is stored on the same row but
+is never an input to the status: a scope change rewrites only ``scope``, not ``computed_at``.
 """
 
 from __future__ import annotations
@@ -18,6 +21,7 @@ from django.utils import timezone
 from tenders.extraction.service import refresh
 from tenders.models import Assessment, Extraction, SupplierProfile
 from tenders.review import apply_reviews, carry_forward, reviews_for
+from tenders.scope import notice_scope, record
 
 from .combine import combine, notice_only_partner
 from .rules import RULES_VERSION, Profile, TenderFacts, evaluate
@@ -71,12 +75,16 @@ def assess(extraction: Extraction, profile: SupplierProfile | None = None) -> As
               "inputs_hash": hashlib.sha256(
                   json.dumps(inputs, sort_keys=True, default=str).encode()).hexdigest()}
 
+    scope = record(notice_scope(tender))
     existing = Assessment.objects.filter(extraction=extraction, profile=profile).first()
     if existing and all(getattr(existing, k) == v for k, v in fields.items()):
+        if existing.scope != scope:
+            existing.scope = scope
+            existing.save(update_fields=["scope"])
         return existing
     assessment, _ = Assessment.objects.update_or_create(
         extraction=extraction, profile=profile,
-        defaults={"tender": tender, "computed_at": timezone.now(), **fields},
+        defaults={"tender": tender, "computed_at": timezone.now(), "scope": scope, **fields},
     )
     return assessment
 

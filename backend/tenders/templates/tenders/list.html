@@ -11,6 +11,14 @@
   {% endif %}
 </nav>
 
+<nav class="toggle scope-toggle" aria-label="Which kinds of work">
+  {% if filters.scope == "all" %}
+  Showing all {{ scope_counts.all }} notices · <a href="{% querystring scope=None page=None %}">Show {{ scope_counts.it }} IT notices only</a>
+  {% else %}
+  Showing {{ scope_counts.it }} IT notices · <a href="{% querystring scope='all' page=None %}">Show all {{ scope_counts.all }}</a>
+  {% endif %}
+</nav>
+
 <form class="filters" method="get" action="{% url 'tender-list' %}" role="search">
   <label>Title contains
     <input type="search" name="q" value="{{ filters.q }}" maxlength="200">
@@ -32,8 +40,9 @@
     </select>
   </label>
   {% if filters.show == "all" %}<input type="hidden" name="show" value="all">{% endif %}
+  {% if filters.scope == "all" %}<input type="hidden" name="scope" value="all">{% endif %}
   <button type="submit">Filter</button>
-  {% if filtered %}<a href="{% if filters.show == 'all' %}?show=all{% else %}{% url 'tender-list' %}{% endif %}">Clear</a>{% endif %}
+  {% if filtered %}<a href="{% querystring q=None status=None region=None page=None %}">Clear</a>{% endif %}
 </form>
 
 <p class="count">
@@ -59,7 +68,7 @@
   <tbody>
     {% for t in page.object_list %}
     <tr>
-      <td data-label="Title"><a href="{% url 'tender-detail' t.reference_number %}">{{ t.title }}</a></td>
+      <td data-label="Title"><a href="{% url 'tender-detail' t.reference_number %}">{{ t.title }}</a> {% include "tenders/_scope_badge.html" with scope=t.scope_status %}</td>
       <td data-label="Buyer">{{ t.buyer_org_name|default:"—" }}</td>
       <td data-label="Closes">{% if t.closing_date %}<time datetime="{{ t.closing_date|date:'c' }}">{{ t.closing_date|date:"Y-m-d H:i T" }}</time>{% else %}—{% endif %}</td>
       <td data-label="Region scope">{{ t.get_region_scope_display }}</td>

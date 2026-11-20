@@ -50,7 +50,9 @@ def make_tender(ref, **fields):
 
 
 def assess(tender, status, *, model_id=LLM, blockers=(), warnings=(), not_stated=(),
-           data=None, flags=(), created_at=None):
+           data=None, flags=(), created_at=None, scope="in"):
+    """A stored assessment. ``scope``: in scope for an IT firm by default, so the list
+    (IT notices only by default) shows it; tests of the scope toggle pass another."""
     x = Extraction.objects.create(
         tender=tender, content_hash=f"h-{model_id}-{Extraction.objects.count()}",
         model_id=model_id, prompt_version="v2", schema_version="1", status="ok",
@@ -61,7 +63,7 @@ def assess(tender, status, *, model_id=LLM, blockers=(), warnings=(), not_stated
         tender=tender, extraction=x, profile=SupplierProfile.objects.order_by("id").first(),
         status=status, blockers=list(blockers), warnings=list(warnings),
         not_stated=list(not_stated), rules_version="2", inputs_hash="0" * 64,
-        computed_at=timezone.now())
+        computed_at=timezone.now(), scope={"version": "1", "status": scope, "matches": []})
 
 
 def blocker(reason, gate="clearance", evidence=None, label=None):
@@ -76,6 +78,10 @@ def refs(response):
 
 
 def get_list(client, **params):
+    """The list with every scope unless a test asks otherwise: most tenders here have no
+    assessment, so no scope, and the default view shows IT notices only."""
+    params.setdefault("scope", "all")
+    params = {k: v for k, v in params.items() if v is not None}
     r = client.get(reverse("tender-list"), params)
     assert r.status_code == 200
     return r
@@ -211,11 +217,11 @@ def test_list_paginates_25_per_page_and_keeps_filters(client):
     assert first.context["page"].paginator.count == 30
     html = first.content.decode()
     assert "1–25 of 30" in html
-    assert 'href="?region=national&amp;page=2"' in html
+    assert 'href="?region=national&amp;scope=all&amp;page=2"' in html
 
     second = get_list(client, region="national", page=2)
     assert refs(second) == [f"R-{i:02d}" for i in range(25, 30)]
-    assert 'href="?region=national&amp;page=1"' in second.content.decode()
+    assert 'href="?region=national&amp;page=1&amp;scope=all"' in second.content.decode()
 
     # Out-of-range and junk page numbers fall back instead of 404ing.
     assert refs(get_list(client, region="national", page=99)) == refs(second)
@@ -641,3 +647,87 @@ def test_search_link_escapes_odd_characters(client):
     r = client.get(reverse("tender-detail", args=["PW-1"]))
     assert r.context["search_url"].endswith("?words=A%26B+%22x%22+%3Cy%3E")
     assert "<y>" not in r.content.decode()
+
+
+# --- scope (IT work or not) ------------------------------------------------------------
+
+def _scoped(client):
+    for ref, scope in (("IT-1", "in"), ("IT-2", "in"), ("NOT-IT", "out"),
+                       ("NO-CODES", "unknown")):
+        assess(make_tender(ref), "check_solicitation", scope=scope)
+    make_tender("UNASSESSED")
+
+
+def test_list_shows_it_notices_by_default_with_both_counts(client):
+    _scoped(client)
+    r = get_list(client, scope=None)
+    assert sorted(refs(r)) == ["IT-1", "IT-2"]
+    html = r.content.decode()
+    assert 'Showing 2 IT notices · <a href="?scope=all">Show all 5</a>' in html
+    assert html.count('class="badge badge-scope-in"') == 2
+
+
+def test_list_toggle_shows_every_notice_with_its_scope_badge(client):
+    _scoped(client)
+    r = get_list(client, scope="all")
+    assert sorted(refs(r)) == ["IT-1", "IT-2", "NO-CODES", "NOT-IT", "UNASSESSED"]
+    html = r.content.decode()
+    assert 'Showing all 5 notices · <a href="?">Show 2 IT notices only</a>' in html
+    assert ">Not IT</span>" in html and ">No codes</span>" in html
+    assert '<input type="hidden" name="scope" value="all">' in html  # the form keeps it
+
+
+def test_scope_counts_follow_the_other_filters(client):
+    _scoped(client)
+    assess(make_tender("NAT-IT", region_scope="national"), "blocked", scope="in")
+    html = get_list(client, scope=None, region="national").content.decode()
+    assert "Showing 1 IT notices · " in html and "Show all 1</a>" in html
+
+
+def test_scope_never_changes_the_eligibility_badge(client):
+    assess(make_tender("OUT-BLOCKED"), "blocked", scope="out",
+           blockers=[blocker("Clearance required.")])
+    html = client.get(reverse("tender-detail", args=["OUT-BLOCKED"])).content.decode()
+    assert '<span class="badge badge-blocked">Blocked</span>' in html
+    assert "Scope:</strong>\n  outside IT work for this firm" in html
+
+
+def _detail(client, ref):
+    return client.get(reverse("tender-detail", args=[ref])).content.decode()
+
+
+def test_detail_scope_line_names_the_matched_codes_with_titles(client):
+    from tenders.models import CategoryCode
+
+    CategoryCode.objects.create(scheme="unspsc", code="43230000", description="Software")
+    t = make_tender("IN", unspsc_codes=["43230000", "72151100"], gsin_codes=["n7030"])
+    a = assess(t, "check_solicitation")
+    a.scope = {"version": "1", "status": "in", "matches": [
+        {"scheme": "unspsc", "code": "43230000",
+         "family": "IT and telecom equipment and software"},
+        {"scheme": "gsin", "code": "N7030", "family": "ADP equipment and software"}]}
+    a.save()
+    html = _detail(client, "IN")
+    assert ("Scope:</strong>\n  IT work (matched UNSPSC 43230000 Software; "
+            "GSIN N7030 ADP equipment and software)") in html  # no title stored: the family
+    assert "72151100" not in html.split("Scope:")[1].split("</p>")[0]
+    assert html.index("Scope:") < html.index('id="elig-heading"')
+
+
+def test_detail_scope_line_lists_the_codes_when_outside_it(client):
+    from tenders.models import CategoryCode
+
+    CategoryCode.objects.create(scheme="unspsc", code="72151100",
+                                description="Plumbing construction services")
+    codes = ["72151100", *(f"{30000000 + i}" for i in range(11))]
+    assess(make_tender("OUT", unspsc_codes=codes), "check_solicitation", scope="out")
+    line = _detail(client, "OUT").split("Scope:")[1].split("</p>")[0]
+    assert "outside IT work for this firm (codes: UNSPSC 72151100 Plumbing construction services;" in line
+    assert line.count("UNSPSC ") == 10 and "and 2 more)" in line
+
+
+def test_detail_scope_line_unknown_and_not_assessed(client):
+    assess(make_tender("NONE"), "check_solicitation", scope="unknown")
+    assert "unknown: the notice lists no UNSPSC or GSIN category code" in _detail(client, "NONE")
+    make_tender("NEW")
+    assert "Scope:" not in _detail(client, "NEW")

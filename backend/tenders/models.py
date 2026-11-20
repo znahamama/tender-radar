@@ -267,6 +267,9 @@ class Assessment(models.Model):
     # A v4 extraction combined per gate with the tender's v3 one (eligibility.combine):
     # {"v3_extraction": id, "gates": {gate: "v4" | "v3"}, "flags": [...]}; {} otherwise.
     combined = models.JSONField(default=dict, blank=True)
+    # Scope for an IT firm (tenders.scope, from the notice's category codes); never part of
+    # the status: {"version": "1", "status": "in" | "out" | "unknown", "matches": [...]}.
+    scope = models.JSONField(default=dict, blank=True)
 
     class Meta:
         constraints = (
@@ -276,6 +279,27 @@ class Assessment(models.Model):
 
     def __str__(self) -> str:
         return f"{self.tender_id} {self.status}"
+
+
+class CategoryCode(models.Model):
+    """A UNSPSC or GSIN code and its published English title, as the CanadaBuys CSVs give
+    it (ingest_canadabuys fills this from every row). Display only; not in content_hash."""
+
+    class Scheme(models.TextChoices):
+        UNSPSC = "unspsc", "UNSPSC"
+        GSIN = "gsin", "GSIN"
+
+    scheme = models.CharField(max_length=10, choices=Scheme.choices)
+    code = models.CharField(max_length=40)
+    description = models.CharField(max_length=300)
+
+    class Meta:
+        constraints = (
+            models.UniqueConstraint(fields=["scheme", "code"], name="category_code_unique"),
+        )
+
+    def __str__(self) -> str:
+        return f"{self.scheme} {self.code}"
 
 
 class AppendOnlyError(Exception):
