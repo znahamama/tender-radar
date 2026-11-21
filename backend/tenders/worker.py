@@ -5,6 +5,8 @@ Events:
     {"task": "daily"}    ingest --save, keyword baseline then LLM on Open tenders (LLM caps
                          apply), reassess, then fetch new CanadaBuys attachment PDFs (last,
                          so it can't hold up or stop the steps the site depends on)
+    {"task": "assess"}   assess_tenders only: recompute eligibility from the stored
+                         extractions with today's rules and profile. No ingest, no API calls
     {"task": "create_admin", "username": "<name>"}
                          create or update that superuser with the password in the one-time
                          SecureString <SSM_PREFIX>admin_bootstrap_password (infra/README.md)
@@ -46,6 +48,9 @@ TASKS: dict[str, list[tuple[str, list[str]]]] = {
         # Reads the CSVs ingest left in DOWNLOAD_DIR, for the redaction hints only.
         ("fetch_documents", ["--csv-dir", DOWNLOAD_DIR]),
     ],
+    # After a rules or profile change ships: the site shows the new verdicts without
+    # waiting for (or spending on) the next daily run.
+    "assess": [("assess_tenders", [])],
     "create_admin": [("create_admin", [])],  # a Python step, not a command: STEPS below
 }
 

@@ -447,6 +447,32 @@ def test_admin_keeps_working_csp(client):
     assert "script-src 'self'" in csp and "unsafe" not in csp
 
 
+@pytest.mark.parametrize("path", ["/tenders/T/", "/admin/login/"])
+def test_every_security_header_over_https(client, path):
+    """One public page and the admin, as API Gateway delivers them (HTTPS)."""
+    make_tender("T")
+    r = client.get(path, secure=True)
+    assert r.status_code == 200
+    assert r["Strict-Transport-Security"] == "max-age=31536000"  # no subdomains, no preload
+    csp = r["Content-Security-Policy"]
+    assert "default-src 'none'" in csp and "frame-ancestors 'none'" in csp
+    assert "unsafe" not in csp
+    assert r["X-Content-Type-Options"] == "nosniff"
+    assert r["X-Frame-Options"] == "DENY"
+    assert r["Referrer-Policy"] == "same-origin"
+    pp = dict(d.strip().split("=") for d in r["Permissions-Policy"].split(","))
+    assert pp["camera"] == pp["microphone"] == pp["geolocation"] == "()"
+    assert set(pp.values()) == {"()"}
+    if path.startswith("/admin/"):
+        csrf = r.cookies["csrftoken"]
+        assert csrf["httponly"] is True and csrf["samesite"] == "Lax"
+
+
+def test_no_hsts_over_plain_http(client):
+    """Local runserver is http; HSTS there would pin localhost to HTTPS in the browser."""
+    assert "Strict-Transport-Security" not in client.get("/")
+
+
 @pytest.mark.parametrize("method", ["post", "put", "patch", "delete"])
 def test_pages_are_get_only(client, method):
     make_tender("T")

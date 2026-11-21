@@ -52,7 +52,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
-    "tenders.security.ContentSecurityPolicyMiddleware",
+    "tenders.security.SecurityHeadersMiddleware",  # CSP and Permissions-Policy
     "whitenoise.middleware.WhiteNoiseMiddleware",  # admin static files, no S3/CDN
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -63,9 +63,17 @@ MIDDLEWARE = [
     "axes.middleware.AxesMiddleware",  # last: turns a locked-out login into the lockout page
 ]
 
-# Explicit, though both are Django's defaults. The CSP header is set in tenders.security.
+# Explicit, though these three are Django's defaults. CSP and Permissions-Policy are set in
+# tenders.security.
 X_FRAME_OPTIONS = "DENY"
 SECURE_REFERRER_POLICY = "same-origin"
+SECURE_CONTENT_TYPE_NOSNIFF = True
+# HSTS, one year. SecurityMiddleware sends it only on HTTPS requests (on Lambda: X-Forwarded-
+# Proto from API Gateway, see SECURE_PROXY_SSL_HEADER), so never on local http. The host is
+# AWS's execute-api domain: no includeSubDomains and no preload, which are for a domain we own.
+SECURE_HSTS_SECONDS = 365 * 24 * 60 * 60
+SECURE_HSTS_INCLUDE_SUBDOMAINS = False
+SECURE_HSTS_PRELOAD = False
 
 ROOT_URLCONF = "config.urls"
 WSGI_APPLICATION = "config.wsgi.application"
@@ -116,6 +124,10 @@ TRUST_X_FORWARDED_FOR = not DEBUG
 SESSION_COOKIE_AGE = 8 * 60 * 60
 SESSION_COOKIE_HTTPONLY = True
 CSRF_COOKIE_HTTPONLY = True
+# Django's default, stated. Lax, not Strict: Strict would drop the session when the admin is
+# opened from a link elsewhere, and the admin has no state-changing GETs.
+SESSION_COOKIE_SAMESITE = "Lax"
+CSRF_COOKIE_SAMESITE = "Lax"
 
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},

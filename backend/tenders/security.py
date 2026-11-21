@@ -1,9 +1,15 @@
-"""Content-Security-Policy on every response (Django 5.2 has no built-in CSP).
+"""Response headers Django 5.2 has no setting for: Content-Security-Policy and
+Permissions-Policy, on every response.
 
 The public pages load one self-hosted stylesheet and nothing else: no scripts, no inline
 styles, no images, no third-party origins. The admin also needs its own static scripts and
-the data: icons in its CSS, so /admin/ gets that much more and no more.
-X-Frame-Options (DENY) and Referrer-Policy come from Django's own middleware and settings.
+the data: icons in its CSS, so /admin/ gets that much more and no more. Neither needs
+'unsafe-inline': the only inline <style> in Django's admin templates (change_list.html) is
+rendered only for a ModelAdmin with actions_on_top and actions_on_bottom both False, and
+none here sets those.
+
+HSTS, nosniff, X-Frame-Options (DENY), Referrer-Policy and the cookie flags come from
+Django's own middleware and settings (config/settings.py).
 
 Also the client IP that the login lockout (django-axes) keys on: client_ip().
 """
@@ -18,8 +24,13 @@ PUBLIC_CSP = _COMMON
 ADMIN_CSP = f"{_COMMON}; script-src 'self'; img-src 'self' data:; font-src 'self'; " \
             "connect-src 'self'"
 
+# Nothing on the site uses a device API; deny the common ones to this page and any frame.
+PERMISSIONS_POLICY = ", ".join(f"{feature}=()" for feature in (
+    "accelerometer", "camera", "geolocation", "gyroscope", "magnetometer", "microphone",
+    "payment", "usb"))
 
-class ContentSecurityPolicyMiddleware:
+
+class SecurityHeadersMiddleware:
     def __init__(self, get_response):
         self.get_response = get_response
 
@@ -28,6 +39,7 @@ class ContentSecurityPolicyMiddleware:
         if "Content-Security-Policy" not in response:
             admin = request.path.startswith("/admin/")
             response["Content-Security-Policy"] = ADMIN_CSP if admin else PUBLIC_CSP
+        response.setdefault("Permissions-Policy", PERMISSIONS_POLICY)
         return response
 
 

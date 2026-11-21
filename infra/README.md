@@ -21,7 +21,7 @@ values never reach state.
 | `tender-radar-worker` | image `worker-<sha>`, arm64, 1024 MB, 900 s, 1024 MB `/tmp`, handler `tenders.worker.handler`, 0 async retries, `LLM_DAILY_BUDGET_USD=0.15` |
 | HTTP API | `$default` stage, auto-deploy, `ANY /` + `ANY /{proxy+}`, throttle 10 rps / burst 20, JSON access logs |
 | Scheduler | `tender-radar-daily`, 06:15 America/St_Johns, `{"task":"daily"}`, 0 retries, **DISABLED** until step (h) |
-| Logs | `/aws/lambda/tender-radar-{api,worker}`, `/aws/apigateway/tender-radar`, 14-day retention |
+| Logs | `/aws/lambda/tender-radar-{api,worker}`, `/aws/apigateway/tender-radar`, 30-day retention (`local.log_retention`) |
 | IAM | api-role, worker-role: own log group + `ssm:GetParameters` on `/tender-radar/prod/*` (one call per cold start). scheduler-role: invoke the worker only |
 | Alerts | SNS `tender-radar-alerts` → one email; 4 CloudWatch alarms notify on ALARM and OK (see **Alerts**) |
 
@@ -269,6 +269,26 @@ API="$(terraform -chdir=infra/prod output -raw api_url)"; curl -sS "${API%/}/api
 ECR keeps the last 5 `api-*` and the last 5 `worker-*` images. To roll back, set
 `TF_VAR_git_sha` to an older sha whose images still exist, then plan and apply.
 
+### Re-assess only (after a rules or profile change)
+
+`{"task":"assess"}` runs only `assess_tenders`: it recomputes eligibility from the stored
+extractions with the deployed rules and the default supplier profile. No ingest, no LLM
+calls (no Anthropic spend), no document fetch, so it is safe to run at any time, any number
+of times. Use it after a deploy that changes the eligibility or scope rules, so the site
+shows the new verdicts without waiting for the next 06:15 run. (Saving the profile in the
+admin already re-assesses for that profile; this task is for code changes.)
+
+```sh
+AWS_MAX_ATTEMPTS=1 aws lambda invoke --no-cli-pager \
+  --function-name tender-radar-worker \
+  --cli-binary-format raw-in-base64-out --payload '{"task":"assess"}' \
+  --cli-read-timeout 910 /tmp/tr-assess.json
+cat /tmp/tr-assess.json; echo   # "ok": true, steps: [assess_tenders]
+aws logs tail /aws/lambda/tender-radar-worker --since 10m | grep -E 'assessed [0-9]|"task":"assess"'
+```
+
+The log shows one line per extractor model (`<model>: eligible N, ...`) and `assessed N`.
+
 ## Alerts
 
 One SNS topic, `tender-radar-alerts`, with one email subscription, and four alarms
@@ -327,7 +347,7 @@ subscription is replaced; confirm the new one).
 | Lambda | 1 worker run/day (a few minutes at 1 GB) + light API traffic, well inside the always-free 1M requests / 400k GB-s | $0 |
 | API Gateway HTTP API | under 1M requests: free for the first 12 months, then $1.00 per million | $0–0.01 |
 | ECR | api and worker share base and dependency layers; roughly 0.3–0.7 GB with 5 deploys kept. 500 MB free for 12 months, then $0.10/GB-month | $0–0.10 |
-| CloudWatch Logs | MBs per month, 14-day retention; 5 GB ingestion free | $0 |
+| CloudWatch Logs | MBs per month, 30-day retention (well under 1 GB stored); 5 GB ingestion free | $0 |
 | SSM Parameter Store | 4 standard SecureStrings with `aws/ssm`: free. KMS decrypts at cold start, inside the free 20k requests/month | $0 |
 | EventBridge Scheduler | 30 invocations/month, 14M free | $0 |
 | CloudWatch alarms | 4 standard-resolution metric alarms: 10 free (always-free tier), then $0.10/alarm-month | $0 (list price $0.40) |

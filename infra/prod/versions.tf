@@ -36,5 +36,5 @@ locals {
   account_id = data.aws_caller_identity.current.account_id
   # SSM parameter ARNs drop the name's leading slash: /a/b/ -> parameter/a/b/*
   ssm_params_arn = "arn:aws:ssm:${var.region}:${local.account_id}:parameter${var.ssm_prefix}*"
-  log_retention  = 14
+  log_retention  = 30 # days, every log group: both Lambdas and the API access log
 }

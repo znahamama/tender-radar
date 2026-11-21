@@ -36,7 +36,7 @@ data "aws_iam_policy_document" "lambda" {
     sid       = "OwnLogs"
     actions   = ["logs:CreateLogStream", "logs:PutLogEvents"]
     resources = ["${aws_cloudwatch_log_group.lambda[each.key].arn}:*"]
-    # No logs:CreateLogGroup: Terraform creates the group (with 14-day retention), and
+    # No logs:CreateLogGroup: Terraform creates the group (with 30-day retention), and
     # without that permission Lambda can't recreate it without a retention policy.
   }
 

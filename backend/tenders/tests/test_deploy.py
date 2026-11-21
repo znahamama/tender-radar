@@ -197,6 +197,27 @@ def test_migrate(calls, capsys):
     assert calls == [("migrate", ("--noinput",))]
 
 
+def test_assess_runs_only_assess_tenders(calls, capsys):
+    """No ingest, no extract (so no API calls), no document fetch."""
+    from tenders.worker import _database_for, handler
+
+    out = handler({"task": "assess"})
+    assert calls == [("assess_tenders", ())]
+    assert out["ok"] is True and [s["step"] for s in out["steps"]] == ["assess_tenders"]
+    assert _summary(capsys) == out
+    # The pooled URL like "daily"; only "migrate" switches to the direct one.
+    assert type(_database_for("assess")).__name__ == "nullcontext"
+
+
+@pytest.mark.django_db
+def test_assess_runs_the_real_command(capsys):
+    """Not mocked: the command name and arguments in TASKS are ones assess_tenders accepts."""
+    from tenders.worker import handler
+
+    assert handler({"task": "assess"})["ok"] is True
+    assert "assessed 0" in capsys.readouterr().out
+
+
 @pytest.mark.parametrize("event", [{}, {"task": "drop"}, None, "daily"])
 def test_unknown_task_is_rejected(calls, event):
     from tenders.worker import handler

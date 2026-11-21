@@ -151,6 +151,7 @@ def _settings_with(debug: str) -> dict:
     code = ("import django; django.setup(); from django.conf import settings as s; "
             "print(repr({k: getattr(s, k) for k in ('SESSION_COOKIE_SECURE', "
             "'CSRF_COOKIE_SECURE', 'SESSION_COOKIE_HTTPONLY', 'CSRF_COOKIE_HTTPONLY', "
+            "'SESSION_COOKIE_SAMESITE', 'CSRF_COOKIE_SAMESITE', "
             "'SESSION_COOKIE_AGE', 'TRUST_X_FORWARDED_FOR')}))")
     env = {**os.environ, "DJANGO_SETTINGS_MODULE": "config.settings", "DJANGO_DEBUG": debug,
            "DJANGO_SECRET_KEY": "test-only", "DATABASE_URL": "sqlite:///:memory:",
@@ -163,11 +164,12 @@ def _settings_with(debug: str) -> dict:
 
 
 def test_deployed_cookies_are_secure_and_httponly():
-    """DEBUG off (the Lambda config): Secure and HttpOnly on both cookies, 8-hour sessions,
-    and the client IP taken from API Gateway's X-Forwarded-For hop."""
+    """DEBUG off (the Lambda config): Secure, HttpOnly and SameSite=Lax on both cookies,
+    8-hour sessions, and the client IP taken from API Gateway's X-Forwarded-For hop."""
     assert _settings_with("0") == {
         "SESSION_COOKIE_SECURE": True, "CSRF_COOKIE_SECURE": True,
         "SESSION_COOKIE_HTTPONLY": True, "CSRF_COOKIE_HTTPONLY": True,
+        "SESSION_COOKIE_SAMESITE": "Lax", "CSRF_COOKIE_SAMESITE": "Lax",
         "SESSION_COOKIE_AGE": 28800, "TRUST_X_FORWARDED_FOR": True}
 
 
