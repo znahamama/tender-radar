@@ -7,6 +7,7 @@ real child process (pypdf) on small PDFs built here.
 import csv
 import socket
 import sys
+import time
 import urllib.error
 from datetime import UTC, datetime, timedelta
 from io import StringIO
@@ -18,7 +19,12 @@ from django.urls import reverse
 from django.utils import timezone
 
 from tenders.documents import parse, service
-from tenders.documents.fetch import FetchFailed, download_pdf, is_allowed_url
+from tenders.documents.fetch import (
+    FetchFailed,
+    download_pdf,
+    is_allowed_url,
+    is_pdf_url,
+)
 from tenders.documents.service import Limits, fetch_documents
 from tenders.ingest.pipeline import REF_HEADER
 from tenders.ingest.redact import HINT_HEADERS, REDACT_VERSION, redact
@@ -27,6 +33,7 @@ from tenders.models import Tender, TenderDocument
 pytestmark = pytest.mark.django_db
 
 ATT = "https://canadabuys.canada.ca/documents/pub/att/2026/11/01/abc123/"
+WEB = "https://canadabuys.canada.ca/sites/default/files/webform/tender_notice/111994/"
 NOW = datetime(2026, 11, 18, 12, tzinfo=UTC)
 OFFICER = "Test Person"  # the CSV contact name: only the hints know it's a name
 
@@ -156,6 +163,17 @@ def doc(url):
     "https://canadabuys.canada.ca:8443/documents/pub/att/x.pdf",                  # port
     "https://canadabuys.canada.ca/documents/pub/att/../../opendata/x.csv",        # climbs out
     "https://canadabuys.canada.ca/documents/pub/att/%2e%2e/%2e%2e/x",             # encoded
+    # the newer /sites/default/files/webform/tender_notice/ path: same guards
+    "http://canadabuys.canada.ca/sites/default/files/webform/tender_notice/1/x.pdf",
+    "https://canadabuys.canada.ca/sites/default/files/x.pdf",                    # not webform
+    "https://canadabuys.canada.ca/sites/default/files/webform/other_form/1/x.pdf",
+    "https://canadabuys.canada.ca/sites/default/files/webform/tender_notice_x/1/x.pdf",
+    "https://canadabuys.canada.ca/sites/default/files/webform/tender_notice/../../../x.pdf",
+    "https://canadabuys.canada.ca/sites/default/files/webform/tender_notice/%2E%2E/x.pdf",
+    "https://canadabuys.canada.ca.evil.example/sites/default/files/webform/tender_notice/x.pdf",
+    "https://x@canadabuys.canada.ca/sites/default/files/webform/tender_notice/1/x.pdf",
+    "https://canadabuys.canada.ca:443/sites/default/files/webform/tender_notice/1/x.pdf",
+    "https://www.canadabuys.canada.ca/sites/default/files/webform/tender_notice/1/x.pdf",
 ])
 def test_disallowed_urls_are_skipped_and_never_requested(csv_dir, url):
     assert not is_allowed_url(url)
@@ -166,8 +184,175 @@ def test_disallowed_urls_are_skipped_and_never_requested(csv_dir, url):
     assert summary.statuses == {"skipped_host": 1} and summary.downloads == 0
 
 
-def test_the_canadabuys_attachment_url_is_allowed():
+def test_the_canadabuys_attachment_urls_are_allowed():
     assert is_allowed_url(ATT + "ABES.PROD.PW__HN.B446.E81465.EBSU000.PDF")
+    assert is_allowed_url(WEB + "solicitation-and-contract_en_esc-2627-118_rev1_20261103_0.pdf")
+    assert is_allowed_url(WEB + "notice-of-proposed-procurement-%28npp---cic---160389.pdf")
+
+
+def test_a_sites_default_files_pdf_is_downloaded_and_stored(csv_dir):
+    url = WEB + "rfp.pdf"
+    tender(urls=[url])
+    _, opener = run(csv_dir("PW-1"), {url: FakeResponse(PDF, "application/pdf")})
+    assert opener.calls == [url] and doc(url).status == "ok"
+    assert "Request for Supply Arrangement" in doc(url).text
+
+
+# --- file type: only .pdf URLs are downloaded -------------------------------------------
+
+@pytest.mark.parametrize("name", ["a.pdf", "A.PDF", "x.Pdf", "a%2Epdf", "PW-1.EBSU000.PDF"])
+def test_pdf_paths_any_case(name):
+    assert is_pdf_url(ATT + name) and is_pdf_url(WEB + name)
+
+
+@pytest.mark.parametrize("name", ["a.zip", "a.xlsx", "a.docx", "a.pdf.zip", "a.zip.zip",
+                                  "pdf", "a_pdf", "a.pdf/", "a.zip?f=x.pdf", "a.zip#x.pdf"])
+def test_other_paths_are_not_pdfs(name):
+    assert not is_pdf_url(WEB + name)
+
+
+@pytest.mark.parametrize("base", [ATT, WEB])
+def test_a_non_pdf_url_is_skipped_type_and_never_requested(csv_dir, base):
+    urls = [base + "annex-b-pricing.xlsx", base + "rfsa-2024.zip", base + "form.docx"]
+    tender(urls=urls)
+    summary, opener = run(csv_dir("PW-1"), {})
+    assert opener.calls == [] and summary.downloads == 0
+    assert summary.statuses == {"skipped_type": 3}
+    assert all((doc(u).status, doc(u).text, doc(u).attempts) == ("skipped_type", "", 1)
+               for u in urls)
+
+
+def test_skipped_type_is_final(csv_dir):
+    url = WEB + "a.zip"
+    tender(urls=[url])
+    paths = csv_dir("PW-1")
+    run(paths, {})
+    summary, opener = run(paths, {url: PDF})
+    assert opener.calls == [] and summary.unchanged == 1 and doc(url).attempts == 1
+
+
+def test_an_off_allowlist_non_pdf_is_skipped_host():
+    url = "https://sscp2pspc.ssc-spc.gc.ca/page.aspx/en/fil/x.zip"
+    assert service._not_downloaded(url) == "skipped_host"
+
+
+def test_non_pdfs_take_no_place_in_the_per_tender_limit(csv_dir):
+    zips = [WEB + f"amd-{i}.zip" for i in range(3)]
+    pdfs = [WEB + f"{i}.pdf" for i in range(3)]
+    tender(urls=[*zips, *pdfs])
+    summary, opener = run(csv_dir("PW-1"), {u: PDF for u in pdfs}, per_tender=3)
+    assert opener.calls == pdfs
+    assert summary.statuses == {"ok": 3, "skipped_type": 3}
+
+
+def test_download_pdf_refuses_a_non_pdf_path_itself():
+    url = WEB + "a.zip"
+    with pytest.raises(FetchFailed) as e:
+        download_pdf(url, opener=FakeOpener({}), max_bytes=10**6, timeout_s=20)
+    assert e.value.status == "skipped_type"
+
+
+# --- skipped_host rows whose URL the allowlist now takes ---------------------------------
+
+def _skipped_host_rows(urls):
+    """As stored before the allowlist took /sites/default/files/: every URL skipped_host."""
+    t = tender(urls=urls)
+    for u in urls:
+        TenderDocument.objects.create(tender=t, url=u, status="skipped_host", redact_version=1,
+                                      fetched_at=NOW - timedelta(days=1))
+    return t
+
+
+def test_a_skipped_host_row_now_allowed_is_downloaded(csv_dir):
+    url = WEB + "rfp.pdf"
+    _skipped_host_rows([url])
+    summary, opener = run(csv_dir("PW-1"), {url: PDF})
+    assert opener.calls == [url] and summary.reevaluated == 1 and summary.retries == 0
+    d = doc(url)
+    assert (d.status, d.attempts, d.redact_version, d.fetched_at) == ("ok", 1, REDACT_VERSION, NOW)
+    assert TenderDocument.objects.count() == 1  # the row was updated, not duplicated
+    summary, opener = run(csv_dir("PW-1"), {url: PDF})
+    assert opener.calls == [] and summary.unchanged == 1
+
+
+def test_a_skipped_host_row_now_allowed_but_not_a_pdf_becomes_skipped_type(csv_dir):
+    url = WEB + "rfsa.zip"
+    _skipped_host_rows([url])
+    summary, opener = run(csv_dir("PW-1"), {})
+    assert opener.calls == [] and doc(url).status == "skipped_type"
+    assert summary.statuses == {"skipped_type": 1} and summary.downloads == 0
+
+
+def test_skipped_host_rows_now_allowed_follow_the_ranking_and_the_limit(csv_dir):
+    main, amd1, amd2 = WEB + "rfp-solicitation.pdf", WEB + "amendment-001.pdf", \
+        WEB + "amendment-002.pdf"
+    _skipped_host_rows([amd2, amd1, main])
+    summary, opener = run(csv_dir("PW-1"), {u: PDF for u in (main, amd1, amd2)}, per_tender=2)
+    assert opener.calls == [main, amd1] and summary.reevaluated == 2
+    assert doc(amd2).status == "over_tender_limit"  # and so re-evaluated if the limit rises
+    summary, opener = run(csv_dir("PW-1"), {amd2: PDF}, per_tender=3)
+    assert opener.calls == [amd2] and doc(amd2).status == "ok"
+
+
+def test_a_skipped_host_row_still_off_the_allowlist_is_left_alone(csv_dir):
+    url = "https://sscp2pspc.ssc-spc.gc.ca/page.aspx/en/fil/download_public/X"
+    _skipped_host_rows([url])
+    summary, opener = run(csv_dir("PW-1"), {})
+    assert opener.calls == [] and summary.unchanged == 1
+    assert doc(url).fetched_at == NOW - timedelta(days=1)  # not even rewritten
+
+
+def _too_many_pages_rows(urls, pages=200):
+    """As stored before long PDFs were read in part: rejected, with no text."""
+    t = tender(urls=urls)
+    for u in urls:
+        TenderDocument.objects.create(tender=t, url=u, status="too_many_pages", pages=pages,
+                                      sha256="0" * 64, redact_version=1,
+                                      fetched_at=NOW - timedelta(days=1))
+    return t
+
+
+def test_a_too_many_pages_row_is_read_in_part_once(csv_dir):
+    url = ATT + "PW-1.EBSU000.PDF"
+    _too_many_pages_rows([url])
+    paths = csv_dir("PW-1")
+    summary, opener = run(paths, {url: make_pdf([f"page {i}" for i in range(151)])})
+    assert opener.calls == [url] and summary.reevaluated == 1 and summary.retries == 0
+    d = doc(url)
+    assert (d.status, d.pages, d.pages_read, d.partial, d.attempts) == ("ok", 151, 150, True, 1)
+    assert "page 149" in d.text and d.redact_version == REDACT_VERSION
+    assert TenderDocument.objects.count() == 1
+    summary, opener = run(paths, {url: PDF})  # once: never downloaded again
+    assert opener.calls == [] and summary.unchanged == 1
+
+
+def test_a_re_evaluated_too_many_pages_row_that_now_fails_is_not_re_evaluated_again(csv_dir):
+    url = ATT + "long.pdf"
+    _too_many_pages_rows([url])
+    paths = csv_dir("PW-1")
+    run(paths, {url: b"%PDF-1.4\n garbage"})
+    assert (doc(url).status, doc(url).attempts) == ("parse_error", 1)
+    summary, opener = run(paths, {url: PDF})
+    assert opener.calls == [] and summary.unchanged == 1
+
+
+def test_too_many_pages_rows_follow_the_ranking_and_the_limit(csv_dir):
+    main, amd1 = ATT + "PW-1.EBSU000.PDF", ATT + "PW-1.EBSU001.PDF"
+    _too_many_pages_rows([amd1, main])
+    summary, opener = run(csv_dir("PW-1"), {main: PDF, amd1: PDF}, per_tender=1)
+    assert opener.calls == [main] and doc(main).status == "ok"
+    assert doc(amd1).status == "over_tender_limit"  # re-evaluated, no request
+    assert summary.downloads == 1
+
+
+def test_reevaluating_skipped_host_rows_counts_toward_the_per_run_cap(csv_dir):
+    urls = [WEB + f"{i}.pdf" for i in range(3)]
+    _skipped_host_rows(urls)
+    summary, opener = run(csv_dir("PW-1"), {u: PDF for u in urls}, per_run=2)
+    assert opener.calls == urls[:2] and summary.stopped.startswith("per-run download cap")
+    assert doc(urls[2]).status == "skipped_host"  # still waiting, not lost
+    summary, opener = run(csv_dir("PW-1"), {u: PDF for u in urls}, per_run=2)
+    assert opener.calls == [urls[2]] and doc(urls[2]).status == "ok"
 
 
 def test_redirect_is_not_followed():
@@ -259,20 +444,94 @@ def test_http_and_network_errors(csv_dir, exc, status):
 
 # --- parsing --------------------------------------------------------------------------
 
-def test_too_many_pages_is_rejected_before_any_text_is_read(csv_dir):
-    url = ATT + "long.pdf"
-    tender(urls=[url])
-    run(csv_dir("PW-1"), {url: make_pdf([f"page {i}" for i in range(61)])})
-    d = doc(url)
-    assert (d.status, d.pages, d.text) == ("too_many_pages", 61, "")
-    assert len(d.sha256) == 64
+def test_limits_read_150_pages_and_store_400k_characters():
+    lim = Limits()
+    assert (lim.max_pages, lim.max_chars, lim.max_bytes) == (150, 400_000, 10 * 1024 * 1024)
 
 
-def test_sixty_pages_is_fine(csv_dir):
+def test_150_pages_are_read_whole(csv_dir):
     url = ATT + "ok.pdf"
     tender(urls=[url])
-    run(csv_dir("PW-1"), {url: make_pdf([f"page {i}" for i in range(60)])})
-    assert (doc(url).status, doc(url).pages) == ("ok", 60)
+    summary, _ = run(csv_dir("PW-1"), {url: make_pdf([f"page {i}" for i in range(150)])})
+    d = doc(url)
+    assert (d.status, d.pages, d.pages_read, d.partial) == ("ok", 150, 150, False)
+    assert "page 149" in d.text and summary.partial == 0
+
+
+def test_a_longer_pdf_is_read_in_part_not_rejected(csv_dir):
+    url = ATT + "long.pdf"
+    tender(urls=[url])
+    summary, _ = run(csv_dir("PW-1"), {url: make_pdf([f"page {i}" for i in range(151)])})
+    d = doc(url)
+    assert (d.status, d.pages, d.pages_read, d.partial) == ("ok", 151, 150, True)
+    assert "page 149" in d.text and "page 150" not in d.text
+    assert len(d.sha256) == 64 and summary.partial == 1
+    assert summary.statuses == {"ok": 1}
+
+
+def test_the_character_cap_keeps_whole_pages_only(csv_dir):
+    url = ATT + "dense.pdf"
+    tender(urls=[url])
+    pages = [f"page{i} " + "word " * 40 for i in range(10)]  # ~210 characters a page
+    run(csv_dir("PW-1"), {url: make_pdf(pages)}, max_chars=1000)
+    d = doc(url)
+    assert d.status == "ok" and d.partial and len(d.text) <= 1000
+    assert d.pages == 10 and 1 <= d.pages_read < 10
+    assert f"page{d.pages_read - 1} " in d.text and f"page{d.pages_read} " not in d.text
+    assert d.text.rstrip().endswith("word")  # a page boundary, nothing half-cut
+
+
+def test_a_first_page_over_the_cap_is_cut_at_whitespace_and_not_counted(csv_dir):
+    url = ATT + "huge-page.pdf"
+    tender(urls=[url])
+    run(csv_dir("PW-1"), {url: make_pdf(["alpha beta gamma delta " * 20, "page two"])},
+        max_chars=50)
+    d = doc(url)
+    assert (d.status, d.pages, d.pages_read, d.partial) == ("ok", 2, 0, True)
+    assert 0 < len(d.text) <= 50 and d.text.split()[-1] in {"alpha", "beta", "gamma", "delta"}
+
+
+def test_text_lengthened_by_cleaning_is_cut_again_after_redaction(csv_dir, monkeypatch):
+    url = ATT + "a.pdf"
+    tender(urls=[url])
+    monkeypatch.setattr(service, "clean_text",
+                        lambda text, hints: ("[NAME] wrote this. " * 10, []))
+    run(csv_dir("PW-1"), {url: make_pdf(["one", "two"])}, max_chars=100)
+    d = doc(url)
+    assert len(d.text) <= 100 and d.text.endswith("this.")
+    assert (d.pages, d.pages_read, d.partial) == (2, 1, True)  # its last page is now cut
+
+
+@pytest.mark.parametrize("text, limit, cut", [
+    ("short", 10, "short"), ("one two three", 9, "one two"), ("one two", 7, "one two"),
+    ("nospaceatall", 5, ""), ("a\nb c", 4, "a\nb"),
+])
+def test_cut_at_whitespace(text, limit, cut):
+    assert service.cut_at_whitespace(text, limit) == cut
+
+
+def test_failed_and_skipped_rows_have_no_pages_read(csv_dir):
+    url, zip_ = ATT + "broken.pdf", ATT + "a.zip"
+    tender(urls=[url, zip_])
+    run(csv_dir("PW-1"), {url: b"%PDF-1.4\n garbage"})
+    assert doc(url).pages_read is None and doc(zip_).pages_read is None
+    assert not doc(url).partial
+
+
+def test_a_150_page_pdf_parses_well_within_the_time_limit():
+    """Real-sized pages (~2,500 characters each; CanadaBuys RFPs measured 1,900-3,400 on
+    2026-11-21) through the real child process, under the production limits. 150 such
+    pages stay under the character cap, so all of them are read."""
+    line = "The Contractor must provide the services described in Annex A, Statement of Work."
+    pdf = make_pdf(["\n".join(f"{i}.{n} {line}" for n in range(26)) for i in range(150)])
+    lim = Limits()
+    started = time.monotonic()
+    parsed = parse.parse_pdf(pdf, max_pages=lim.max_pages, max_chars=lim.max_chars,
+                             timeout_s=lim.parse_timeout_s)
+    elapsed = time.monotonic() - started
+    assert (parsed.pages, parsed.pages_read) == (150, 150)
+    assert 150 * 2000 < len(parsed.text) <= lim.max_chars
+    assert elapsed < lim.parse_timeout_s / 2, f"{elapsed:.1f} s"
 
 
 def test_parse_timeout_kills_the_child(csv_dir, tmp_path, monkeypatch):
@@ -294,15 +553,36 @@ def test_broken_pdf_is_a_parse_error(csv_dir):
     assert doc(url).status == "parse_error" and doc(url).text == ""
 
 
-@pytest.mark.parametrize("stdout", [b"{}", b"[]", b"not json", b'{"pages": "1", "text": "x"}',
-                                    b'{"pages": 1}', b'{"pages": true, "text": "x"}'])
+@pytest.mark.parametrize("stdout", [
+    b"{}", b"[]", b"not json", b'{"pages": "1", "pages_read": 1, "text": "x"}',
+    b'{"pages": 1, "pages_read": 1}', b'{"pages": true, "pages_read": 1, "text": "x"}',
+    b'{"pages": 1, "text": "x"}',                                   # no pages_read
+    b'{"pages": 1, "pages_read": 2, "text": "x"}',                  # more read than there are
+    b'{"pages": 9, "pages_read": -1, "text": "x"}',
+    b'{"pages": 200, "pages_read": 151, "text": "x"}',              # over max_pages
+    b'{"pages": 1, "pages_read": 1, "text": "' + b"x" * 101 + b'"}',  # over max_chars
+    b'{"error": "too_many_pages", "pages": 200}',                   # the old child's answer
+])
 def test_malformed_child_output_is_a_parse_error(tmp_path, monkeypatch, stdout):
     script = tmp_path / "odd.py"
     script.write_text(f"import sys\nsys.stdout.buffer.write({stdout!r})\n")
     monkeypatch.setattr(parse, "SCRIPT", script)
     with pytest.raises(parse.ParseFailed) as e:
-        parse.parse_pdf(PDF, max_pages=60, timeout_s=10)
+        parse.parse_pdf(PDF, max_pages=150, max_chars=100, timeout_s=10)
     assert e.value.status == "parse_error"
+
+
+def test_the_child_gets_the_page_and_character_limits(monkeypatch):
+    seen = {}
+
+    def fake_run(cmd, **kw):
+        seen["cmd"] = cmd
+        raise parse.subprocess.TimeoutExpired(cmd, 1)
+
+    monkeypatch.setattr(parse.subprocess, "run", fake_run)
+    with pytest.raises(parse.ParseFailed):
+        parse.parse_pdf(PDF, max_pages=150, max_chars=400_000, timeout_s=1)
+    assert seen["cmd"][-2:] == ["150", "400000"]
 
 
 def test_child_gets_no_secrets_and_runs_isolated(monkeypatch):
@@ -316,7 +596,7 @@ def test_child_gets_no_secrets_and_runs_isolated(monkeypatch):
     monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-secret")
     monkeypatch.setattr(parse.subprocess, "run", fake_run)
     with pytest.raises(parse.ParseFailed):
-        parse.parse_pdf(PDF, max_pages=60, timeout_s=1)
+        parse.parse_pdf(PDF, max_pages=150, max_chars=400_000, timeout_s=1)
     assert seen["cmd"][:2] == [sys.executable, "-I"]
     assert set(seen["env"]) <= set(parse.ENV_KEEP)
 
@@ -347,7 +627,7 @@ def test_the_pdf_itself_is_never_stored(csv_dir):
     d = doc(url)
     assert "%PDF" not in d.text
     stored = {f.name for f in TenderDocument._meta.concrete_fields}
-    assert stored == {"id", "tender", "url", "status", "text", "pages", "sha256",
+    assert stored == {"id", "tender", "url", "status", "text", "pages", "pages_read", "sha256",
                       "injection_patterns", "attempts", "redact_version", "fetched_at"}
 
 
@@ -454,8 +734,8 @@ def _too_big():
 
 PERMANENT = {
     "skipped_host": ("https://sscp2pspc.ssc-spc.gc.ca/page.aspx/en/fil/download_public/X", None),
+    "skipped_type": (WEB + "rfsa.zip", None),
     "too_big": (ATT + "big.pdf", _too_big),
-    "too_many_pages": (ATT + "long.pdf", lambda: make_pdf([f"p{i}" for i in range(61)])),
     "not_pdf": (ATT + "html.pdf", lambda: FakeResponse(b"<html></html>", "text/html")),
     "redirected": (ATT + "moved.pdf", lambda: urllib.error.HTTPError(
         "u", 302, "Found", {"Location": "https://evil.example/"}, None)),
@@ -861,6 +1141,7 @@ def test_command_prints_counts_only(csv_dir, monkeypatch):
     call_command("fetch_documents", "--csv-dir", str(Path(paths[0]).parent), stdout=out)
     text = out.getvalue()
     assert "documents: ok 1, skipped_host 1" in text and "downloads: 1" in text
+    assert "0 long PDF(s) read in part" in text
     chars = len(doc(url).text)
     assert f"stored ok: 1 tender(s) with >= 1 ok document, 1 document(s), {chars:,} characters" \
         in text

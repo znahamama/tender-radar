@@ -1,8 +1,9 @@
 """Download one CanadaBuys attachment PDF, with every guard applied before parsing.
 
-Only https://canadabuys.canada.ca/documents/pub/att/... is fetched. Redirects are never
-followed (one could leave the allowlisted host), and nothing here tries to get past a
-login or a captcha: an SSC, Ariba or other URL is not requested at all.
+Only https://canadabuys.canada.ca under one of ALLOWED_PATH_PREFIXES is fetched, and only
+a URL whose path ends in ".pdf" (any case). Redirects are never followed (one could leave
+the allowlisted host), and nothing here tries to get past a login or a captcha: an SSC,
+Ariba or other URL is not requested at all.
 """
 
 from __future__ import annotations
@@ -17,7 +18,11 @@ from urllib.parse import unquote, urlsplit
 from tenders.ingest.fetch import USER_AGENT
 
 ALLOWED_HOST = "canadabuys.canada.ca"
-ALLOWED_PATH_PREFIX = "/documents/pub/att/"
+# Both are public CanadaBuys attachment paths under the same terms (checked 2026-11-21: the
+# notice pages of a /documents/pub/att/ notice and a /sites/default/files/ one carry the
+# same "Eligibility and terms and conditions" text, and 5 PDFs from the second path came
+# back 200 application/pdf with no redirect and no login). Newer notices use the second.
+ALLOWED_PATH_PREFIXES = ("/documents/pub/att/", "/sites/default/files/webform/tender_notice/")
 # CanadaBuys serves its attachment PDFs as application/octet-stream (checked 2026-11-18),
 # so that counts too; the %PDF- magic bytes are always required.
 PDF_CONTENT_TYPES = frozenset({"application/pdf", "application/octet-stream"})
@@ -32,7 +37,7 @@ class FetchFailed(Exception):
 
 
 def is_allowed_url(url: str) -> bool:
-    """https, exactly canadabuys.canada.ca (no port, no user info), under the attachment
+    """https, exactly canadabuys.canada.ca (no port, no user info), under an attachment
     path, and no "." or ".." segment (even percent-encoded) that could climb out of it."""
     try:
         parts = urlsplit(url)
@@ -40,9 +45,19 @@ def is_allowed_url(url: str) -> bool:
         return False
     if parts.scheme != "https" or parts.netloc != ALLOWED_HOST:
         return False
-    if not parts.path.startswith(ALLOWED_PATH_PREFIX):
+    if not parts.path.startswith(ALLOWED_PATH_PREFIXES):
         return False
     return not any(seg in (".", "..") for seg in unquote(parts.path).split("/"))
+
+
+def is_pdf_url(url: str) -> bool:
+    """The URL's path (percent-decoded) ends in ".pdf", any case. Zip, xlsx and docx
+    attachments are never downloaded: they would only use up the run's download cap."""
+    try:
+        path = urlsplit(url).path
+    except ValueError:
+        return False
+    return unquote(path).lower().endswith(".pdf")
 
 
 class _NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -60,6 +75,8 @@ def download_pdf(url: str, *, opener, max_bytes: int, timeout_s: float,
     download (a slow trickle too), not only each socket read."""
     if not is_allowed_url(url):
         raise FetchFailed("skipped_host")
+    if not is_pdf_url(url):
+        raise FetchFailed("skipped_type")
     request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
     deadline = clock() + timeout_s
     body = bytearray()

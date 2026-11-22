@@ -65,19 +65,26 @@ class Tender(models.Model):
 class TenderDocument(models.Model):
     """One attachment URL of a tender, and what fetching it gave (tenders.documents).
 
-    Holds only the redacted text, never the PDF. Not shown on any public page and not in
-    the prompt yet. One row per (tender, url) once it was looked at, including skipped
-    and failed ones. Only transient failures are tried again, on later runs, up to 3
-    attempts (tenders.documents.service.RETRYABLE, MAX_ATTEMPTS); an over_tender_limit
-    row is downloaded once it ranks within the per-tender limit, and an ok row cleaned by an
-    older redact() is downloaded again and re-cleaned (service.plan).
+    Holds only the redacted text, never the PDF. Not shown on any public page. One row per
+    (tender, url) once it was looked at, including skipped and failed ones. Only transient
+    failures are tried again, on later runs, up to 3 attempts
+    (tenders.documents.service.RETRYABLE, MAX_ATTEMPTS); an over_tender_limit row, a
+    skipped_host row whose URL the allowlist now takes, or a too_many_pages row, is
+    downloaded once it ranks within the per-tender limit, and an ok row cleaned by an older redact() is downloaded again and
+    re-cleaned (service.plan).
+
+    A long PDF is ok but read in part: only its first pages (service.Limits) and whole pages
+    up to a character cap, so ``pages_read`` < ``pages`` (see ``partial``).
     """
 
     class Status(models.TextChoices):
         OK = "ok", "OK"
         SKIPPED_HOST = "skipped_host", "Skipped: not a CanadaBuys attachment URL"
+        SKIPPED_TYPE = "skipped_type", "Skipped: not a .pdf URL"
         OVER_TENDER_LIMIT = "over_tender_limit", "Skipped: over the per-tender limit"
         TOO_BIG = "too_big", "Too big"
+        # Legacy: before 2026-11-21 a PDF over 60 pages was rejected. Now it is read in part
+        # (ok, pages_read < pages), and each old row is downloaded once more (service.plan).
         TOO_MANY_PAGES = "too_many_pages", "Too many pages"
         NOT_PDF = "not_pdf", "Not a PDF"
         TIMEOUT = "timeout", "Download timed out"
@@ -91,7 +98,9 @@ class TenderDocument(models.Model):
     url = models.TextField()
     status = models.CharField(max_length=24, choices=Status.choices)
     text = models.TextField(blank=True, help_text="Redacted. Never served publicly.")
-    pages = models.PositiveIntegerField(null=True, blank=True)
+    pages = models.PositiveIntegerField(null=True, blank=True)  # in the whole document
+    # Pages whose text is all in ``text`` (ok rows only): < pages means read in part.
+    pages_read = models.PositiveIntegerField(null=True, blank=True)
     sha256 = models.CharField(max_length=64, blank=True)  # of the downloaded bytes
     # Rule names from tenders.ingest.injection.scan_text, never the matched text.
     injection_patterns = models.JSONField(default=list, blank=True)
@@ -107,6 +116,12 @@ class TenderDocument(models.Model):
 
     def __str__(self) -> str:
         return f"{self.tender_id}: {self.status} {self.url.rsplit('/', 1)[-1]}"
+
+    @property
+    def partial(self) -> bool:
+        """An ok document of which only the first ``pages_read`` of ``pages`` were read."""
+        return (self.status == self.Status.OK and self.pages is not None
+                and self.pages_read is not None and self.pages_read < self.pages)
 
 
 class Extraction(models.Model):

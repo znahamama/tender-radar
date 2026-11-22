@@ -8,7 +8,7 @@ from tenders.documents.service import fetch_documents
 class Command(BaseCommand):
     help = ("Fetch CanadaBuys attachment PDFs of open, kept tenders whose attachment URL set "
             "changed, a failure to retry, or a document that now fits the per-tender "
-            "limit, and store their redacted text (tenders.documents). Delete the documents of "
+            "limit or the allowlist, and store their redacted text (tenders.documents). Delete the documents of "
             "tenders no longer in the CSVs, then re-clean any stored document, on any "
             "tender, cleaned by an older redact(). No API calls.")
 
@@ -27,8 +27,9 @@ class Command(BaseCommand):
         out(f"tenders: {s.tenders_checked} checked, {s.unchanged} unchanged, "
             f"{s.no_csv_row} not in the CSVs")
         out(f"downloads: {s.downloads} ({s.retries} retries, {s.reevaluated} previously over "
-            f"the per-tender limit, {s.recleaned} re-cleaned); deleted {s.deleted} row(s) for "
-            "URLs no longer listed")
+            f"the per-tender limit or off the allowlist, {s.recleaned} re-cleaned); "
+            f"{s.partial} long PDF(s) read in part; deleted {s.deleted} row(s) for URLs no "
+            "longer listed")
         out("documents: " + (", ".join(f"{k} {v}" for k, v in sorted(s.statuses.items()))
                              or "none"))
         out(f"stored ok: {s.ok_tenders} tender(s) with >= 1 ok document, {s.ok_documents} "

@@ -14,6 +14,7 @@ import os
 import subprocess
 import sys
 from pathlib import Path
+from typing import NamedTuple
 
 SCRIPT = Path(__file__).with_name("pdftext.py")
 MEMORY_LIMIT_BYTES = 512 * 1024 * 1024  # the worker has 1024 MB in all
@@ -29,17 +30,29 @@ class ParseFailed(Exception):
         self.pages = pages
 
 
+class Parsed(NamedTuple):
+    pages: int  # in the whole document
+    pages_read: int  # whose text is all in ``text``; < pages means read in part
+    text: str
+
+
 def _limit_memory() -> None:  # runs in the child, before exec
     import resource
 
     resource.setrlimit(resource.RLIMIT_AS, (MEMORY_LIMIT_BYTES, MEMORY_LIMIT_BYTES))
 
 
-def parse_pdf(data: bytes, *, max_pages: int, timeout_s: float) -> tuple[int, str]:
-    """(page count, text), or ParseFailed("too_many_pages" | "parse_timeout" | "parse_error")."""
+def _count(v) -> int | None:
+    return v if isinstance(v, int) and not isinstance(v, bool) and v >= 0 else None
+
+
+def parse_pdf(data: bytes, *, max_pages: int, max_chars: int, timeout_s: float) -> Parsed:
+    """The text of the first ``max_pages`` pages, whole pages only, at most ``max_chars``
+    characters (see pdftext.py), or ParseFailed("parse_timeout" | "parse_error"). A longer
+    document is not an error: ``pages_read`` < ``pages`` says it was read in part."""
     try:
         proc = subprocess.run(
-            [sys.executable, "-I", str(SCRIPT), str(max_pages)],
+            [sys.executable, "-I", str(SCRIPT), str(max_pages), str(max_chars)],
             input=data, capture_output=True, timeout=timeout_s, check=False,
             env={k: os.environ[k] for k in ENV_KEEP if k in os.environ},
             preexec_fn=_limit_memory if sys.platform.startswith("linux") else None,
@@ -54,11 +67,8 @@ def parse_pdf(data: bytes, *, max_pages: int, timeout_s: float) -> tuple[int, st
         raise ParseFailed("parse_error") from None
     if not isinstance(out, dict):
         raise ParseFailed("parse_error")
-    pages = out.get("pages")
-    if not isinstance(pages, int) or isinstance(pages, bool) or pages < 0:
-        pages = None
-    if out.get("error") == "too_many_pages":
-        raise ParseFailed("too_many_pages", pages)
-    if "error" in out or pages is None or not isinstance(out.get("text"), str):
+    pages, read, text = _count(out.get("pages")), _count(out.get("pages_read")), out.get("text")
+    if ("error" in out or pages is None or read is None or read > pages
+            or read > max_pages or not isinstance(text, str) or len(text) > max_chars):
         raise ParseFailed("parse_error")
-    return pages, out["text"]
+    return Parsed(pages, read, text)
