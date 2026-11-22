@@ -1,3 +1,6 @@
+# The app's packages at the deployed versions (requirements.lock); the dev tools below are
+# not pinned.
+-c requirements.lock
 -r requirements.txt
 ruff
 pytest

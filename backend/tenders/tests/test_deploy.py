@@ -73,6 +73,30 @@ def test_api_urlconf_does_not_import_worker_only_modules():
     assert out.stdout.strip() == "[]"
 
 
+# --- dependency lock ------------------------------------------------------------------
+
+def _requirements(name: str) -> list[str]:
+    root = Path(__file__).resolve().parents[3]
+    lines = (line.split("#", 1)[0].strip() for line in (root / name).read_text().splitlines())
+    return [line for line in lines if line]
+
+
+def test_lock_pins_every_requirement_within_its_range():
+    """A package added to requirements.txt without rerunning infra/scripts/lock_requirements.sh
+    would install unpinned (a constraints file only limits what it lists)."""
+    from packaging.requirements import Requirement
+    from packaging.utils import canonicalize_name
+
+    locked = {}
+    for line in _requirements("requirements.lock"):
+        name, version = line.split("==")
+        locked[canonicalize_name(name)] = version
+    for req in map(Requirement, _requirements("requirements.txt")):
+        name = canonicalize_name(req.name)
+        assert name in locked, f"{req.name} is not in requirements.lock; rerun the lock script"
+        assert req.specifier.contains(locked[name], prereleases=True), (name, locked[name])
+
+
 # --- SSM ------------------------------------------------------------------------------
 
 class FakeSSM:

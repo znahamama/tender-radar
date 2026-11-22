@@ -1,6 +1,7 @@
 # Allow-list: only what the image needs. Keeps .env, .git, .venv and data/ out for sure.
 *
 !requirements.txt
+!requirements.lock
 !backend/
 backend/**/__pycache__
 backend/**/tests

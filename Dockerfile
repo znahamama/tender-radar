@@ -11,8 +11,10 @@ ENV PYTHONUNBUFFERED=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
     DJANGO_SETTINGS_MODULE=config.settings
 WORKDIR ${LAMBDA_TASK_ROOT}
-COPY requirements.txt /tmp/requirements.txt
-RUN pip install -r /tmp/requirements.txt
+# Exact versions from requirements.lock (a constraints file; infra/scripts/lock_requirements.sh
+# regenerates it), so an image built tomorrow has the same packages as the tests ran on.
+COPY requirements.txt requirements.lock /tmp/
+RUN pip install -r /tmp/requirements.txt -c /tmp/requirements.lock
 COPY backend/ ${LAMBDA_TASK_ROOT}/
 # Precompile: /var/task is read-only at runtime, so this is the only chance.
 RUN python -m compileall -q ${LAMBDA_TASK_ROOT}

@@ -144,6 +144,10 @@ start (or after a redeploy).
 infra/scripts/build_push.sh "$(git rev-parse HEAD)"
 ```
 
+The images install `requirements.txt` with `-c requirements.lock`, so a rebuild of the same
+commit gets the same package versions. To change them, see "Updating dependencies" in the
+root README (`infra/scripts/lock_requirements.sh`).
+
 ### (e) Full apply
 
 ```sh

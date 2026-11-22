@@ -293,13 +293,6 @@ Report: [eval/reports/documents-precision-2026-11-19.md](eval/reports/documents-
 - No React front end and no REST API/OpenAPI: server-rendered Django templates instead.
 - Bedrock was replaced by the Anthropic API after two quota denials.
 
-## Roadmap
-
-Cleanup:
-- An assess-only worker task (`{"task":"assess"}`: `assess_tenders` alone, no ingest, no
-  LLM), so reassessing after a deploy (e.g. carrying review decisions forward) doesn't
-  need a full daily run.
-
 ## Run it locally
 
 Needs Python 3.12 and a Postgres database. Put `DATABASE_URL` and `DJANGO_SECRET_KEY` in a
@@ -316,6 +309,28 @@ python manage.py assess_tenders
 python manage.py runserver
 cd .. && python -m pytest
 ```
+
+`requirements-dev.txt` installs the app's packages at the exact versions in
+`requirements.lock`, the same ones the Lambda image installs, so tests run on what ships.
+After pulling a commit that changes the lock, run `pip install -r requirements-dev.txt` again.
+
+### Updating dependencies
+
+`requirements.txt` holds the ranges you choose; `requirements.lock` is generated from them
+and pins every package they pull in, as resolved on the Lambda base image (linux/arm64).
+Never edit the lock by hand.
+
+```sh
+# 1. Edit requirements.txt if a range or package changes (to only take new releases, skip this).
+infra/scripts/lock_requirements.sh   # fresh resolve in the base image; needs Docker
+git diff requirements.lock           # read it: watch for major versions (django, anthropic, ...)
+pip install -r requirements-dev.txt  # local venv to the new pins
+ruff check . && python -m pytest
+# 2. Commit requirements.txt and requirements.lock together, then deploy as usual.
+```
+
+A test fails if `requirements.txt` names a package that isn't in the lock, or one whose locked
+version is outside its range. Dev tools (ruff, pytest, ...) are not pinned.
 
 Deploying to AWS: see [infra/README.md](infra/README.md).
 
