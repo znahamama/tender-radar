@@ -2,6 +2,7 @@ import typing
 
 from django.conf import settings
 from django.db import models
+from django.utils import timezone
 
 
 class Tender(models.Model):
@@ -75,7 +76,16 @@ class TenderDocument(models.Model):
 
     A long PDF is ok but read in part: only its first pages (service.Limits) and whole pages
     up to a character cap, so ``pages_read`` < ``pages`` (see ``partial``).
+
+    ``source`` "upload": a PDF a reviewer uploaded on the admin review page
+    (tenders.documents.upload). Its ``url`` is "upload:<sha256>" (never a link), its name is
+    ``original_filename``, and it is always ok; the fetcher never downloads, retries or
+    deletes it per URL (only with the tender's other rows when the tender leaves the CSVs).
     """
+
+    class Source(models.TextChoices):
+        FETCHED = "fetched", "Fetched from CanadaBuys"
+        UPLOAD = "upload", "Uploaded by a reviewer"
 
     class Status(models.TextChoices):
         OK = "ok", "OK"
@@ -108,14 +118,30 @@ class TenderDocument(models.Model):
     # tenders.ingest.redact.REDACT_VERSION that cleaned ``text``. No default on purpose: the
     # fetcher always sets it, and rows from before the field were cleaned by version 1.
     redact_version = models.PositiveSmallIntegerField()
-    fetched_at = models.DateTimeField()  # of the latest attempt
+    fetched_at = models.DateTimeField()  # of the latest attempt; an upload: when uploaded
+    source = models.CharField(max_length=10, choices=Source.choices, default=Source.FETCHED)
+    uploaded_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True,
+                                    on_delete=models.SET_NULL, related_name="+")
+    # An upload's file name as sent (path dropped, redacted, at most 200 characters).
+    original_filename = models.CharField(max_length=200, blank=True)
 
     class Meta:
         constraints = (models.UniqueConstraint(fields=["tender", "url"],
                                                name="uniq_tender_document_url"),)
 
     def __str__(self) -> str:
-        return f"{self.tender_id}: {self.status} {self.url.rsplit('/', 1)[-1]}"
+        return f"{self.tender_id}: {self.status} {self.filename}"
+
+    @property
+    def is_upload(self) -> bool:
+        return self.source == self.Source.UPLOAD
+
+    @property
+    def filename(self) -> str:
+        """The name the prompt and the pages use: an upload's own, else the URL's last part."""
+        from tenders.documents.fetch import url_filename
+
+        return self.original_filename if self.is_upload else url_filename(self.url)
 
     @property
     def partial(self) -> bool:
@@ -160,6 +186,13 @@ class Extraction(models.Model):
                   "injection. Never its text.")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    # When an extraction run last produced or re-used this row (tenders.extraction.service:
+    # set on creation and on every cache hit). The extraction the site shows for a tender
+    # and model is the one with the latest last_used_at: a run that falls back to an older
+    # input (a document deleted or gone) makes that older, cached extraction current again.
+    # History (review decisions carried along a notice's extractions) still follows
+    # created_at.
+    last_used_at = models.DateTimeField(default=timezone.now)
 
     class Meta:
         constraints = (

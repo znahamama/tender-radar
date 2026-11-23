@@ -58,7 +58,8 @@ def assess(tender, status, *, model_id=LLM, blockers=(), warnings=(), not_stated
         model_id=model_id, prompt_version="v2", schema_version="1", status="ok",
         raw_output=data, data=data, flags=list(flags))
     if created_at:
-        Extraction.objects.filter(pk=x.pk).update(created_at=created_at)
+        Extraction.objects.filter(pk=x.pk).update(created_at=created_at,
+                                                  last_used_at=created_at)
     return Assessment.objects.create(
         tender=tender, extraction=x, profile=SupplierProfile.objects.order_by("id").first(),
         status=status, blockers=list(blockers), warnings=list(warnings),

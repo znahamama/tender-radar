@@ -687,3 +687,54 @@ def test_a_cap_on_a_v4_call_still_stops_the_run(make_tender, monkeypatch, settin
     assert "stopped: daily cost cap reached" in out.getvalue()
     assert "v5 failed" not in out.getvalue() and len(client.calls) == 2
     _assert_kept_v3(with_docs, v3)
+
+
+# --- the current extraction follows the input (Extraction.last_used_at) -------------------
+
+def test_a_document_that_disappears_makes_the_older_cached_extraction_current(
+        make_tender, monkeypatch, client):
+    """A tender read with a fetched document (v5); the document then leaves the CSV's
+    attachment list and the fetcher deletes its row. The next run's input is the notice
+    alone, already extracted (v3): a cache hit, no API call, and that extraction is the one
+    the page shows again, not the newer v5 one that read the vanished document."""
+    from django.urls import reverse
+
+    from tenders.documents.service import Limits, plan
+    from tenders.models import Assessment
+
+    client_api = StubClient(response(valid_data()), response(with_sources(valid_data())))
+    monkeypatch.setattr(providers, "_default_client", lambda: client_api)
+    t = make_tender(attachment_urls=[])
+    ref = t.reference_number
+    call_command("extract_tenders", "--reference", ref, stdout=StringIO())
+    v3 = Extraction.objects.get(tender=t)
+
+    t.attachment_urls = [MAIN]
+    t.save()
+    add_doc(t, MAIN, MAIN_TEXT)
+    call_command("extract_tenders", "--reference", ref, stdout=StringIO())
+    v5 = Extraction.objects.get(tender=t, prompt_version="v5")
+    detail = reverse("tender-detail", args=[ref])
+    r = client.get(detail)
+    assert r.context["llm"] == v5 and "PW-1.EBSU000.PDF" in r.content.decode()
+
+    # Gone from the CSV: the fetcher's plan deletes the row for a URL no longer listed.
+    t.attachment_urls = []
+    t.save()
+    todo = plan(t, Limits())
+    assert todo.gone == {MAIN}
+    TenderDocument.objects.filter(tender=t, url__in=todo.gone).delete()
+
+    out = StringIO()
+    call_command("extract_tenders", "--reference", ref, stdout=out)
+    assert len(client_api.calls) == 2 and "cache hits 1" in out.getvalue()
+    v3.refresh_from_db()
+    assert v3.last_used_at > v5.last_used_at
+    r = client.get(detail)
+    assert r.context["llm"] == v3
+    assert r.context["assessment"] == Assessment.objects.get(extraction=v3)
+    assert "PW-1.EBSU000.PDF" not in r.content.decode()
+    # And assess_tenders re-assesses that one, not the v5 extraction.
+    from tenders.eligibility.service import latest_extractions
+
+    assert [x.pk for x in latest_extractions() if x.tender_id == t.pk] == [v3.pk]

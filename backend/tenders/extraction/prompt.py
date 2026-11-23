@@ -383,11 +383,14 @@ class DocumentInput:
     injection: bool  # the fetcher's code-side scan flagged its text
     # The whole stored text, neutralized, for grounding only (also past a cut).
     text: str = field(repr=False, compare=False)
+    uploaded: bool = False  # a reviewer uploaded it (TenderDocument.source "upload")
 
     def record(self) -> dict:
+        """An upload's record also says ``"source": "upload"`` (the pages name it as one,
+        never linked); a fetched document's record is as it always was."""
         return {"name": self.name, "url": self.url, "status": self.status,
                 "chars": self.chars, "total_chars": self.total_chars,
-                "injection": self.injection}
+                "injection": self.injection, **({"source": "upload"} if self.uploaded else {})}
 
 
 @dataclass(frozen=True)
@@ -491,14 +494,16 @@ def build_input(tender: Tender, prompt_version: str | None = None) -> Notice:
 _UNSAFE_NAME = re.compile(r'[\x00-\x1f\x7f"]+')
 
 
-def document_names(urls: list[str]) -> list[str]:
+def document_names(urls: list[str], filenames: list[str] | None = None) -> list[str]:
     """A short, unique, attribute-safe name per URL: its file name (neutralized, no quotes
-    or control characters, at most 100 characters), "(2)" etc. added on a repeat."""
-    from tenders.documents.service import _filename
+    or control characters, at most 100 characters), "(2)" etc. added on a repeat.
+    ``filenames``: the file names to use instead of the URLs' (an upload has its own)."""
+    from tenders.documents.fetch import url_filename
 
+    files = filenames if filenames is not None else [url_filename(u) for u in urls]
     names: list[str] = []
-    for i, url in enumerate(urls, 1):
-        base = " ".join(_UNSAFE_NAME.sub(" ", neutralize(_filename(url))).split())[:100]
+    for i, filename in enumerate(files, 1):
+        base = " ".join(_UNSAFE_NAME.sub(" ", neutralize(filename)).split())[:100]
         base = base or f"document {i}"
         name, n = base, 1
         while name in names:
@@ -510,13 +515,29 @@ def document_names(urls: list[str]) -> list[str]:
 
 def _ranked_documents(tender: Tender) -> list:
     """Ok documents with text, in the fetcher's rank order (main solicitation, amendments
-    in order, the rest), ties in the CSV's attachment order."""
-    from tenders.documents.service import order_urls
+    in order, the rest), ties in the CSV's attachment order, then other fetched URLs in URL
+    order, then uploads in upload order. An upload ranks as the main solicitation unless
+    its file name says amendment (documents.service.upload_rank)."""
+    from tenders.documents.service import document_rank
 
-    docs = {d.url: d for d in tender.documents.filter(status="ok").exclude(text="")}
+    rows = tender.documents.filter(status="ok").exclude(text="")
+    docs = {d.url: d for d in rows.order_by("id")}
     listed = [u for u in tender.attachment_urls or [] if u in docs]
-    rest = sorted(set(docs) - set(listed))
-    return [docs[u] for u in order_urls(list(dict.fromkeys(listed)) + rest)]
+    fetched = sorted(u for u, d in docs.items() if not d.is_upload and u not in set(listed))
+    uploads = [u for u, d in docs.items() if d.is_upload]  # id order
+    ordered = [docs[u] for u in [*dict.fromkeys(listed), *fetched, *uploads]]
+    return sorted(ordered, key=document_rank)
+
+
+def _is_upload(doc) -> bool:
+    return getattr(doc, "source", "fetched") == "upload"
+
+
+def _doc_filename(doc) -> str:
+    """A row's file name; tests pass plain objects with a ``url`` only."""
+    from tenders.documents.fetch import url_filename
+
+    return doc.original_filename if _is_upload(doc) else url_filename(doc.url)
 
 
 def _cut(text: str, room: int) -> str:
@@ -536,9 +557,9 @@ def input_order(docs: list, prompt_version: str = DOCUMENTS_PROMPT_VERSION) -> l
     first in rank order is the very last (it gets whatever room is left)."""
     if prompt_version == "v4":
         return list(docs)
-    from tenders.documents.service import _rank
+    from tenders.documents.service import document_rank
 
-    groups = [_rank(d.url)[0] for d in docs]
+    groups = [document_rank(d)[0] for d in docs]
     mains = [d for d, g in zip(docs, groups, strict=True) if g == 0]
     return ([d for d, g in zip(docs, groups, strict=True) if g == 1]
             + [d for d, g in zip(docs, groups, strict=True) if g >= 2] + mains[::-1])
@@ -596,7 +617,7 @@ def build_notice_with_documents(tender: Tender, documents: list | None = None,
     notice = build_notice(tender)
     ranked = _ranked_documents(tender) if documents is None else list(documents)
     docs = input_order(ranked, prompt_version)
-    names = document_names([d.url for d in docs])
+    names = document_names([d.url for d in docs], [_doc_filename(d) for d in docs])
     bodies = [neutralize(d.text) for d in docs]
     open_tag, close_tag = "<solicitation_documents>", "</solicitation_documents>"
     used = len(notice.text) + len(open_tag) + len(close_tag) + 2  # + the joining newlines
@@ -615,7 +636,7 @@ def build_notice_with_documents(tender: Tender, documents: list | None = None,
             cut = "true" if status == PARTIAL else "false"
             parts.append(f'<document name="{name}" truncated="{cut}">\n{given}\n</document>')
         inputs.append(DocumentInput(name, d.url, status, len(given), len(body),
-                                    bool(d.injection_patterns), body))
+                                    bool(d.injection_patterns), body, _is_upload(d)))
     text = "\n".join([notice.text, open_tag, *parts, close_tag])
     # Every document's whole stored text counts, read or not: grounding uses it, and the
     # record of what was left out must stay true.

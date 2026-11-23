@@ -34,7 +34,8 @@ class Command(BaseCommand):
                              or "none"))
         out(f"stored ok: {s.ok_tenders} tender(s) with >= 1 ok document, {s.ok_documents} "
             f"document(s), {s.ok_chars:,} characters; {s.ok_stale} still cleaned by an "
-            f"older redact() ({s.stale_no_csv_row} left: tender not in the CSVs)")
+            f"older redact() ({s.stale_no_csv_row} left: tender not in the CSVs); "
+            f"{s.uploads_recleaned} uploaded document(s) re-cleaned from their stored text")
         if s.removal_skipped:
             out(self.style.WARNING(f"removed nothing: {s.removal_skipped}"))
         else:

@@ -6,6 +6,7 @@ import hashlib
 from dataclasses import dataclass
 from typing import Literal
 
+from django.utils import timezone
 from pydantic import ValidationError
 
 from tenders.models import Extraction, Tender
@@ -79,6 +80,10 @@ def extract_tender(tender: Tender, extractor: Extractor, meter: CallMeter) -> Ou
            "model_id": extractor.model_id, "prompt_version": extractor.prompt_version}
     cached = Extraction.objects.filter(**key, status=Extraction.Status.OK).first()
     if cached:
+        # Re-used: it is this tender's current extraction again, even if a newer one exists
+        # (e.g. one that read a document since deleted). See Extraction.last_used_at.
+        cached.last_used_at = timezone.now()
+        Extraction.objects.filter(pk=cached.pk).update(last_used_at=cached.last_used_at)
         return Outcome(tender.reference_number, "cache_hit", refresh(cached, notice, tender))
 
     result = extractor.extract(notice, meter, tender=tender)
@@ -93,6 +98,7 @@ def extract_tender(tender: Tender, extractor: Extractor, meter: CallMeter) -> Ou
             "documents": notice.documents_record(),
             "raw_output": result.data.model_dump(mode="json") if result.data else None,
             "call_flags": call_flags, "data": None, "flags": call_flags, "error": result.error,
+            "last_used_at": timezone.now(),
         },
     )
     return Outcome(tender.reference_number, result.status, refresh(extraction, notice, tender))

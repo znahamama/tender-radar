@@ -33,6 +33,9 @@ resource "aws_lambda_function" "api" {
       # Only a real 200 counts as ready (the default 100-499 would accept a 400 from a
       # host mismatch and route traffic to a broken app).
       AWS_LWA_READINESS_CHECK_HEALTHY_STATUS = "200-299"
+      # Invoked asynchronously after a reviewer upload or delete ({"task": "extract_one"});
+      # the API role may invoke this function and nothing else (iam.tf).
+      WORKER_FUNCTION_NAME = aws_lambda_function.worker.function_name
     }
   }
 
@@ -64,8 +67,9 @@ resource "aws_lambda_function" "worker" {
   depends_on = [aws_cloudwatch_log_group.lambda, aws_iam_role_policy.lambda, aws_ecr_repository_policy.app]
 }
 
-# The scheduler invokes asynchronously, and async Lambda invokes retry twice on error by
-# default. Zero here as well as on the schedule, so a failed run never repeats LLM calls.
+# The scheduler and the API (extract_one) invoke asynchronously, and async Lambda invokes
+# retry twice on error by default. Zero here as well as on the schedule, so a failed run
+# never repeats LLM calls.
 resource "aws_lambda_function_event_invoke_config" "worker" {
   function_name                = aws_lambda_function.worker.function_name
   maximum_retry_attempts       = 0

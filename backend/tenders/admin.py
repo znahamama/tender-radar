@@ -3,6 +3,7 @@ import json
 from django import forms
 from django.conf import settings
 from django.contrib import admin, messages
+from django.contrib.admin.models import DELETION, LogEntry
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
 from django.db.models import (
@@ -16,13 +17,18 @@ from django.db.models import (
     When,
 )
 from django.db.models.functions import Cast, Coalesce
-from django.http import HttpResponseBadRequest, HttpResponseRedirect
+from django.http import (
+    HttpResponseBadRequest,
+    HttpResponseNotAllowed,
+    HttpResponseRedirect,
+)
 from django.shortcuts import get_object_or_404
 from django.template.response import TemplateResponse
 from django.urls import path, reverse
 from django.utils.html import format_html
 
 from . import review
+from .documents import upload
 from .eligibility.combine import V3, VERSIONS_DISAGREE, combined_for
 from .ingest.injection import INJECTION_PATTERN
 from .models import (
@@ -33,6 +39,7 @@ from .models import (
     ReviewDecision,
     SupplierProfile,
     Tender,
+    TenderDocument,
 )
 from .pages import GATE_LABELS, gate_flags, gate_value, is_open, primary_assessments
 
@@ -147,10 +154,10 @@ def queue_flags(flags: list[str], data_quality: list[str],
 
 
 def review_queue():
-    """Open notices, newest LLM extraction each (the one the site shows): blocked first,
-    then flagged, then the rest; by closing date within each."""
+    """Open notices, current LLM extraction each (the one the site shows: latest
+    last_used_at): blocked first, then flagged, then the rest; by closing date within each."""
     newest = (Extraction.objects.filter(tender=OuterRef("pk"), model_id=settings.LLM_MODEL)
-              .order_by("-created_at", "-id"))
+              .order_by("-last_used_at", "-id"))
     status = primary_assessments().filter(tender=OuterRef("pk")).values("status")[:1]
     gates_reviewed = (ReviewDecision.objects.filter(extraction=OuterRef("review_extraction_id"))
                       .values("extraction").annotate(n=Count("gate", distinct=True))
@@ -169,13 +176,13 @@ def review_queue():
         review_status=Subquery(status),
     ).annotate(
         gates_reviewed=Coalesce(Subquery(gates_reviewed, output_field=IntegerField()), 0),
-        # The newest earlier extraction of this notice that a person reviewed.
+        # The most recently current other extraction of this notice that a person reviewed.
         earlier_reviewed_id=Subquery(
             Extraction.objects.filter(tender=OuterRef("pk"),
                                       model_id=settings.LLM_MODEL,
                                       review_decisions__isnull=False)
             .exclude(pk=OuterRef("review_extraction_id"))
-            .order_by("-created_at", "-id").values("id")[:1]),
+            .order_by("-last_used_at", "-id").values("id")[:1]),
     )
     flagged = Q(data_quality__contains=[INJECTION_PATTERN])
     for f in QUEUE_FLAGS:
@@ -306,8 +313,14 @@ class NeedsReviewAdmin(admin.ModelAdmin):
         return format_html('{}<br><a href="{}">reviewed on an earlier version</a>', text, url)
 
     def get_urls(self):
-        return [path("extraction/<int:pk>/", self.admin_site.admin_view(self.review_view),
-                     name="tenders_review_extraction"), *super().get_urls()]
+        view = self.admin_site.admin_view  # staff login (with the lockout) and CSRF
+        return [path("extraction/<int:pk>/", view(self.review_view),
+                     name="tenders_review_extraction"),
+                path("extraction/<int:pk>/documents/", view(self.upload_view),
+                     name="tenders_upload_documents"),
+                path("extraction/<int:pk>/documents/<int:doc_pk>/delete/",
+                     view(self.delete_document_view), name="tenders_delete_document"),
+                *super().get_urls()]
 
     # -- the review page ----------------------------------------------------------------
 
@@ -345,11 +358,82 @@ class NeedsReviewAdmin(admin.ModelAdmin):
             "reviewable": reviewable,
             "newest_id": (Extraction.objects.filter(tender=extraction.tender,
                                                     model_id=extraction.model_id)
-                          .order_by("-created_at", "-id").values_list("id", flat=True).first()),
+                          .order_by("-last_used_at", "-id").values_list("id", flat=True).first()),
             "assessment": (extraction.assessments.filter(profile_id=_default_profile_id())
                            .first()),
             "gates": self._gate_context(extraction, bound) if reviewable else [],
+            **self._documents_context(extraction.tender),
         })
+
+    # -- reviewer document upload (tenders.documents.upload) ------------------------------
+
+    @staticmethod
+    def _documents_context(tender: Tender) -> dict:
+        docs = list(upload.uploaded(tender).select_related("uploaded_by").order_by("id"))
+        return {
+            "uploads": [{"doc": d, "reading": upload.reading_status(d)} for d in docs],
+            "fetched_ok": tender.documents.filter(source=TenderDocument.Source.FETCHED,
+                                                  status=TenderDocument.Status.OK).count(),
+            "upload_limits": {"mb": upload.MAX_FILE_BYTES // (1024 * 1024),
+                              "per_tender": upload.MAX_PER_TENDER,
+                              "per_day": upload.MAX_PER_USER_PER_DAY},
+        }
+
+    def _documents_target(self, request, pk: int):
+        """The extraction (and so the tender) of an upload or delete POST."""
+        if not can_review(request.user):
+            raise PermissionDenied
+        return get_object_or_404(Extraction.objects.select_related("tender"), pk=pk)
+
+    @staticmethod
+    def _back(extraction: Extraction) -> HttpResponseRedirect:
+        url = reverse("admin:tenders_review_extraction", args=[extraction.pk])
+        return HttpResponseRedirect(f"{url}#documents")
+
+    @staticmethod
+    def _reread(request, tender: Tender, done: str) -> None:
+        """Ask the worker to re-read the tender, and say what happens next."""
+        why_not = upload.start_extract_one(tender.reference_number)
+        if why_not:
+            messages.warning(request, f"{done} Not re-read yet: {why_not}. The daily run "
+                                      "reads it otherwise.")
+        else:
+            messages.success(request, f"{done} The notice is being read again; reload this "
+                                      "page in a minute or two.")
+
+    def upload_view(self, request, pk: int):
+        extraction = self._documents_target(request, pk)
+        if request.method != "POST":
+            return HttpResponseNotAllowed(["POST"])
+        tender = extraction.tender
+        files = request.FILES.getlist("files")
+        try:
+            upload.check_request(tender, request.user, len(files))
+        except upload.Rejected as e:
+            messages.error(request, str(e))
+            return self._back(extraction)
+        result = upload.handle_files(tender, request.user, files)
+        for name, why in result.rejected:
+            messages.error(request, f"Not uploaded: {name}: {why}.")
+        if result.stored:
+            names = ", ".join(d.original_filename for d in result.stored)
+            self._reread(request, tender, f"Uploaded: {names}.")
+        return self._back(extraction)
+
+    def delete_document_view(self, request, pk: int, doc_pk: int):
+        extraction = self._documents_target(request, pk)
+        if request.method != "POST":
+            return HttpResponseNotAllowed(["POST"])
+        doc = get_object_or_404(upload.uploaded(extraction.tender), pk=doc_pk)
+        name = doc.original_filename
+        with transaction.atomic():
+            LogEntry.objects.log_actions(
+                request.user.pk, [doc], DELETION, single_object=True,
+                change_message=f"Deleted the upload {name} of "
+                               f"{extraction.tender.reference_number}")
+            doc.delete()
+        self._reread(request, extraction.tender, f"Deleted: {name}.")
+        return self._back(extraction)
 
     @staticmethod
     def _gate_context(extraction: Extraction, bound: dict) -> list[dict]:
@@ -403,10 +487,10 @@ class NeedsReviewAdmin(admin.ModelAdmin):
             profiles = {default_profile(), *SupplierProfile.objects.filter(
                 assessments__extraction=extraction)}
             statuses = [assess(extraction, p).get_status_display() for p in profiles]
-            # A decision on an older extraction may carry to the newest one the site shows.
+            # A decision on another extraction may carry to the current one the site shows.
             newest = (Extraction.objects.select_related("tender")
                       .filter(tender_id=extraction.tender_id, model_id=extraction.model_id)
-                      .order_by("-created_at", "-id").first())
+                      .order_by("-last_used_at", "-id").first())
             if newest.pk != extraction.pk:
                 for p in {default_profile(), *SupplierProfile.objects.filter(
                         assessments__extraction=newest)}:

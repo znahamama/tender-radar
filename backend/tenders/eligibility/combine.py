@@ -48,13 +48,14 @@ class Combined:
 
 
 def notice_only_partner(extraction: Extraction) -> Extraction | None:
-    """The newest ok v3 extraction of the same tender and model, for a documents extraction."""
+    """The current ok v3 extraction of the same tender and model (latest last_used_at), for
+    a documents extraction."""
     if extraction.prompt_version not in DOCUMENTS_PROMPTS:
         return None
     return (Extraction.objects
             .filter(tender_id=extraction.tender_id, model_id=extraction.model_id,
                     prompt_version=V3, status=Extraction.Status.OK)
-            .order_by("-created_at", "-id").first())
+            .order_by("-last_used_at", "-id").first())
 
 
 def _grounded(g: dict | None) -> bool:

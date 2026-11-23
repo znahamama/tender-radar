@@ -103,12 +103,12 @@ def unread_texts(extraction: Extraction) -> list[UnreadText]:
     not see: past the cut of a partial one, all of one left out at the cap, and all of
     every ok document the input didn't list (a notice-only extraction, or a document fetched
     after it). Input order first, then the unlisted ones in id order."""
-    from tenders.documents.service import _filename
     from tenders.extraction.prompt import FULL, PARTIAL
 
     given = {d.get("url"): (i, d) for i, d in enumerate(extraction.documents or [])}
     docs = (extraction.tender.documents.filter(status="ok").exclude(text="")
-            .only("url", "text", "pages", "pages_read").order_by("id"))
+            .only("url", "text", "pages", "pages_read", "source", "original_filename")
+            .order_by("id"))
     out = []
     for doc in docs:
         pos, rec = given.get(doc.url, (len(given), None))
@@ -116,17 +116,17 @@ def unread_texts(extraction: Extraction) -> list[UnreadText]:
         if status == FULL:
             continue
         start = int(rec.get("chars") or 0) if status == PARTIAL else 0
-        name = rec.get("name") if rec else _filename(doc.url)
+        name = rec.get("name") if rec else doc.filename
         out.append((pos, UnreadText(name, doc.text, start, doc.pages_read or doc.pages)))
     return [u for _, u in sorted(out, key=lambda x: x[0])]
 
 
 def latest_extractions(model_ids: Iterable[str] | None = None,
                        tender_status: str | None = None) -> list[Extraction]:
-    """The newest extraction per (tender, model_id)."""
+    """The current extraction per (tender, model_id): the latest last_used_at."""
     qs = Extraction.objects.select_related("tender").prefetch_related(
         "review_decisions").order_by(
-        "tender_id", "model_id", "-created_at", "-id")
+        "tender_id", "model_id", "-last_used_at", "-id")
     if model_ids:
         qs = qs.filter(model_id__in=list(model_ids))
     if tender_status:

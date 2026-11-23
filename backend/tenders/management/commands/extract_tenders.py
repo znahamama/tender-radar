@@ -104,7 +104,7 @@ class Command(BaseCommand):
                 v4_failed += 1
                 self._v4_failed(t, o.extraction.error.splitlines()[0] if o.extraction.error
                                 else "failed")
-                # Removed so it never becomes the tender's newest extraction: the v3 one
+                # Removed so it never becomes the tender's current extraction: the v3 one
                 # and its assessment stay what the site and assess_tenders use. The next
                 # run tries v4 again (only an ok row is a cache hit).
                 o.extraction.delete()

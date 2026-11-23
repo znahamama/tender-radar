@@ -1,0 +1,2 @@
+{# Where a quote came from: d is a pages.DocumentSource. An upload is named, never linked. #}
+{% if d.uploaded %}<p class="small doc-source">From a document uploaded by the reviewer: {{ d.name }}</p>{% else %}<p class="small doc-source">From the solicitation documents: {% if d.url %}<a href="{{ d.url }}" rel="external noreferrer">{{ d.name }}</a>{% else %}{{ d.name }}{% endif %}</p>{% endif %}

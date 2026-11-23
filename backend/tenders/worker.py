@@ -7,6 +7,12 @@ Events:
                          so it can't hold up or stop the steps the site depends on)
     {"task": "assess"}   assess_tenders only: recompute eligibility from the stored
                          extractions with today's rules and profile. No ingest, no API calls
+    {"task": "extract_one", "reference": "<ref>"}
+                         extraction (v5 when the tender has documents, else v3) and its
+                         assessment for that one tender, under the usual per-run and daily
+                         LLM caps. Sent asynchronously by the API after a reviewer uploads
+                         or deletes a document (tenders.documents.upload). An unknown
+                         reference is rejected before anything runs
     {"task": "create_admin", "username": "<name>"}
                          create or update that superuser with the password in the one-time
                          SecureString <SSM_PREFIX>admin_bootstrap_password (infra/README.md)
@@ -52,7 +58,9 @@ TASKS: dict[str, list[tuple[str, list[str]]]] = {
     # waiting for (or spending on) the next daily run.
     "assess": [("assess_tenders", [])],
     "create_admin": [("create_admin", [])],  # a Python step, not a command: STEPS below
+    "extract_one": [("extract_one", [])],  # a Python step: STEPS below
 }
+MAX_REFERENCE_CHARS = 100  # Tender.reference_number's max_length
 
 
 @contextmanager
@@ -96,8 +104,26 @@ def _create_admin(event: dict) -> None:
     print(f"admin {outcome}: {username.strip()}", flush=True)
 
 
+def _reference(event: dict) -> str:
+    """extract_one's reference: a stored tender's, else ValueError (nothing has run)."""
+    from tenders.models import Tender
+
+    ref = event.get("reference")
+    if (not isinstance(ref, str) or not ref.strip() or len(ref) > MAX_REFERENCE_CHARS
+            or not Tender.objects.filter(reference_number=ref).exists()):
+        shown = repr(ref)[:120] if isinstance(ref, str) else type(ref).__name__
+        raise ValueError(f'extract_one needs the "reference" of a stored tender; got {shown}')
+    return ref
+
+
+def _extract_one(event: dict) -> None:
+    # extract_tenders picks v5 or v3 for the tender, applies the per-run and daily caps
+    # (a cap is a clean exit), and assesses the extraction it made or found in its cache.
+    call_command("extract_tenders", "--reference", _reference(event))
+
+
 # Steps that are Python functions of the event rather than management commands.
-STEPS = {"create_admin": _create_admin}
+STEPS = {"create_admin": _create_admin, "extract_one": _extract_one}
 
 
 def _step_label(name: str, args: list[str]) -> str:
@@ -118,6 +144,8 @@ def handler(event, context=None):
     started = time.monotonic()
     steps: list[dict] = []
     try:
+        if task == "extract_one":
+            _reference(event)  # before any step: a bad event runs nothing
         for name, args in TASKS[task]:
             t0 = time.monotonic()
             step = {"step": _step_label(name, args), "ok": False}
@@ -144,5 +172,8 @@ def handler(event, context=None):
             "version": settings.APP_VERSION,
             "steps": steps,
         }
+        if task == "extract_one":
+            ref = event.get("reference")
+            summary["reference"] = ref[:MAX_REFERENCE_CHARS] if isinstance(ref, str) else None
         print(json.dumps(summary, separators=(",", ":")), flush=True)
     return summary

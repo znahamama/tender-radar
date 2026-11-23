@@ -25,6 +25,11 @@ allowlist now takes, and a too_many_pages row (long PDFs are now read in part). 
 downloaded if it ranks within the limit, else recorded as over_tender_limit or
 skipped_type; either way its old status is gone, so it is never re-evaluated again.
 
+Uploaded documents (source "upload", tenders.documents.upload) are not the CSV's: plan()
+never touches them, and an upload cleaned by an older redact() is re-cleaned from its stored
+text (reclean_uploads; there is nothing to download). They are deleted with the tender's
+other rows when the tender leaves the CSVs (below).
+
 Re-cleaning: each row records the redact() version that cleaned it. Every ok row cleaned by
 an older version (REDACT_VERSION was bumped) is downloaded and parsed again and re-cleaned,
 since the raw text is never kept: first those of the open, kept tenders above (as part of
@@ -64,7 +69,6 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from functools import partial
 from pathlib import Path
-from urllib.parse import unquote, urlsplit
 
 from django.db.models import Count, Sum
 from django.db.models.functions import Length
@@ -78,10 +82,18 @@ from tenders.ingest.schema import normalize_text
 from tenders.models import Tender, TenderDocument
 from tenders.pages import is_open
 
-from .fetch import FetchFailed, default_opener, download_pdf, is_allowed_url, is_pdf_url
+from .fetch import (
+    FetchFailed,
+    default_opener,
+    download_pdf,
+    is_allowed_url,
+    is_pdf_url,
+    url_filename,
+)
 from .parse import ParseFailed, parse_pdf
 
 Status = TenderDocument.Status
+Source = TenderDocument.Source
 MAX_ATTEMPTS = 3
 RETRYABLE = frozenset({Status.TIMEOUT, Status.HTTP_ERROR, Status.NETWORK_ERROR,
                        Status.PARSE_TIMEOUT})
@@ -110,13 +122,29 @@ _AMENDMENT_RE = re.compile(
     re.IGNORECASE)
 
 
-def _filename(url: str) -> str:
-    return unquote(urlsplit(url).path.rsplit("/", 1)[-1])
+_filename = url_filename  # the name the ranking reads
 
 
 def _rank(url: str) -> tuple[int, int]:
     """(group, number): 0 main solicitation, 1 amendment n, 2 other PDF, 3 other file type."""
-    name = _filename(url)
+    return _rank_name(_filename(url))
+
+
+def upload_rank(name: str) -> tuple[int, int]:
+    """An uploaded document: an amendment when its file name says so (the same rules as a
+    fetched one's), otherwise the main solicitation, whatever else the name says."""
+    rank = _rank_name(name)
+    return rank if rank[0] == 1 else (0, 0)
+
+
+def document_rank(doc) -> tuple[int, int]:
+    """A TenderDocument's rank: _rank of its URL, or upload_rank of an upload's name."""
+    if getattr(doc, "source", TenderDocument.Source.FETCHED) == TenderDocument.Source.UPLOAD:
+        return upload_rank(doc.original_filename)
+    return _rank(doc.url)
+
+
+def _rank_name(name: str) -> tuple[int, int]:
     if m := _EBSU_RE.search(name):
         n = int(m.group(1))
         return (0, 0) if n == 0 else (1, n)
@@ -172,6 +200,8 @@ class FetchSummary:
     removed_with_text: int = 0
     removed_tenders: int = 0
     removal_skipped: str = ""  # why nothing was removed although it might have been
+    # Uploaded documents re-cleaned from their stored text (they can't be downloaded again)
+    uploads_recleaned: int = 0
 
 
 @dataclass(frozen=True)
@@ -203,7 +233,8 @@ def _not_downloaded(url: str) -> str:
 
 def plan(tender: Tender, limits: Limits) -> Plan:
     urls = list(dict.fromkeys(tender.attachment_urls or []))
-    stored = {d.url: d for d in tender.documents.all()}
+    # Uploaded rows are not the CSV's: never planned, retried or deleted per URL here.
+    stored = {d.url: d for d in tender.documents.all() if not d.is_upload}
     allowed = order_urls([u for u in urls if is_allowed_url(u) and is_pdf_url(u)])
     within = set(allowed[: limits.per_tender])
     steps = []
@@ -384,6 +415,9 @@ def fetch_documents(csv_paths: Iterable[Path], *, limits: Limits | None = None, 
                     now: datetime | None = None) -> FetchSummary:
     summary = FetchSummary()
     limits = limits or Limits()
+    from .upload import reclean_uploads
+
+    summary.uploads_recleaned = reclean_uploads(limits)  # no downloads: first, always
     run = _Run(limits, opener or default_opener(), clock, sleep, now or timezone.now(),
                clock(), summary)
     pending = []
@@ -414,7 +448,7 @@ def fetch_documents(csv_paths: Iterable[Path], *, limits: Limits | None = None, 
 def _reclean_other_tenders(run: _Run, csv_paths: Iterable[Path], exclude: set[int]) -> None:
     """Stale ok documents of tenders the plans above didn't cover (closed, cancelled, no
     longer kept, or open with nothing else to do), oldest tender first."""
-    stale = list(TenderDocument.objects.filter(status=Status.OK,
+    stale = list(TenderDocument.objects.filter(status=Status.OK, source=Source.FETCHED,
                                                redact_version__lt=REDACT_VERSION)
                  .exclude(tender_id__in=exclude).select_related("tender")
                  .order_by("tender_id", "id"))

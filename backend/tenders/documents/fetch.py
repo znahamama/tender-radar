@@ -50,6 +50,11 @@ def is_allowed_url(url: str) -> bool:
     return not any(seg in (".", "..") for seg in unquote(parts.path).split("/"))
 
 
+def url_filename(url: str) -> str:
+    """The last path segment, percent-decoded: a fetched document's name."""
+    return unquote(urlsplit(url).path.rsplit("/", 1)[-1])
+
+
 def is_pdf_url(url: str) -> bool:
     """The URL's path (percent-decoded) ends in ".pdf", any case. Zip, xlsx and docx
     attachments are never downloaded: they would only use up the run's download cap."""

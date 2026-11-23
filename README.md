@@ -84,6 +84,13 @@ are in no telecom family.
   A carried decision links to the original; the reviewer and time stay theirs.
 - **Public page:** gates with a decision in effect show "Reviewed by a person" and what the
   model said.
+- **Uploaded documents:** for a notice whose documents sit behind a login, a reviewer can
+  upload the PDFs on the review page (at most 4 MB each, 5 per notice, 10 per person per
+  day). They get the fetcher's sandboxed parse and limits, redaction (without CSV contact
+  hints) and injection scan; only the redacted text is kept, never the PDF. The API then
+  asks the worker to re-read that one notice (`extract_one`, under the usual LLM caps). An
+  upload ranks as the main solicitation unless its name says amendment, and the public page
+  names it ("uploaded by the reviewer", no link) but shows only the quotes.
 
 ## Architecture
 

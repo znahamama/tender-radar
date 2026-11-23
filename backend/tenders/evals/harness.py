@@ -6,7 +6,7 @@ and collect everything the report needs. Scoring itself is pure (tenders.evals.s
     normal path (extract_tender, normal caps) if missing, and assessed with assess(), so the
     status is exactly what the site shows.
   - Any other pinned prompt: its primary run is an EvalExtraction with repeat 0, never an
-    Extraction (the site shows the newest Extraction per model, so a v3 Extraction would
+    Extraction (the site shows the last-used Extraction per model, so a v3 Extraction would
     replace v2 on the site). An earlier ok repeat-0 row with the same config and input is
     reused, like a cache hit. It is evaluated in memory with the same rules.
 - Baseline: the cached keyword Extraction, as the site's LLM prompt above.

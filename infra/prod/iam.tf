@@ -89,3 +89,22 @@ resource "aws_iam_role_policy" "scheduler" {
   role   = aws_iam_role.scheduler.id
   policy = data.aws_iam_policy_document.scheduler.json
 }
+
+# The API asks the worker to re-read one tender after a reviewer uploads or deletes a
+# document ({"task": "extract_one"}, an asynchronous invoke: tenders.documents.upload).
+# Only lambda:InvokeFunction, only on the worker. A separate policy, not a statement in
+# aws_iam_role_policy.lambda["api"]: the worker depends on that policy, so naming the
+# worker's ARN inside it would be a cycle.
+data "aws_iam_policy_document" "api_invoke_worker" {
+  statement {
+    sid       = "InvokeWorker"
+    actions   = ["lambda:InvokeFunction"]
+    resources = [aws_lambda_function.worker.arn]
+  }
+}
+
+resource "aws_iam_role_policy" "api_invoke_worker" {
+  name   = "${local.name}-api-invoke-worker"
+  role   = aws_iam_role.lambda["api"].id
+  policy = data.aws_iam_policy_document.api_invoke_worker.json
+}

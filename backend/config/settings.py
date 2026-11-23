@@ -165,3 +165,11 @@ LLM_MAX_CALLS_PER_RUN = env_int("LLM_MAX_CALLS_PER_RUN", 50, lo=1, hi=1000)
 LLM_DAILY_BUDGET_USD = env_decimal("LLM_DAILY_BUDGET_USD", "0.50",
                                    lo=Decimal(0), hi=Decimal(10))
 LLM_MAX_DESCRIPTION_CHARS = env_int("LLM_MAX_DESCRIPTION_CHARS", 30_000, lo=1_000, hi=200_000)
+
+# Reviewer uploads (tenders.documents.upload). Files up to 5 MB stay in memory and are never
+# written to disk (the app's own limit is 4 MB per file); at most 5 files per request.
+FILE_UPLOAD_MAX_MEMORY_SIZE = 5 * 1024 * 1024
+DATA_UPLOAD_MAX_NUMBER_FILES = 5
+# The worker Lambda the API asks to re-read a tender after an upload or a delete
+# ({"task": "extract_one"}). Unset locally: the admin then says to run the command.
+WORKER_FUNCTION_NAME = os.environ.get("WORKER_FUNCTION_NAME", "").strip()

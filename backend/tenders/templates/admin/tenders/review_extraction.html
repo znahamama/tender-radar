@@ -21,8 +21,33 @@
     · status: <strong>{% if assessment %}{{ assessment.get_status_display }}{% else %}not assessed{% endif %}</strong>
   </p>
   {% if newest_id and newest_id != extraction.pk %}
-  <p class="errornote">This is not the newest extraction of this notice (that is #{{ newest_id }}). Decisions here don't change what the site shows.</p>
+  <p class="errornote">This is not the extraction the site shows for this notice (that is #{{ newest_id }}). Decisions here don't change what the site shows unless they carry to it.</p>
   {% endif %}
+
+  <fieldset class="module aligned review-documents" id="documents">
+    <h2>Upload solicitation documents</h2>
+    <p class="help">For documents the daily run can't fetch (behind a login, or not on CanadaBuys). PDFs only, up to {{ upload_limits.mb }} MB each (send larger sets one file at a time), {{ upload_limits.per_tender }} uploaded documents per notice, {{ upload_limits.per_day }} uploads per person per day. The text is read, cleaned of contact details and kept; the PDF is not. An upload counts as the main solicitation unless its file name says amendment. The public page names an upload but never shows its text beyond the quotes.{% if fetched_ok %} This notice also has {{ fetched_ok }} document{{ fetched_ok|pluralize }} fetched from CanadaBuys.{% endif %}</p>
+    {% if uploads %}
+    <table class="review-uploads">
+      <thead><tr><th scope="col">File</th><th scope="col">Uploaded</th><th scope="col">Text kept</th><th scope="col">Status</th><th scope="col"></th></tr></thead>
+      <tbody>
+      {% for u in uploads %}{% with d=u.doc %}
+      <tr>
+        <td>{{ d.original_filename }}</td>
+        <td>{{ d.fetched_at|date:"Y-m-d H:i" }}{% if d.uploaded_by %} by {{ d.uploaded_by.get_username }}{% endif %}</td>
+        <td>{% if d.partial %}read in part: {{ d.pages_read }} of {{ d.pages }} pages{% else %}{{ d.pages }} page{{ d.pages|pluralize }}{% endif %}, {{ d.text|length }} characters{% if d.injection_patterns %} <span class="review-flag">may try to instruct an AI</span>{% endif %}</td>
+        <td>{{ u.reading }}</td>
+        <td><form method="post" action="{% url 'admin:tenders_delete_document' extraction.pk d.pk %}">{% csrf_token %}<button type="submit">Delete</button></form></td>
+      </tr>
+      {% endwith %}{% endfor %}
+      </tbody>
+    </table>
+    {% endif %}
+    <form method="post" enctype="multipart/form-data" action="{% url 'admin:tenders_upload_documents' extraction.pk %}" class="review-upload">{% csrf_token %}
+      <label>PDF files <input type="file" name="files" accept=".pdf,application/pdf" multiple required></label>
+      <button type="submit">Upload</button>
+    </form>
+  </fieldset>
 
   {% if not reviewable %}
   <p class="errornote">This extraction failed{% if extraction.error %}: {{ extraction.error|truncatechars:200 }}{% endif %}. There is no model answer to review.</p>

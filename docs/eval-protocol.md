@@ -91,7 +91,7 @@ post-validation.
 - The site's prompt (v2) uses the cached site extraction (made through the normal path and
   caps if missing), as before.
 - Any other prompt (v3) gets an eval-only primary run: an `EvalExtraction` with repeat 0,
-  never an `Extraction` (the site shows the newest extraction per model, so a v3
+  never an `Extraction` (the site shows the last-used extraction per model, so a v3
   `Extraction` would replace v2 on the site). A later run reuses the first ok repeat-0 row
   for the same config and notice text instead of re-rolling it.
 - `--repeats N` adds N uncached runs per case and prompt, stored as `EvalExtraction` rows

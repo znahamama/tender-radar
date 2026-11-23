@@ -1,9 +1,10 @@
 """Public, read-only HTML pages: the tender list ("/") and one tender ("/tenders/<ref>/").
 
 GET only, and nothing here writes: the pages show what the daily run stored. The
-assessment shown is the newest one, for the default (fictional) profile, of an extraction
-by the configured LLM (settings.LLM_MODEL); the keyword baseline sits beside it on the
-detail page for comparison only.
+assessment shown is that of the current extraction (the one a run last produced or re-used,
+Extraction.last_used_at) by the configured LLM (settings.LLM_MODEL), for the default
+(fictional) profile; the keyword baseline sits beside it on the detail page for comparison
+only.
 """
 
 from __future__ import annotations
@@ -75,10 +76,11 @@ def _default_profile_id() -> Subquery:
 
 
 def primary_assessments() -> QuerySet[Assessment]:
-    """Assessments the pages show: default profile, configured LLM, newest extraction first."""
+    """Assessments the pages show: default profile, configured LLM, current extraction first
+    (the one last produced or re-used by a run: Extraction.last_used_at)."""
     return (Assessment.objects
             .filter(profile_id=_default_profile_id(), extraction__model_id=settings.LLM_MODEL)
-            .order_by("-extraction__created_at", "-extraction_id"))
+            .order_by("-extraction__last_used_at", "-extraction_id"))
 
 
 def is_open() -> Q:
@@ -229,10 +231,12 @@ REVIEWED = {
 @dataclass(frozen=True)
 class DocumentSource:
     """A solicitation document a quote came from: its name and CanadaBuys link (None when
-    the stored URL isn't an allowed CanadaBuys document URL). Never its text."""
+    the stored URL isn't an allowed CanadaBuys document URL). Never its text. ``uploaded``:
+    a reviewer uploaded it (never linked: there is nothing public to link to)."""
 
     name: str
     url: str | None
+    uploaded: bool = False
 
 
 def document_sources(llm: Extraction | None) -> dict[str, DocumentSource]:
@@ -240,6 +244,9 @@ def document_sources(llm: Extraction | None) -> dict[str, DocumentSource]:
     out = {}
     for d in (llm.documents if llm else None) or []:
         if d.get("status") != "not_read":
+            if d.get("source") == "upload":
+                out[d["name"]] = DocumentSource(d["name"], None, uploaded=True)
+                continue
             url = d.get("url") or ""
             out[d["name"]] = DocumentSource(d["name"], url if is_allowed_url(url) else None)
     return out
@@ -473,10 +480,10 @@ def tender_detail(request, reference: str):
                   .select_related("extraction").first())
     llm = assessment.extraction if assessment else (
         tender.extractions.filter(model_id=settings.LLM_MODEL)
-        .order_by("-created_at", "-id").first())
+        .order_by("-last_used_at", "-id").first())
     baseline = (tender.extractions
                 .filter(model_id=BASELINE_MODEL_ID, status=Extraction.Status.OK)
-                .order_by("-created_at", "-id").first())
+                .order_by("-last_used_at", "-id").first())
     # Only decisions in effect: own ones, and carried ones that still hold.
     reviews = reviews_for(llm).applied if llm else {}
     combined, partner = combined_for(llm, assessment.combined if assessment else None)
@@ -495,7 +502,8 @@ def tender_detail(request, reference: str):
         "notes": labelled(assessment.notes if assessment else [], eligibility, sources),
         "not_stated": not_stated_labels(assessment.not_stated if assessment else [],
                                         eligibility),
-        "documents_read": list(sources.values()),
+        "documents_read": [d for d in sources.values() if not d.uploaded],
+        "documents_uploaded": [d for d in sources.values() if d.uploaded],
         "llm": llm,
         "baseline": baseline,
         "rows": gate_rows(llm, baseline, reviews, combined, partner),

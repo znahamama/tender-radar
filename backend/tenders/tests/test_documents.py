@@ -628,7 +628,9 @@ def test_the_pdf_itself_is_never_stored(csv_dir):
     assert "%PDF" not in d.text
     stored = {f.name for f in TenderDocument._meta.concrete_fields}
     assert stored == {"id", "tender", "url", "status", "text", "pages", "pages_read", "sha256",
-                      "injection_patterns", "attempts", "redact_version", "fetched_at"}
+                      "injection_patterns", "attempts", "redact_version", "fetched_at",
+                      # reviewer uploads: who and the file's name, never its bytes
+                      "source", "uploaded_by", "original_filename"}
 
 
 def test_injection_is_flagged(csv_dir):

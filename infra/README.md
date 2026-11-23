@@ -17,12 +17,12 @@ values never reach state.
 
 | Piece | Config |
 |---|---|
-| `tender-radar-api` | image `api-<sha>`, arm64, 1024 MB, 30 s, Lambda Web Adapter → gunicorn :8080, readiness `/api/health` |
+| `tender-radar-api` | image `api-<sha>`, arm64, 1024 MB, 30 s, Lambda Web Adapter → gunicorn :8080, readiness `/api/health`, `WORKER_FUNCTION_NAME` (reviewer uploads) |
 | `tender-radar-worker` | image `worker-<sha>`, arm64, 1024 MB, 900 s, 1024 MB `/tmp`, handler `tenders.worker.handler`, 0 async retries, `LLM_DAILY_BUDGET_USD=0.15` |
 | HTTP API | `$default` stage, auto-deploy, `ANY /` + `ANY /{proxy+}`, throttle 10 rps / burst 20, JSON access logs |
 | Scheduler | `tender-radar-daily`, 06:15 America/St_Johns, `{"task":"daily"}`, 0 retries, **DISABLED** until step (h) |
 | Logs | `/aws/lambda/tender-radar-{api,worker}`, `/aws/apigateway/tender-radar`, 30-day retention (`local.log_retention`) |
-| IAM | api-role, worker-role: own log group + `ssm:GetParameters` on `/tender-radar/prod/*` (one call per cold start). scheduler-role: invoke the worker only |
+| IAM | api-role, worker-role: own log group + `ssm:GetParameters` on `/tender-radar/prod/*` (one call per cold start). api-role also: `lambda:InvokeFunction` on the worker only (`extract_one` after a reviewer upload or delete). scheduler-role: invoke the worker only |
 | Alerts | SNS `tender-radar-alerts` → one email; 4 CloudWatch alarms notify on ALARM and OK (see **Alerts**) |
 
 ## AWS profiles: `tender-radar` and the `tender-radar-tf` bridge
@@ -292,6 +292,23 @@ aws logs tail /aws/lambda/tender-radar-worker --since 10m | grep -E 'assessed [0
 ```
 
 The log shows one line per extractor model (`<model>: eligible N, ...`) and `assessed N`.
+
+### Re-read one notice (`extract_one`)
+
+`{"task":"extract_one","reference":"<ref>"}` runs `extract_tenders --reference <ref>`: the
+LLM extraction of that one notice (prompt v5 when it has stored documents, else v3; a cache
+hit costs nothing) and its assessment, under the usual per-run and daily caps. The API
+sends it asynchronously (0 retries, `aws_lambda_function_event_invoke_config.worker`) after
+a reviewer uploads or deletes a document on the admin review page; an unknown reference is
+rejected before anything runs. By hand:
+
+```sh
+AWS_MAX_ATTEMPTS=1 aws lambda invoke --no-cli-pager \
+  --function-name tender-radar-worker \
+  --cli-binary-format raw-in-base64-out --payload '{"task":"extract_one","reference":"<ref>"}' \
+  --cli-read-timeout 910 /tmp/tr-one.json
+cat /tmp/tr-one.json; echo   # "ok": true, "reference": "<ref>", steps: [extract_one]
+```
 
 ## Alerts
 
