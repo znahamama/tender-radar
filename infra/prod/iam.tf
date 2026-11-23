@@ -1,5 +1,6 @@
-# Execution roles. Each may write only its own log group and read only the
-# /tender-radar/prod/* parameters.
+# Execution roles. Each may write only its own log group. The worker may read the
+# /tender-radar/prod/* parameters; the API only DATABASE_URL and DJANGO_SECRET_KEY, by exact
+# ARN (local.api_ssm_params).
 #
 # No kms:Decrypt: the SecureStrings use the AWS-managed key aws/ssm. Its key policy
 # (owned by AWS, not editable) already allows kms:Decrypt for any principal in this account
@@ -43,9 +44,12 @@ data "aws_iam_policy_document" "lambda" {
   statement {
     sid = "ReadProdParameters"
     # config/ssm.py makes one GetParameters call per cold start, and one more for each
-    # worker task that needs a lowercase parameter (migrate, create_admin).
-    actions   = ["ssm:GetParameters"]
-    resources = [local.ssm_params_arn]
+    # worker task that needs a lowercase parameter (migrate, create_admin). The API is
+    # internet-facing and never calls the LLM: only its two cold-start secrets.
+    actions = ["ssm:GetParameters"]
+    resources = (each.key == "api"
+      ? [for p in local.api_ssm_params : "${local.ssm_arn_prefix}${p}"]
+    : [local.ssm_params_arn])
   }
 }
 

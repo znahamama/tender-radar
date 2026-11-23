@@ -22,8 +22,8 @@ values never reach state.
 | HTTP API | `$default` stage, auto-deploy, `ANY /` + `ANY /{proxy+}`, throttle 10 rps / burst 20, JSON access logs |
 | Scheduler | `tender-radar-daily`, 06:15 America/St_Johns, `{"task":"daily"}`, 0 retries, **DISABLED** until step (h) |
 | Logs | `/aws/lambda/tender-radar-{api,worker}`, `/aws/apigateway/tender-radar`, 30-day retention (`local.log_retention`) |
-| IAM | api-role, worker-role: own log group + `ssm:GetParameters` on `/tender-radar/prod/*` (one call per cold start). api-role also: `lambda:InvokeFunction` on the worker only (`extract_one` after a reviewer upload or delete). scheduler-role: invoke the worker only |
-| Alerts | SNS `tender-radar-alerts` → one email; 4 CloudWatch alarms notify on ALARM and OK (see **Alerts**) |
+| IAM | api-role, worker-role: own log group + `ssm:GetParameters` (one call per cold start): worker-role on `/tender-radar/prod/*`, api-role only on `DATABASE_URL` and `DJANGO_SECRET_KEY` by exact ARN (no LLM key, direct URL or bootstrap password). api-role also: `lambda:InvokeFunction` on the worker only (`extract_one` after a reviewer upload or delete). scheduler-role: invoke the worker only |
+| Alerts | SNS `tender-radar-alerts` → one email; 5 CloudWatch alarms notify on ALARM and OK, one fed by a 5xx metric filter on the API access log (see **Alerts**) |
 
 ## AWS profiles: `tender-radar` and the `tender-radar-tf` bridge
 
@@ -312,7 +312,7 @@ cat /tmp/tr-one.json; echo   # "ok": true, "reference": "<ref>", steps: [extract
 
 ## Alerts
 
-One SNS topic, `tender-radar-alerts`, with one email subscription, and four alarms
+One SNS topic, `tender-radar-alerts`, with one email subscription, and five alarms
 (`infra/prod/alerts.tf`). Each emails on ALARM and again on OK.
 
 | Alarm | Fires when | Missing data |
@@ -320,9 +320,12 @@ One SNS topic, `tender-radar-alerts`, with one email subscription, and four alar
 | `tender-radar-worker-errors` | worker `Errors` ≥ 1 in an hour: a step raised (incl. a bad Anthropic key/model), or the 900 s timeout | OK |
 | `tender-radar-worker-not-run` | worker `Invocations` < 1 in the last 26 h (sliding; 26 not 24 so metric lag and the 25 h autumn DST gap don't false-alarm) | ALARM |
 | `tender-radar-api-errors` | API `Errors` ≥ 5 in 5 minutes | OK |
+| `tender-radar-api-5xx` | 5xx responses ≥ 3 in 5 minutes, from the metric filter `tender-radar-api-5xx` on the API access log (custom metric `TenderRadar/Api5xx`). Catches Django 500s, which `api-errors` can't see; the traceback is in `/aws/lambda/tender-radar-api` | OK |
 | `tender-radar-scheduler-target-errors` | Scheduler `TargetErrorCount` ≥ 1 in an hour, schedule group `default` | OK |
 
-A budget cap is not an error: `extract_tenders` stops cleanly, the run is `"ok": true`.
+A budget cap is not an error: `extract_tenders` stops cleanly, the run is `"ok": true`
+(`extract_one` adds `"capped": true`, and the review page says the upload waits for the
+next run).
 
 `worker-not-run` is slow by design: a window over one day is checked hourly, on data up to
 the top of the hour, so a missed 06:15 run alarms around 09:00 St. John's time that morning
@@ -371,7 +374,8 @@ subscription is replaced; confirm the new one).
 | CloudWatch Logs | MBs per month, 30-day retention (well under 1 GB stored); 5 GB ingestion free | $0 |
 | SSM Parameter Store | 4 standard SecureStrings with `aws/ssm`: free. KMS decrypts at cold start, inside the free 20k requests/month | $0 |
 | EventBridge Scheduler | 30 invocations/month, 14M free | $0 |
-| CloudWatch alarms | 4 standard-resolution metric alarms: 10 free (always-free tier), then $0.10/alarm-month | $0 (list price $0.40) |
+| CloudWatch alarms | 5 standard-resolution metric alarms: 10 free (always-free tier), then $0.10/alarm-month | $0 (list price $0.50) |
+| CloudWatch metric filter | 1 filter (free) publishing 1 custom metric, `TenderRadar/Api5xx`, only when a 5xx happens: 10 custom metrics free, then $0.30/metric-month | $0 |
 | SNS | 1 topic; email deliveries: 1,000/month free, a few per month used | $0 |
 | S3 state bucket | KBs, a few hundred requests | <$0.01 |
 | ECR basic scan on push | free | $0 |

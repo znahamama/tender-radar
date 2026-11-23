@@ -44,7 +44,12 @@ class StopRun(Exception):
 
 
 class CapReached(StopRun):
-    """Raised before an API call that would exceed a cap."""
+    """Raised before an API call that would exceed a cap. ``daily``: the daily cost cap
+    (not the per-run call cap); extract_tenders records it on the tenders left unread."""
+
+    def __init__(self, message: str, *, daily: bool = False):
+        super().__init__(message)
+        self.daily = daily
 
 
 def spent_today(now: datetime | None = None) -> Decimal:
@@ -68,12 +73,17 @@ class CallMeter:
     cost: Decimal = Decimal(0)
     purpose: str = "extract"  # LlmCall.purpose; "eval" for the eval harness's repeat runs
 
-    def check(self) -> None:
+    def check(self, estimate: Decimal = Decimal(0)) -> None:
+        """Before a call. ``estimate``: the call's worst-case cost (the whole request and
+        max_tokens out, see AnthropicExtractor), counted before the call is allowed, so a
+        call never takes the day past the cap; 0 for a fake extraction."""
         if self.calls >= self.max_calls:
             raise CapReached(f"per-run call cap reached ({self.max_calls} calls)")
         spent = spent_today()
-        if spent >= self.daily_budget_usd:
-            raise CapReached(f"daily cost cap reached (${spent:.4f} >= ${self.daily_budget_usd})")
+        if spent >= self.daily_budget_usd or spent + estimate > self.daily_budget_usd:
+            this_call = f" + up to ${estimate:.4f} for this call" if estimate else ""
+            raise CapReached(f"daily cost cap reached (${spent:.4f} spent{this_call}; "
+                             f"cap ${self.daily_budget_usd})", daily=True)
 
     def record(self, *, tender=None, model_id: str, prompt_version: str, input_tokens: int = 0,
                output_tokens: int = 0, latency_ms: int = 0, status: str,

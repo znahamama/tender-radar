@@ -48,6 +48,7 @@ from .pages import (
     gate_value,
     is_open,
     primary_assessments,
+    reference_or_404,
 )
 
 
@@ -206,7 +207,8 @@ class _DecisionForm(forms.Form):
 
 class CorrectionForm(forms.Form):
     """One gate's corrected value, built from the frozen schema. clean() runs the same
-    checks as model output (tenders.review.validate_correction)."""
+    checks as model output, against the same input the extraction read
+    (tenders.review.validate_correction)."""
 
     def __init__(self, *args, gate: str, extraction: Extraction, initial_value=None, **kwargs):
         super().__init__(*args, prefix=gate, **kwargs)
@@ -222,7 +224,8 @@ class CorrectionForm(forms.Form):
         if gate != review.CRITERIA:
             self.fields["evidence"] = forms.CharField(
                 required=False, max_length=2000, widget=forms.Textarea(attrs={"rows": 2}),
-                help_text="An exact quote from the notice, as for the model.")
+                help_text="An exact quote from the notice or from a document this "
+                          "extraction was given, as for the model.")
         self.fields["note"] = forms.CharField(required=False, max_length=1000)
 
     def clean(self):
@@ -374,6 +377,7 @@ class NeedsReviewAdmin(admin.ModelAdmin):
         #fragment on the link is kept by the browser through the redirect."""
         if not can_review(request.user):
             raise PermissionDenied
+        reference = reference_or_404(reference)  # NUL-free, or 404
         tender = get_object_or_404(Tender, reference_number=reference)
         current = current_extraction(tender)
         if current is None:

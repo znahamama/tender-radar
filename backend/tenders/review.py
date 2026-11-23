@@ -10,8 +10,11 @@ A ReviewDecision is append-only; the newest one per (extraction, gate) counts:
 
 A correction is checked exactly like model output: its values must be allowed by the frozen
 schema (tenders.extraction.schema), and its evidence and details go through the same
-post-validation (tenders.extraction.validate.postvalidate) against the same notice text the
-model saw (tenders.extraction.prompt.build_notice).
+post-validation (tenders.extraction.validate.postvalidate) against the same input the
+extraction read (tenders.extraction.prompt.build_input for its prompt version): the notice
+for v2/v3, the notice and the documents it was given for v4/v5. With documents, the quote's
+source is found as for a model quote (the notice first, then the documents in input order)
+and stored with the correction, so the public page names the document it came from.
 
 Decisions follow a notice across re-extractions (carry_forward, CarriedReview): with the
 same LLM input they carry as they stood; with changed input each gate is re-checked, and a
@@ -35,8 +38,15 @@ from django.core.exceptions import ValidationError
 from pydantic import BaseModel
 from pydantic import ValidationError as SchemaError
 
-from tenders.extraction.prompt import build_notice
-from tenders.extraction.schema import GATES, Eligibility, ExtractionData
+from tenders.extraction.prompt import build_input
+from tenders.extraction.schema import (
+    GATES,
+    NOTICE_SOURCE,
+    SCHEMA_VERSION,
+    SCHEMAS,
+    Eligibility,
+    ExtractionData,
+)
 from tenders.extraction.validate import postvalidate
 from tenders.models import CarriedReview, Extraction, ReviewDecision
 
@@ -124,12 +134,22 @@ def apply_reviews(data: dict | None, decisions: dict[str, ReviewDecision]) -> di
 
 # --- validating a correction -----------------------------------------------------------
 
-def _probe(gate: str, gate_value: dict) -> ExtractionData:
+def _schema(extraction: Extraction) -> type[ExtractionData]:
+    """The output schema the extraction was made with: 2 (v4/v5) names each quote's source."""
+    return SCHEMAS.get(extraction.schema_version or SCHEMA_VERSION, ExtractionData)
+
+
+def _probe(gate: str, gate_value: dict, schema: type[ExtractionData] = ExtractionData
+           ) -> ExtractionData:
     """A minimal schema-valid extraction holding one gate, to run the real post-validation
-    on (the other gates are unknown, so they raise no flags)."""
-    eligibility = {g: unknown_gate(g) for g in GATES}
-    eligibility[gate] = gate_value
-    return ExtractionData.model_validate({
+    on (the other gates are unknown, so they raise no flags). With schema 2 every gate
+    names the notice as its source; postvalidate moves a quote found only in a document
+    to that document, as it does for the model's."""
+    sourced = schema is not ExtractionData
+    eligibility = {g: unknown_gate(g) | ({"source": NOTICE_SOURCE} if sourced else {})
+                   for g in GATES}
+    eligibility[gate] = gate_value | ({"source": NOTICE_SOURCE} if sourced else {})
+    return schema.model_validate({
         "summary": "", "work_type": "other", "criteria_location": REJECTED_CRITERIA,
         "deliverables": [], "procurement_method": None, "deadlines": [],
         "mandatory_requirements": [], "certifications": [], "eligibility": eligibility,
@@ -174,21 +194,30 @@ def validate_correction(extraction: Extraction, gate: str, fields: dict,
         raise ValidationError({str(err["loc"][0]): err["msg"]}) from None
 
     tender = extraction.tender
-    _, flags = postvalidate(_probe(gate, checked.model_dump()), build_notice(tender),
-                            tender.sa_required_from_metadata)
+    schema = _schema(extraction)
+    with_documents = schema is not ExtractionData
+    data, flags = postvalidate(_probe(gate, checked.model_dump(), schema),
+                               build_input(tender, extraction.prompt_version),
+                               tender.sa_required_from_metadata)
     errors = {}
+    where = "the notice or a document this extraction was given" if with_documents \
+        else "the notice"
     if f"ungrounded:eligibility.{gate}" in flags:
-        errors["evidence"] = ("not an exact quote of the notice: 3+ words and 15+ characters "
-                              "from one place in the title, a metadata value or the "
-                              "description, or one whole metadata value")
+        errors["evidence"] = (f"not an exact quote of {where}: 3+ words and 15+ characters "
+                              "from one place in the title, a metadata value, the "
+                              "description" + (" or one document" if with_documents else "")
+                              + ", or one whole metadata value")
     for f in detail_fields(gate):
         if f"ungrounded_detail:eligibility.{gate}.{f}" in flags:
-            where = " (not counting the regions values)" if f == "place" else ""
-            errors[f] = f"does not appear in the notice{where}"
+            regions = " (not counting the regions values)" if f == "place" else ""
+            errors[f] = f"does not appear in {where}{regions}"
     if errors:
         raise ValidationError(errors)
     stored = checked.model_dump()
-    return {k: v for k, v in stored.items() if k != "evidence"}, stored["evidence"]
+    value = {k: v for k, v in stored.items() if k != "evidence"}
+    if with_documents:  # where the quote was found, as for a model quote
+        value["source"] = getattr(data.eligibility, gate).source
+    return value, stored["evidence"]
 
 
 # --- decisions across re-extractions ---------------------------------------------------

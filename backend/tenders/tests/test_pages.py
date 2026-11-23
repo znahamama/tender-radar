@@ -758,3 +758,42 @@ def test_detail_scope_line_unknown_and_not_assessed(client):
     assert "unknown: the notice lists no UNSPSC or GSIN category code" in _detail(client, "NONE")
     make_tender("NEW")
     assert "Scope:" not in _detail(client, "NEW")
+
+
+# --- hostile input: NUL characters, methods -------------------------------------------------
+
+def test_a_nul_in_the_search_is_dropped_not_a_server_error(client):
+    make_tender("NUL-1", title="Records system")
+    assess(Tender.objects.get(reference_number="NUL-1"), "blocked")
+    r = client.get("/?q=Rec%00ords")
+    assert r.status_code == 200 and r.context["filters"].q == "Records"
+    assert [t.reference_number for t in r.context["page"].object_list] == ["NUL-1"]
+    assert client.get("/?q=%00").status_code == 200
+
+
+@pytest.mark.parametrize("path", ["/tenders/%00/", "/tenders/%00%00/"])
+def test_a_nul_only_reference_is_not_found(client, path):
+    assert client.get(path).status_code == 404
+
+
+def test_a_nul_inside_a_reference_is_dropped(client):
+    make_tender("SSC-1:T")
+    assert client.get("/tenders/SSC-1%00:T/").context["tender"].reference_number == "SSC-1:T"
+
+
+def test_admin_review_link_strips_nul_and_404s_when_nothing_is_left(admin_client):
+    make_tender("NUL-2")
+    assert admin_client.get("/admin/tenders/needsreview/tender/%00/review/").status_code == 404
+    # No extraction yet: the queue, with a message, not a server error.
+    r = admin_client.get("/admin/tenders/needsreview/tender/NUL-2%00/review/")
+    assert r.status_code == 302 and r["Location"] == reverse(
+        "admin:tenders_needsreview_changelist")
+
+
+@pytest.mark.parametrize("path", ["/", "/tenders/HEAD-1/", "/api/health"])
+def test_public_pages_answer_head_and_refuse_writes(client, path):
+    make_tender("HEAD-1")
+    head = client.head(path)
+    assert head.status_code == 200 and head.content == b""
+    assert client.post(path).status_code == 405
+    assert client.put(path).status_code == 405

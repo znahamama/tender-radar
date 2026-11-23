@@ -70,7 +70,9 @@ are in no telecom family.
 
 - **Review queue:** staff accept, correct or reject each gate in the admin, blocked and
   flagged notices first. A correction must be an allowed schema value with evidence that
-  passes the same grounding check as model output.
+  passes the same grounding check as model output, against the same input the extraction
+  read: the notice, or with documents (v5) the notice and the documents it was given, with
+  the document a quote is in found and named as for a model quote.
 - **Overrides the model, not the rules:** the decision replaces the model's value before the
   frozen rules run.
 - **Append-only:** decisions are never edited or deleted (model, queryset and a Postgres
@@ -284,9 +286,10 @@ Report: [eval/reports/documents-precision-2026-11-19.md](eval/reports/documents-
 - **No long-lived keys:** Lambdas use IAM roles, deploys use short-lived `aws login`
   sessions, and CI holds no AWS credentials.
 - **Secrets live in SSM SecureStrings** created by hand; Terraform knows only their names, so
-  the values never reach Terraform state or the repo.
+  the values never reach Terraform state or the repo. The public API's role can read only the
+  database URL and the Django secret key (not the LLM key); the worker reads the rest.
 - **LLM spend is capped** per run (50 calls by default) and per day ($0.15 on the deployed
-  worker), checked before every API call.
+  worker), checked before every API call, counting that call's worst-case cost first.
 - **Cost:** total LLM spend to date is under $1 across all dev, production and eval runs. AWS is estimated at $0–1/month (mostly free tier); Neon is on its free tier.
   See the cost table in [infra/README.md](infra/README.md).
 
@@ -298,6 +301,13 @@ Report: [eval/reports/documents-precision-2026-11-19.md](eval/reports/documents-
   PDFs: 4 of 80 open notices on 2026-11-19. Most notices still end at "check solicitation".
 - LLM output varies run to run (status stable in 19/20 test cases).
 - Small evaluation: 20 test cases scored once, plus 10 dev cases; per-field intervals are wide.
+- **Known limits** (adversarial review, 2026-11-23): the 10 rps / burst 20 API throttle is one
+  bucket shared by all visitors, so one client can push everyone onto 429s. Deferred: parallel
+  uploads can exceed the per-notice and per-day upload limits (staff only); a delete that
+  races an in-flight extraction can leave that stale extraction current, naming the deleted
+  upload, until the next daily run (gates fall back to unknown); a whole metadata value is
+  accepted as a quote even when it doesn't support the answer; `CSRF_TRUSTED_ORIGINS` is a
+  wildcard over us-east-2 API Gateways (the CSRF token still applies).
 - Indigenous set-asides (PSIB) aren't assessed for the fictional firm: they're a real blocker
   that the six gates don't model.
 

@@ -3,19 +3,19 @@ import logging
 from django.conf import settings
 from django.db import connection
 from django.http import JsonResponse
-from django.views.decorators.http import require_GET
+from django.views.decorators.http import require_safe
 
 log = logging.getLogger(__name__)
 
 
-@require_GET
+@require_safe
 def health(request):
     """Liveness for the Web Adapter's readiness check. Never touches the DB, so it never
     wakes the Neon compute."""
     return JsonResponse({"status": "ok", "version": settings.APP_VERSION})
 
 
-@require_GET
+@require_safe
 def health_db(request):
     try:
         with connection.cursor() as cur:

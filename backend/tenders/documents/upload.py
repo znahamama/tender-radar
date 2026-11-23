@@ -261,14 +261,21 @@ class Reading:
     extraction_id: int | None = None  # the extraction the text is about (None: reading…)
 
 
+CAPPED = "not read: daily LLM cap reached, will retry on the next run"
+
+
 def reading(doc: TenderDocument) -> Reading:
     """"reading…" until an extraction of the tender (configured model) was produced or
-    re-used after the upload (Extraction.last_used_at); then how the current one used it:
-    read whole, read in part, or left out, with that extraction's id (the admin links it)."""
+    re-used after the upload (Extraction.last_used_at), or CAPPED if a run stopped at the
+    daily LLM cap before reading the tender since the upload (Tender.llm_capped_at); then
+    how the current one used it: read whole, read in part, or left out, with that
+    extraction's id (the admin links it)."""
     from tenders.pages import current_extractions
 
     newest = current_extractions(doc.tender_id).filter(last_used_at__gt=doc.fetched_at).first()
     if newest is None:
+        if Tender.objects.filter(pk=doc.tender_id, llm_capped_at__gte=doc.fetched_at).exists():
+            return Reading(CAPPED)
         return Reading("reading…")
     rec = next((d for d in newest.documents or [] if d.get("url") == doc.url), None)
     if rec is None:

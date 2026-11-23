@@ -1,4 +1,4 @@
-# Failure alerting: four CloudWatch alarms -> one SNS topic -> one email address.
+# Failure alerting: five CloudWatch alarms -> one SNS topic -> one email address.
 # Every alarm notifies on ALARM and on OK, so a recovery is visible too.
 #
 # The address is var.alarm_email (no default, sensitive), read from the gitignored
@@ -7,6 +7,23 @@
 #
 # Email subscriptions start as PendingConfirmation: click the link AWS sends after apply,
 # or nothing is delivered. Notifications published before that are dropped.
+
+# 5xx responses from the API, counted from the API Gateway access log (api.tf): Django's
+# own 500s (a normal Lambda response, so not in the Lambda Errors metric) and the gateway's
+# 502/503/504. "status" is a string in that JSON log, hence the quoted wildcard. One custom
+# metric, no dimensions; nothing is published while no 5xx happens.
+resource "aws_cloudwatch_log_metric_filter" "api_5xx" {
+  name           = "${local.name}-api-5xx"
+  log_group_name = aws_cloudwatch_log_group.api_access.name
+  pattern        = "{ $.status = \"5*\" }"
+
+  metric_transformation {
+    name      = "Api5xx"
+    namespace = "TenderRadar"
+    value     = "1"
+    unit      = "Count"
+  }
+}
 
 resource "aws_sns_topic" "alerts" {
   name = "${local.name}-alerts"
@@ -68,6 +85,21 @@ locals {
       operator    = "GreaterThanOrEqualToThreshold"
       threshold   = 5
       missing     = "notBreaching"
+    }
+
+    # (e) The site is answering with errors. A Django 500 is a normal Lambda response, so
+    # (c) never sees it; the access log does. 3 in 5 minutes: one odd request doesn't page,
+    # a broken page that people keep loading does. The traceback is in the API log group
+    # (settings.LOGGING sends django.request errors to the console).
+    api-5xx = {
+      description = "API: 3 or more 5xx responses in 5 minutes. Requests: aws logs tail /aws/apigateway/${local.name} --since 30m --filter-pattern '{ $.status = \"5*\" }'. Tracebacks: aws logs tail /aws/lambda/${local.name}-api --since 30m"
+      namespace   = aws_cloudwatch_log_metric_filter.api_5xx.metric_transformation[0].namespace
+      metric      = aws_cloudwatch_log_metric_filter.api_5xx.metric_transformation[0].name
+      dimensions  = {}
+      period      = 300
+      operator    = "GreaterThanOrEqualToThreshold"
+      threshold   = 3
+      missing     = "notBreaching" # no data point = no 5xx
     }
 
     # (d) Scheduler called Lambda and the Invoke API call itself failed (permissions, missing

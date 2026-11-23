@@ -438,6 +438,35 @@ def test_daily_cost_cap_uses_todays_rows(make_tender):
     assert extract_tender(make_tender(), AnthropicExtractor(client), meter).status == "ok"
 
 
+def test_check_counts_the_calls_estimated_cost_before_allowing_it():
+    meter = CallMeter(max_calls=50, daily_budget_usd=Decimal("0.010"))
+    LlmCall.objects.create(model_id="claude-haiku-5-5", prompt_version="v3", status="ok",
+                           cost_usd=Decimal("0.008"))
+    meter.check(Decimal("0.002"))  # exactly reaches the cap: allowed
+    with pytest.raises(CapReached, match=r"daily cost cap reached .*\+ up to \$0\.0021") as e:
+        meter.check(Decimal("0.0021"))  # would take the day past it
+    assert e.value.daily is True
+    meter.check()  # a fake extraction costs nothing: only spent >= cap stops it
+    with pytest.raises(CapReached) as e:
+        CallMeter(max_calls=0, daily_budget_usd=Decimal(1)).check()
+    assert e.value.daily is False  # the per-run cap is not the daily one
+
+
+def test_no_call_is_made_when_its_worst_case_would_pass_the_daily_cap(make_tender):
+    """Nothing spent yet, but the call's worst case (whole request, max_tokens out) is more
+    than the cap: refused before the API is called."""
+    client = StubClient(response(valid_data()))
+    ex = AnthropicExtractor(client)
+    worst = ex._worst_case_cost([{"role": "user", "content": build_notice(make_tender()).text}])
+    assert worst > 0
+    meter = CallMeter(max_calls=50, daily_budget_usd=worst / 2)
+    with pytest.raises(CapReached, match="for this call"):
+        extract_tender(make_tender(), ex, meter)
+    assert client.calls == [] and LlmCall.objects.count() == 0
+    meter = CallMeter(max_calls=50, daily_budget_usd=worst * 2)
+    assert extract_tender(make_tender(), ex, meter).status == "ok"
+
+
 def test_daily_cap_day_starts_at_st_johns_midnight():
     # St. John's is UTC-3:30 in November: local midnight on Nov 11 is 03:30 UTC.
     before = LlmCall.objects.create(model_id="m", prompt_version="v2", status="ok",

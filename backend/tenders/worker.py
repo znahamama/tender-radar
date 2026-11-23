@@ -12,7 +12,8 @@ Events:
                          assessment for that one tender, under the usual per-run and daily
                          LLM caps. Sent asynchronously by the API after a reviewer uploads
                          or deletes a document (tenders.documents.upload). An unknown
-                         reference is rejected before anything runs
+                         reference is rejected before anything runs. The summary says
+                         "capped": true when the daily LLM cap stopped it
     {"task": "create_admin", "username": "<name>"}
                          create or update that superuser with the password in the one-time
                          SecureString <SSM_PREFIX>admin_bootstrap_password (infra/README.md)
@@ -28,6 +29,8 @@ import time
 from contextlib import contextmanager, nullcontext
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
+# The worker's cold-start secrets include the LLM key; the API's don't (config/ssm.py).
+os.environ.setdefault("SSM_SECRET_SET", "worker")
 
 import django
 
@@ -116,13 +119,24 @@ def _reference(event: dict) -> str:
     return ref
 
 
-def _extract_one(event: dict) -> None:
-    # extract_tenders picks v5 or v3 for the tender, applies the per-run and daily caps
-    # (a cap is a clean exit), and assesses the extraction it made or found in its cache.
-    call_command("extract_tenders", "--reference", _reference(event))
+def _extract_one(event: dict) -> dict:
+    """extract_tenders picks v5 or v3 for the tender, applies the per-run and daily caps
+    (a cap is a clean exit), and assesses the extraction it made or found in its cache.
+    ``capped``: the daily LLM cap stopped it before the tender was read (extract_tenders
+    stamps Tender.llm_capped_at; the review page then says so for an upload)."""
+    from django.utils import timezone
+
+    from tenders.models import Tender
+
+    ref = _reference(event)
+    started = timezone.now()
+    call_command("extract_tenders", "--reference", ref)
+    return {"capped": Tender.objects.filter(reference_number=ref,
+                                            llm_capped_at__gte=started).exists()}
 
 
-# Steps that are Python functions of the event rather than management commands.
+# Steps that are Python functions of the event rather than management commands. A step may
+# return a dict, which is added to the run's summary.
 STEPS = {"create_admin": _create_admin, "extract_one": _extract_one}
 
 
@@ -138,11 +152,12 @@ def _error_line(e: BaseException) -> str:
 
 def handler(event, context=None):
     task = event.get("task") if isinstance(event, dict) else None
-    if task not in TASKS:
+    if not isinstance(task, str) or task not in TASKS:  # a list or dict, too: nothing runs
         raise ValueError(f"unknown task {task!r}; expected one of {sorted(TASKS)}")
 
     started = time.monotonic()
     steps: list[dict] = []
+    extra: dict = {}
     try:
         if task == "extract_one":
             _reference(event)  # before any step: a bad event runs nothing
@@ -153,7 +168,7 @@ def handler(event, context=None):
             try:
                 with _database_for(task):
                     if name in STEPS:
-                        STEPS[name](event)
+                        extra.update(STEPS[name](event) or {})
                     else:
                         call_command(name, *args)
             except Exception as e:
@@ -175,5 +190,6 @@ def handler(event, context=None):
         if task == "extract_one":
             ref = event.get("reference")
             summary["reference"] = ref[:MAX_REFERENCE_CHARS] if isinstance(ref, str) else None
+            summary["capped"] = bool(extra.get("capped"))
         print(json.dumps(summary, separators=(",", ":")), flush=True)
     return summary

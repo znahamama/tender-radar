@@ -18,7 +18,7 @@ from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
 from pydantic import ValidationError
 
-from .budget import CallMeter, StopRun, estimate_tokens, is_priced
+from .budget import CallMeter, StopRun, cost_usd, estimate_tokens, is_priced
 from .prompt import PROMPT_SCHEMAS, PROMPT_VERSION, PROMPTS, SYSTEM_PROMPT, Notice
 from .schema import SCHEMAS, ExtractionData
 
@@ -190,6 +190,12 @@ class AnthropicExtractor:
         return (len(self.system_prompt) + len(json.dumps(self.output_schema))
                 + sum(len(m["content"]) for m in messages))
 
+    def _worst_case_cost(self, messages: list[dict]):
+        """The most one call can cost: the whole request at CHARS_PER_TOKEN, and max_tokens
+        out. CallMeter.check counts it before the call is allowed."""
+        return cost_usd(self.model_id, estimate_tokens(self._request_chars(messages)),
+                        self.max_tokens)
+
     def _record(self, meter: CallMeter, tender: Tender | None, status: str, t0: float, *,
                 resp=None, request_id: str = "", worst_case_chars: int | None = None) -> None:
         if worst_case_chars is not None:
@@ -219,7 +225,7 @@ class AnthropicExtractor:
         failure = ExtractionResult.failed("no attempt made")
         for attempt in range(1, MAX_ATTEMPTS + 1):
             last = attempt == MAX_ATTEMPTS
-            meter.check()
+            meter.check(self._worst_case_cost(messages))
             first_call_of_run = self.api_calls == 0
             self.api_calls += 1
             t0 = time.monotonic()

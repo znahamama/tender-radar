@@ -8,7 +8,14 @@ import sys
 from pathlib import Path
 
 import pytest
-from config.ssm import SECRET_NAMES, fetch_direct_database_url, fetch_secrets
+from config.ssm import (
+    API_SECRET_NAMES,
+    SECRET_NAMES,
+    WORKER_SECRET_NAMES,
+    fetch_direct_database_url,
+    fetch_secrets,
+    secret_names,
+)
 from django.core.exceptions import ImproperlyConfigured
 
 # --- health ---------------------------------------------------------------------------
@@ -71,6 +78,97 @@ def test_api_urlconf_does_not_import_worker_only_modules():
                          capture_output=True, text=True, timeout=60)
     assert out.returncode == 0, out.stderr[-2000:]
     assert out.stdout.strip() == "[]"
+
+
+# What each process loads from SSM at cold start, in a fresh interpreter with a fake boto3
+# (records the names asked for) and no .env (python-dotenv stubbed out).
+_COLD_START = """
+import json, os, sys, types
+asked = []
+class SSM:
+    def get_parameters(self, Names, WithDecryption):
+        asked.extend(Names)
+        return {"Parameters": [{"Name": n, "Value": VALUES[n.rsplit("/", 1)[1]]} for n in Names]}
+VALUES = {"DATABASE_URL": "sqlite:///:memory:", "DJANGO_SECRET_KEY": "test-only",
+          "ANTHROPIC_API_KEY": "sk-test-only"}
+sys.modules["boto3"] = types.SimpleNamespace(client=lambda name: SSM())
+sys.modules["dotenv"] = types.SimpleNamespace(load_dotenv=lambda *a, **k: None)
+if sys.argv[1] == "worker":
+    import tenders.worker  # sets its secret set, then django.setup()
+else:
+    import django; django.setup()
+    import config.wsgi, config.urls
+    from django.test import Client
+    assert Client().get("/api/health", HTTP_HOST="127.0.0.1").status_code == 200
+print(json.dumps({"asked": asked, "llm_key": "ANTHROPIC_API_KEY" in os.environ}))
+"""
+
+
+@pytest.mark.parametrize("which, names, llm_key", [
+    ("api", API_SECRET_NAMES, False), ("worker", WORKER_SECRET_NAMES, True)])
+def test_cold_start_loads_only_that_process_kinds_secrets(which, names, llm_key):
+    """The API never asks SSM for the LLM key (its role may not read it) and starts and
+    answers without it; the worker still gets it."""
+    env = {k: v for k, v in os.environ.items()
+           if k not in ("ANTHROPIC_API_KEY", "DATABASE_URL", "DATABASE_URL_DIRECT",
+                        "DJANGO_SECRET_KEY", "SSM_SECRET_SET")}
+    env.update(DJANGO_SETTINGS_MODULE="config.settings", SSM_PREFIX="/t/prod/")
+    backend = Path(__file__).resolve().parents[2]
+    out = subprocess.run([sys.executable, "-c", _COLD_START, which], cwd=backend, env=env,
+                         check=False, capture_output=True, text=True, timeout=60)
+    assert out.returncode == 0, out.stderr[-2000:]
+    got = json.loads(out.stdout.strip().splitlines()[-1])
+    assert got == {"asked": [f"/t/prod/{n}" for n in names], "llm_key": llm_key}
+    assert "ANTHROPIC_API_KEY" not in API_SECRET_NAMES
+
+
+def test_unknown_secret_set_fails_startup():
+    with pytest.raises(ImproperlyConfigured, match="SSM_SECRET_SET='admin'"):
+        secret_names("admin")
+    assert secret_names("api") == API_SECRET_NAMES == ("DATABASE_URL", "DJANGO_SECRET_KEY")
+
+
+def test_the_api_role_may_read_only_the_api_secrets():
+    """infra/prod: the api-role reads exactly API_SECRET_NAMES, by exact ARN; only the
+    worker-role keeps the prefix wildcard."""
+    import re
+
+    prod = Path(__file__).resolve().parents[3] / "infra" / "prod"
+    names = re.search(r"api_ssm_params\s*=\s*\[([^\]]*)\]", (prod / "versions.tf").read_text())
+    assert tuple(re.findall(r'"([^"]+)"', names.group(1))) == API_SECRET_NAMES
+    iam = (prod / "iam.tf").read_text()
+    assert ('each.key == "api"\n      ? [for p in local.api_ssm_params : '
+            '"${local.ssm_arn_prefix}${p}"]\n    : [local.ssm_params_arn]') in iam
+
+
+# --- error visibility -------------------------------------------------------------------
+
+def test_a_server_error_is_logged_with_its_traceback_when_debug_is_off(client, settings,
+                                                                     monkeypatch):
+    """settings.LOGGING: django.request errors go to the console (CloudWatch on Lambda),
+    traceback included. Django's own console handler is silent with DEBUG off."""
+    import io
+    import logging
+
+    import tenders.pages
+
+    settings.DEBUG = False
+    client.raise_request_exception = False
+
+    def boom(cls, get):
+        raise RuntimeError("boom for the log")
+
+    monkeypatch.setattr(tenders.pages.Filters, "from_request", classmethod(boom))
+    console = next(h for h in logging.getLogger("django.request").handlers
+                   if isinstance(h, logging.StreamHandler))
+    buf = io.StringIO()
+    # Swapped directly: setStream() would flush the old stream, which pytest may have closed.
+    monkeypatch.setattr(console, "stream", buf)
+    assert client.get("/").status_code == 500
+    logged = buf.getvalue()
+    assert "ERROR django.request Internal Server Error: /" in logged
+    assert "Traceback (most recent call last)" in logged
+    assert "RuntimeError: boom for the log" in logged
 
 
 # --- dependency lock ------------------------------------------------------------------
@@ -242,7 +340,8 @@ def test_assess_runs_the_real_command(capsys):
     assert "assessed 0" in capsys.readouterr().out
 
 
-@pytest.mark.parametrize("event", [{}, {"task": "drop"}, None, "daily"])
+@pytest.mark.parametrize("event", [{}, {"task": "drop"}, None, "daily", {"task": ["daily"]},
+                                   {"task": {"daily": 1}}, {"task": 5}, {"task": b"daily"}])
 def test_unknown_task_is_rejected(calls, event):
     from tenders.worker import handler
 

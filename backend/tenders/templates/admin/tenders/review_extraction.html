@@ -52,7 +52,7 @@
   {% if not reviewable %}
   <p class="errornote">This extraction failed{% if extraction.error %}: {{ extraction.error|truncatechars:200 }}{% endif %}. There is no model answer to review.</p>
   {% else %}
-  <p class="help">A correction must be an allowed schema value, with evidence quoted exactly from the notice (checked like the model's). Reject marks the model's answer wrong and treats the gate as unknown. The newest decision on a gate counts; older ones stay in the log.</p>
+  <p class="help">A correction must be an allowed schema value, with evidence quoted exactly from the notice or from a document this extraction was given (checked like the model's, which also finds the document it is in). Reject marks the model's answer wrong and treats the gate as unknown. The newest decision on a gate counts; older ones stay in the log.</p>
 
   {% for g in gates %}
   <fieldset class="module aligned review-gate" id="gate-{{ g.gate }}">

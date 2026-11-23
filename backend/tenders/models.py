@@ -55,6 +55,10 @@ class Tender(models.Model):
     first_seen_at = models.DateTimeField()
     last_seen_at = models.DateTimeField()
     updated_at = models.DateTimeField()
+    # When an extract_tenders run last stopped at the daily LLM cap before reading this
+    # tender. The review page says an upload newer than any extraction waits for the next
+    # run, not "reading…"; the worker's extract_one summary says "capped".
+    llm_capped_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         ordering = ("closing_date",)
@@ -369,9 +373,10 @@ class ReviewDecision(models.Model):
     the newest decision for (extraction, gate) is the one that counts. tenders.review applies
     it before the eligibility rules run; tenders.eligibility.service.assess() uses it.
     - accept: the model's (post-validated) value is right.
-    - correct: ``corrected_value`` replaces it, with ``evidence`` quoted from the notice
-      (checked like model evidence). Gate value fields and detail fields, no evidence key;
-      for criteria_location, {"value": ...}.
+    - correct: ``corrected_value`` replaces it, with ``evidence`` quoted from the input the
+      extraction read: the notice, or with v4/v5 also a document it was given (checked like
+      model evidence). Gate value fields and detail fields, no evidence key, plus the
+      quote's ``source`` on a v4/v5 extraction; for criteria_location, {"value": ...}.
     - reject: the model's value is wrong; the gate is treated as unknown.
     """
 

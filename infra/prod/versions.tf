@@ -35,6 +35,10 @@ locals {
   name       = "tender-radar"
   account_id = data.aws_caller_identity.current.account_id
   # SSM parameter ARNs drop the name's leading slash: /a/b/ -> parameter/a/b/*
-  ssm_params_arn = "arn:aws:ssm:${var.region}:${local.account_id}:parameter${var.ssm_prefix}*"
+  ssm_arn_prefix = "arn:aws:ssm:${var.region}:${local.account_id}:parameter${var.ssm_prefix}"
+  ssm_params_arn = "${local.ssm_arn_prefix}*"
+  # The only parameters the API may read: config/ssm.py API_SECRET_NAMES (a test pins the
+  # two equal). Not the LLM key, the direct database URL or the admin bootstrap password.
+  api_ssm_params = ["DATABASE_URL", "DJANGO_SECRET_KEY"]
   log_retention  = 30 # days, every log group: both Lambdas and the API access log
 }

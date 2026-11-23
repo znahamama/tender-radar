@@ -11,13 +11,16 @@ from .envvars import env_decimal, env_float, env_int, env_str
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR.parent / ".env")  # local only; there is no .env in the image
 
-# Lambda: SSM_PREFIX is set and the three secrets come from SSM SecureStrings, once per
-# cold start. They go into os.environ so the Anthropic SDK finds its key the usual way.
+# Lambda: SSM_PREFIX is set and the secrets come from SSM SecureStrings, once per cold start.
+# They go into os.environ so the Anthropic SDK finds its key the usual way. The API loads
+# only the database URL and the secret key; the worker (SSM_SECRET_SET=worker, set by
+# tenders/worker.py) also loads the LLM key. See config/ssm.py.
 SSM_PREFIX = os.environ.get("SSM_PREFIX", "").strip()
 if SSM_PREFIX:
-    from .ssm import fetch_secrets
+    from .ssm import fetch_secrets, secret_names
 
-    os.environ.update(fetch_secrets(SSM_PREFIX))
+    os.environ.update(fetch_secrets(SSM_PREFIX,
+                                    secret_names(os.environ.get("SSM_SECRET_SET", "api"))))
 
 SECRET_KEY = os.environ["DJANGO_SECRET_KEY"]
 DEBUG = os.environ.get("DJANGO_DEBUG") == "1"
@@ -128,6 +131,19 @@ CSRF_COOKIE_HTTPONLY = True
 # opened from a link elsewhere, and the admin has no state-changing GETs.
 SESSION_COOKIE_SAMESITE = "Lax"
 CSRF_COOKIE_SAMESITE = "Lax"
+
+# Errors in requests (HTTP 500), with their traceback, go to the console: CloudWatch on
+# Lambda. Django's own console handler only works with DEBUG on, so without this a server
+# error in prod left no trace. A 5xx also counts toward the api-5xx alarm (alerts.tf).
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {"plain": {"format": "%(levelname)s %(name)s %(message)s"}},
+    "handlers": {"console": {"class": "logging.StreamHandler", "formatter": "plain"}},
+    # Not propagated: with DEBUG on, Django's "django" console handler would print it twice.
+    "loggers": {"django.request": {"handlers": ["console"], "level": "ERROR",
+                                   "propagate": False}},
+}
 
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},

@@ -39,7 +39,7 @@ from tenders.tests.extraction.conftest import (  # noqa: F401  (autouse fixtures
     valid_data,
 )
 from tenders.tests.test_documents import ATT, PDF, FakeOpener, make_pdf
-from tenders.tests.test_review import extraction, reviewer  # noqa: F401
+from tenders.tests.test_review import NO_SA, extraction, reviewer  # noqa: F401
 
 pytestmark = pytest.mark.django_db
 
@@ -500,7 +500,8 @@ def test_extract_one_reads_the_upload_with_v5_and_assesses(x, reviewer, monkeypa
                                        "evidence": FSC, "source": "rfp.pdf"}
     client = StubClient(response(data))
     monkeypatch.setattr(providers, "_default_client", lambda: client)
-    assert handler({"task": "extract_one", "reference": t.reference_number})["ok"]
+    summary = handler({"task": "extract_one", "reference": t.reference_number})
+    assert summary["ok"] is True and summary["capped"] is False
 
     assert len(client.calls) == 1
     sent = client.calls[0]["messages"][0]["content"]
@@ -522,11 +523,42 @@ def test_extract_one_stops_at_the_daily_cap_cleanly(x, reviewer, monkeypatch, se
 
     from tenders.worker import handler
 
-    add_upload(x.tender, reviewer)
+    doc = add_upload(x.tender, reviewer)
+    assert upload.reading_status(doc) == "reading…"
     settings.LLM_DAILY_BUDGET_USD = Decimal(0)
-    monkeypatch.setattr(providers, "_default_client", lambda: StubClient())
-    assert handler({"task": "extract_one", "reference": x.tender.reference_number})["ok"]
-    assert not Extraction.objects.filter(prompt_version="v5").exists()
+    client = StubClient()
+    monkeypatch.setattr(providers, "_default_client", lambda: client)
+    summary = handler({"task": "extract_one", "reference": x.tender.reference_number})
+    assert summary["ok"] is True and summary["capped"] is True  # clean, but says so
+    assert client.calls == [] and not Extraction.objects.filter(prompt_version="v5").exists()
+    x.tender.refresh_from_db()
+    assert x.tender.llm_capped_at >= doc.fetched_at
+    assert upload.reading_status(doc) == upload.CAPPED == (
+        "not read: daily LLM cap reached, will retry on the next run")
+    # A document uploaded after that stop is waiting to be read, not capped (yet).
+    later = add_upload(x.tender, reviewer, name="later.pdf", text="Later text.", sha="2" * 64)
+    assert upload.reading_status(later) == "reading…"
+
+
+def test_the_review_page_shows_a_capped_upload(staff, reviewer, x):  # noqa: F811
+    doc = add_upload(x.tender, reviewer)
+    type(x.tender).objects.filter(pk=x.tender.pk).update(llm_capped_at=timezone.now())
+    html = staff.get(reverse("admin:tenders_review_extraction", args=[x.pk])).content.decode()
+    assert upload.CAPPED in html and doc.original_filename in html
+
+
+def test_the_per_run_cap_does_not_mark_the_tender_capped(x, reviewer, settings,  # noqa: F811
+                                                         monkeypatch):
+    """Only the daily cost cap is "daily LLM cap reached"; the per-run call cap isn't."""
+    add_upload(x.tender, reviewer)
+    settings.LLM_MAX_CALLS_PER_RUN = 0
+    client = StubClient()
+    monkeypatch.setattr(providers, "_default_client", lambda: client)
+    out = StringIO()
+    call_command("extract_tenders", "--reference", x.tender.reference_number, stdout=out)
+    assert "stopped: per-run call cap reached" in out.getvalue() and client.calls == []
+    x.tender.refresh_from_db()
+    assert x.tender.llm_capped_at is None
 
 
 def test_after_deleting_the_only_upload_the_site_stops_naming_it(
@@ -841,3 +873,58 @@ def test_the_banner_and_the_reading_status_link_the_current_extraction(staff, re
             in html)
     assert upload.reading(doc) == upload.Reading(f"read in full in extraction #{y.pk}", y.pk)
     assert "not the extraction the site shows" not in staff.get(review_page(y)).content.decode()
+
+
+# --- reviewer corrections ground in the input the extraction read --------------------------
+
+def test_a_correction_on_v5_may_quote_a_document_it_was_given(
+        client, staff, x, reviewer, meter):  # noqa: F811
+    """FSC is only in the uploaded document, never in the notice. On the v5 extraction that
+    read it, a correction may quote it; the document is found and stored as its source, as
+    for a model quote, and the public page names it."""
+    from django.core.exceptions import ValidationError
+
+    from tenders import review
+
+    _, v5 = _with_upload_quote(x, reviewer, meter)
+    assert FSC not in x.tender.description
+    value, evidence = review.validate_correction(
+        v5, "clearance", {"corporate": "secret", "personnel": "reliability"}, FSC)
+    assert value == {"corporate": "secret", "personnel": "reliability",
+                     "source": "rfp ‹b›.pdf"}
+    assert evidence == FSC
+    # The same quote on the notice-only (v3) extraction: not in its input.
+    with pytest.raises(ValidationError) as e:
+        review.validate_correction(x, "clearance", {"corporate": "secret",
+                                                    "personnel": "reliability"}, FSC)
+    assert "not an exact quote of the notice:" in e.value.message_dict["evidence"][0]
+    # A v5 quote in neither: the message names both places.
+    with pytest.raises(ValidationError) as e:
+        review.validate_correction(v5, "clearance", {"corporate": "secret",
+                                                     "personnel": "none"},
+                                   "a Secret clearance appears nowhere here")
+    assert "the notice or a document this extraction was given" in str(e.value)
+
+    # Over HTTP, then the public page: reviewed, quoted, and the upload named as its source.
+    page = reverse("admin:tenders_review_extraction", args=[v5.pk])
+    r = staff.post(page, {"gate": "clearance", "form": "correct",
+                          "clearance-corporate": "secret", "clearance-personnel": "reliability",
+                          "clearance-evidence": FSC, "clearance-note": ""})
+    assert r.status_code == 302
+    html = client.get(reverse("tender-detail", args=[x.tender.reference_number])).content.decode()
+    assert "Reviewed by a person" in html
+    assert "From a document uploaded by the reviewer: rfp ‹b›.pdf" in html
+
+
+def test_a_correction_on_v3_quotes_the_notice_and_names_no_source(x, reviewer, meter):  # noqa: F811
+    from tenders import review
+
+    assert x.prompt_version == "v3"
+    value, evidence = review.validate_correction(x, "supply_arrangement_required",
+                                                 {"value": "no"}, NO_SA)
+    assert value == {"value": "no", "name": None} and evidence == NO_SA  # schema 1: no source
+    # On v5 the same notice quote holds, with the notice as its source.
+    _, v5 = _with_upload_quote(x, reviewer, meter)
+    value, _ = review.validate_correction(v5, "supply_arrangement_required",
+                                          {"value": "no"}, NO_SA)
+    assert value["source"] == "notice"

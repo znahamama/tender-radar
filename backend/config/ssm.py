@@ -9,8 +9,14 @@ import functools
 
 from django.core.exceptions import ImproperlyConfigured
 
-# Loaded at every cold start (settings.py), into os.environ under the same names.
-SECRET_NAMES = ("DATABASE_URL", "ANTHROPIC_API_KEY", "DJANGO_SECRET_KEY")
+# Loaded at every cold start (settings.py), into os.environ under the same names. The API
+# never calls the LLM, so it loads only the first set, and its IAM role may read only those
+# two parameters (infra/prod/iam.tf, pinned by tests/test_deploy.py). The worker sets
+# SSM_SECRET_SET=worker before settings load (tenders/worker.py).
+API_SECRET_NAMES = ("DATABASE_URL", "DJANGO_SECRET_KEY")
+WORKER_SECRET_NAMES = ("DATABASE_URL", "ANTHROPIC_API_KEY", "DJANGO_SECRET_KEY")
+SECRET_SETS = {"api": API_SECRET_NAMES, "worker": WORKER_SECRET_NAMES}
+SECRET_NAMES = WORKER_SECRET_NAMES  # fetch_secrets' default: every cold-start secret
 # Neon's direct (unpooled) URL. Only the worker's "migrate" task loads it, as
 # DATABASE_URL_DIRECT; the API and the daily task keep the pooled DATABASE_URL.
 DIRECT_URL_PARAM = "database_url_direct"
@@ -22,6 +28,14 @@ ADMIN_BOOTSTRAP_PARAM = "admin_bootstrap_password"
 def _check_prefix(prefix: str) -> None:
     if not prefix.startswith("/") or not prefix.endswith("/"):
         raise ImproperlyConfigured(f"SSM_PREFIX={prefix!r} must start and end with '/'")
+
+
+def secret_names(which: str) -> tuple[str, ...]:
+    """The cold-start secrets of one process kind: "api" (the default) or "worker"."""
+    if which not in SECRET_SETS:
+        raise ImproperlyConfigured(f"SSM_SECRET_SET={which!r} must be one of "
+                                   f"{', '.join(SECRET_SETS)}")
+    return SECRET_SETS[which]
 
 
 def _client(client):

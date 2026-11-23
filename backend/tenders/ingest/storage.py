@@ -17,9 +17,11 @@ from .schema import TenderNotice
 
 BATCH = 500
 # Fields compared via content_hash (everything except bookkeeping timestamps and the hash).
+# llm_capped_at is written by extract_tenders, never by ingest.
 CONTENT_FIELDS = [
     f.name for f in Tender._meta.concrete_fields
-    if f.name not in {"id", "content_hash", "first_seen_at", "last_seen_at", "updated_at"}
+    if f.name not in {"id", "content_hash", "first_seen_at", "last_seen_at", "updated_at",
+                      "llm_capped_at"}
 ]
 
 

@@ -179,15 +179,23 @@ def test_real_changes_are_updated(change):
     assert getattr(t, field) == value
 
 
+def _historical(mig, monkeypatch):
+    """These tests run a migration's function on today's Tender model. Fields added after
+    it that aren't notice content (Tender.llm_capped_at, 0021) didn't exist when it ran, so
+    they are left out of its hash here as ingest leaves them out (storage.CONTENT_FIELDS)."""
+    monkeypatch.setattr(mig, "EXCLUDED", mig.EXCLUDED | {"llm_capped_at"})
+    return mig
+
+
 @pytest.mark.django_db
-def test_migration_0011_rehashes_stored_rows_without_changing_values():
+def test_migration_0011_rehashes_stored_rows_without_changing_values(monkeypatch):
     import importlib
 
     from django.apps import apps
 
     from tenders.ingest.storage import CONTENT_FIELDS, content_hash
 
-    mig = importlib.import_module("tenders.migrations.0011_order_insensitive_content_hash")
+    mig = _historical(importlib.import_module("tenders.migrations.0011_order_insensitive_content_hash"), monkeypatch)
     base = _seed()
     t = Tender.objects.get(reference_number=base.reference_number)
     values = {f: getattr(t, f) for f in CONTENT_FIELDS}
@@ -207,14 +215,14 @@ GUESSED = "https://canadabuys.canada.ca/en/tender-opportunities/tender-notice/FA
 
 
 @pytest.mark.django_db
-def test_migration_0012_clears_guessed_urls_and_the_next_ingest_is_unchanged():
+def test_migration_0012_clears_guessed_urls_and_the_next_ingest_is_unchanged(monkeypatch):
     import importlib
 
     from django.apps import apps
 
     from tenders.ingest.storage import CONTENT_FIELDS, content_hash
 
-    mig = importlib.import_module("tenders.migrations.0012_clear_guessed_notice_urls")
+    mig = _historical(importlib.import_module("tenders.migrations.0012_clear_guessed_notice_urls"), monkeypatch)
     upsert(_kept(), now=NOW)
     # A row as the old ingest stored it: guessed URL, flag set, hash over those values.
     guessed = Tender.objects.get(reference_number="FAKE-GSIN-1")
@@ -237,14 +245,14 @@ def test_migration_0012_clears_guessed_urls_and_the_next_ingest_is_unchanged():
 
 
 @pytest.mark.django_db
-def test_migration_0013_rehash_makes_the_next_ingest_unchanged():
+def test_migration_0013_rehash_makes_the_next_ingest_unchanged(monkeypatch):
     import importlib
 
     from django.apps import apps
 
     from tenders.ingest.storage import CONTENT_FIELDS, content_hash
 
-    mig = importlib.import_module("tenders.migrations.0013_attachment_urls_tender_documents")
+    mig = _historical(importlib.import_module("tenders.migrations.0013_attachment_urls_tender_documents"), monkeypatch)
     upsert(_kept(), now=NOW)
     # Rows as stored before 0013: hashed without the attachment_urls key at all.
     for t in Tender.objects.all():

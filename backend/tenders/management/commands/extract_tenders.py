@@ -2,6 +2,7 @@ from collections import Counter
 
 from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
+from django.utils import timezone
 
 from tenders.eligibility.service import assess, default_profile
 from tenders.extraction.budget import CallMeter, CapReached, StopRun
@@ -83,7 +84,7 @@ class Command(BaseCommand):
         verdicts: Counter = Counter()
         stopped: StopRun | None = None
         v4_failed = 0
-        for t in tenders:
+        for i, t in enumerate(tenders):
             chosen = by_version[prompt_version_for(t)] if by_version else extractor
             with_docs = chosen is by_version.get(DOCUMENTS_PROMPT_VERSION)
             try:
@@ -91,6 +92,9 @@ class Command(BaseCommand):
             except CapReached as e:  # the budget working as designed, v3 or v4
                 out(self.style.WARNING(f"stopped: {e}"))
                 stopped = e
+                if e.daily:  # this tender and the rest wait for the next run
+                    Tender.objects.filter(pk__in=[x.pk for x in tenders[i:]]).update(
+                        llm_capped_at=timezone.now())
                 break
             except StopRun as e:  # bad key/model, 400 on the first call
                 if with_docs:

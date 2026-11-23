@@ -1,6 +1,6 @@
 """Public, read-only HTML pages: the tender list ("/") and one tender ("/tenders/<ref>/").
 
-GET only, and nothing here writes: the pages show what the daily run stored. The
+GET and HEAD only, and nothing here writes: the pages show what the daily run stored. The
 assessment shown is that of the current extraction (the one a run last produced or re-used,
 Extraction.last_used_at) by the configured LLM (settings.LLM_MODEL), for the default
 (fictional) profile; the keyword baseline sits beside it on the detail page for comparison
@@ -17,9 +17,10 @@ from django.conf import settings
 from django.core.paginator import Paginator
 from django.db.models import F, OuterRef, Q, QuerySet, Subquery
 from django.db.models.fields.json import KT
+from django.http import Http404
 from django.shortcuts import get_object_or_404, render
 from django.utils import timezone
-from django.views.decorators.http import require_GET
+from django.views.decorators.http import require_safe
 
 from tenders.documents.fetch import is_allowed_url
 from tenders.eligibility.combine import V3, Combined, combined_for
@@ -66,6 +67,20 @@ _CLEARANCE = {"none": "none", "reliability": "Reliability", "secret": "Secret",
               "top_secret": "Top Secret", "unknown": "unknown"}
 _ON_SITE = {"yes": "on-site", "no": "not on-site", "unknown": "unknown"}
 _DETAIL_FIELDS = {"name": "arrangement name", "place": "place", "portal": "portal"}
+
+
+def without_nul(value: str) -> str:
+    """User input without NUL characters. Postgres can't store or compare text holding one
+    (psycopg raises), so a "\x00" in a search or a reference was a server error."""
+    return value.replace("\x00", "")
+
+
+def reference_or_404(reference: str) -> str:
+    """A reference from a URL path, NUL-free; nothing left -> 404 (public and admin)."""
+    reference = without_nul(reference)
+    if not reference:
+        raise Http404("No such notice.")
+    return reference
 
 
 # --- queries --------------------------------------------------------------------------
@@ -143,7 +158,7 @@ class Filters:
             show=show,
             status=status if status in STATUS_LABELS else "",
             region=region if region in Tender.RegionScope.values else "",
-            q=" ".join(get.get("q", "").split())[:MAX_QUERY_CHARS],
+            q=" ".join(without_nul(get.get("q", "")).split())[:MAX_QUERY_CHARS],
             scope="all" if get.get("scope") == "all" else "it",
         )
 
@@ -165,7 +180,7 @@ class Filters:
         return qs
 
 
-@require_GET
+@require_safe
 def tender_list(request):
     filters = Filters.from_request(request.GET)
     # The scope toggle's two counts, under the same other filters.
@@ -266,8 +281,8 @@ def document_sources(llm: Extraction | None) -> dict[str, DocumentSource]:
 
 
 def quote_source(g: dict | None, sources: dict[str, DocumentSource]) -> DocumentSource | None:
-    """The document a gate's quote came from; None for the notice, no quote, or a
-    reviewer's value (a correction has no source: it quotes the notice)."""
+    """The document a gate's quote came from; None for the notice or no quote. A
+    reviewer's correction names its source as the model's quotes do (tenders.review)."""
     if not g or not g.get("evidence"):
         return None
     name = g.get("source")
@@ -486,9 +501,9 @@ def scope_line(tender: Tender, assessment: Assessment | None) -> ScopeLine | Non
     return ScopeLine(status, codes, len(pairs) - len(shown))
 
 
-@require_GET
+@require_safe
 def tender_detail(request, reference: str):
-    tender = get_object_or_404(Tender, reference_number=reference)
+    tender = get_object_or_404(Tender, reference_number=reference_or_404(reference))
     assessment = (primary_assessments().filter(tender=tender)
                   .select_related("extraction").first())
     llm = assessment.extraction if assessment else (
