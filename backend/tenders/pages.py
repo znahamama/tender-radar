@@ -83,6 +83,19 @@ def primary_assessments() -> QuerySet[Assessment]:
             .order_by("-extraction__last_used_at", "-extraction_id"))
 
 
+def current_extractions(tender, model_id: str | None = None) -> QuerySet[Extraction]:
+    """A tender's extractions by one model (default: the configured LLM), the current one
+    first: the one last produced or re-used by a run (Extraction.last_used_at), the same
+    order as primary_assessments. ``tender``: a Tender, its pk or an OuterRef."""
+    return (Extraction.objects.filter(tender=tender, model_id=model_id or settings.LLM_MODEL)
+            .order_by("-last_used_at", "-id"))
+
+
+def current_extraction(tender, model_id: str | None = None) -> Extraction | None:
+    """The extraction the site shows for ``tender`` (None if it has none)."""
+    return current_extractions(tender, model_id).first()
+
+
 def is_open() -> Q:
     """Open at the last ingest, and the closing date (if any) hasn't passed since."""
     return (Q(tender_status__iexact="Open")

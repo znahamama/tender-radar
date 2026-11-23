@@ -161,7 +161,12 @@ def test_queue_order_blocked_then_flagged_then_rest(client, reviewer, extraction
     assert admin.flags(rows[3]) == "-"
     assert admin.status(rows[0]) == "Blocked"
     assert admin.reviewed(rows[0]) == "no"
-    assert page(blocked).encode() in r.content and page(injected).encode() in r.content
+    # Each notice links through its review link, which opens the current extraction.
+    for x in (blocked, injected):
+        current = reverse("admin:tenders_review_current",
+                          args=[x.tender.reference_number])
+        assert f'href="{current}"'.encode() in r.content
+        assert client.get(current)["Location"] == page(x)
 
     decide(client, blocked, "clearance", "accept")
     decide(client, blocked, "clearance", "reject")  # the same gate twice counts once

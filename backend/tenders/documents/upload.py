@@ -255,23 +255,33 @@ def _invoke_async(function: str, payload: bytes) -> None:
 
 # --- reading status, for the review page -------------------------------------------------
 
-def reading_status(doc: TenderDocument) -> str:
+@dataclass(frozen=True)
+class Reading:
+    text: str
+    extraction_id: int | None = None  # the extraction the text is about (None: reading…)
+
+
+def reading(doc: TenderDocument) -> Reading:
     """"reading…" until an extraction of the tender (configured model) was produced or
     re-used after the upload (Extraction.last_used_at); then how the current one used it:
-    read whole, read in part, or left out."""
-    from tenders.models import Extraction
+    read whole, read in part, or left out, with that extraction's id (the admin links it)."""
+    from tenders.pages import current_extractions
 
-    newest = (Extraction.objects.filter(tender_id=doc.tender_id, model_id=settings.LLM_MODEL,
-                                        last_used_at__gt=doc.fetched_at)
-              .order_by("-last_used_at", "-id").first())
+    newest = current_extractions(doc.tender_id).filter(last_used_at__gt=doc.fetched_at).first()
     if newest is None:
-        return "reading…"
+        return Reading("reading…")
     rec = next((d for d in newest.documents or [] if d.get("url") == doc.url), None)
     if rec is None:
-        return f"not in the current extraction (#{newest.pk}, prompt {newest.prompt_version})"
+        return Reading(f"not in the current extraction (#{newest.pk}, prompt "
+                       f"{newest.prompt_version})", newest.pk)
     said = {"full": "read in full", "partial": "read in part (the input cap)",
             "not_read": "left out (the input cap)"}.get(rec.get("status"), rec.get("status"))
-    return f"{said} in extraction #{newest.pk}"
+    return Reading(f"{said} in extraction #{newest.pk}", newest.pk)
+
+
+def reading_status(doc: TenderDocument) -> str:
+    """reading(doc)'s text."""
+    return reading(doc).text
 
 
 # --- REDACT_VERSION bumps ------------------------------------------------------------------

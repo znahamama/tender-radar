@@ -515,7 +515,7 @@ def document_names(urls: list[str], filenames: list[str] | None = None) -> list[
 
 def _ranked_documents(tender: Tender) -> list:
     """Ok documents with text, in the fetcher's rank order (main solicitation, amendments
-    in order, the rest), ties in the CSV's attachment order, then other fetched URLs in URL
+    in order, the rest, standard instructions last), ties in the CSV's attachment order, then other fetched URLs in URL
     order, then uploads in upload order. An upload ranks as the main solicitation unless
     its file name says amendment (documents.service.upload_rank)."""
     from tenders.documents.service import document_rank
@@ -553,8 +553,9 @@ def input_order(docs: list, prompt_version: str = DOCUMENTS_PROMPT_VERSION) -> l
     """The documents (in the fetcher's rank order) in the order ``prompt_version`` reads them.
 
     v4: rank order (main solicitation, amendments, the rest). v5: amendments, then the other
-    documents, then the main solicitation last; with more than one document ranked main, the
-    first in rank order is the very last (it gets whatever room is left)."""
+    documents (in rank order, so standard instructions last among them), then the main
+    solicitation last; with more than one document ranked main, the first in rank order is
+    the very last (it gets whatever room is left)."""
     if prompt_version == "v4":
         return list(docs)
     from tenders.documents.service import document_rank

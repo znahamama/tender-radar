@@ -1070,6 +1070,45 @@ def test_amendment_names(name, rank):
     assert service._rank(WEB + name) == rank
 
 
+# --- standard instructions rank last ----------------------------------------------------
+
+SI_EN = "2003-standard-instructions-goods-or-services-competitive-requirements.pdf"
+SI_FR = "2003-instructions-uniformisees-biens-ou-services-besoins-concurrentiels.pdf"
+
+
+@pytest.mark.parametrize("name", [
+    SI_EN, SI_FR, "Standard_Instructions_EN.pdf", "STANDARD INSTRUCTIONS.pdf",
+    "Instructions uniformisées 2003.pdf",
+    "Instructions uniformise\u0301es.pdf",  # é decomposed (NFD), as some file names come
+    "standard-instruction.docx",
+    # whatever else the name says: a solicitation word or an amendment number
+    "rfp-standard-instructions.pdf", "standard-instructions-amendment-002.pdf",
+])
+def test_a_file_named_standard_instructions_ranks_last(name):
+    assert service._rank(WEB + name) == (service.STANDARD_INSTRUCTIONS, 0)
+
+
+@pytest.mark.parametrize("name", ["instructions-to-bidders.pdf", "standard-clauses.pdf",
+                                  "instructions-and-standard-terms.pdf"])
+def test_other_instructions_are_not_standard_instructions(name):
+    assert service._rank(WEB + name)[0] != service.STANDARD_INSTRUCTIONS
+
+
+def test_standard_instructions_come_after_every_other_document():
+    urls = [WEB + n for n in (SI_EN, "annex_b_pricing.docx", "amendment-1.pdf", SI_FR,
+                              "annex_a.pdf", "rfp.pdf")]
+    assert service.order_urls(urls) == [WEB + n for n in (
+        "rfp.pdf", "amendment-1.pdf", "annex_a.pdf", "annex_b_pricing.docx", SI_EN, SI_FR)]
+
+
+def test_standard_instructions_are_the_first_left_out_at_the_per_tender_limit(csv_dir):
+    urls = [WEB + n for n in (SI_EN, "annex_a.pdf", "amendment-1.pdf", "rfp.pdf")]
+    tender(urls=urls)
+    _, opener = run(csv_dir("PW-1"), {u: PDF for u in urls}, per_tender=3)
+    assert opener.calls == [WEB + "rfp.pdf", WEB + "amendment-1.pdf", WEB + "annex_a.pdf"]
+    assert doc(WEB + SI_EN).status == "over_tender_limit"
+
+
 def test_cb346_and_cb487_main_documents_rank_ahead_of_their_amendments():
     cb346 = [WEB + n for n in ("26-58047_rfp_amd_001_en_0.pdf", "26-58047_rfp_amd_001_en.pdf",
                                "26-58047_rfp_en_0.pdf")]

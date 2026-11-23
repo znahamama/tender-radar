@@ -1,7 +1,6 @@
 import json
 
 from django import forms
-from django.conf import settings
 from django.contrib import admin, messages
 from django.contrib.admin.models import DELETION, LogEntry
 from django.core.exceptions import PermissionDenied, ValidationError
@@ -41,7 +40,15 @@ from .models import (
     Tender,
     TenderDocument,
 )
-from .pages import GATE_LABELS, gate_flags, gate_value, is_open, primary_assessments
+from .pages import (
+    GATE_LABELS,
+    current_extraction,
+    current_extractions,
+    gate_flags,
+    gate_value,
+    is_open,
+    primary_assessments,
+)
 
 
 class ReadOnlyAdmin(admin.ModelAdmin):
@@ -156,8 +163,7 @@ def queue_flags(flags: list[str], data_quality: list[str],
 def review_queue():
     """Open notices, current LLM extraction each (the one the site shows: latest
     last_used_at): blocked first, then flagged, then the rest; by closing date within each."""
-    newest = (Extraction.objects.filter(tender=OuterRef("pk"), model_id=settings.LLM_MODEL)
-              .order_by("-last_used_at", "-id"))
+    newest = current_extractions(OuterRef("pk"))
     status = primary_assessments().filter(tender=OuterRef("pk")).values("status")[:1]
     gates_reviewed = (ReviewDecision.objects.filter(extraction=OuterRef("review_extraction_id"))
                       .values("extraction").annotate(n=Count("gate", distinct=True))
@@ -178,11 +184,8 @@ def review_queue():
         gates_reviewed=Coalesce(Subquery(gates_reviewed, output_field=IntegerField()), 0),
         # The most recently current other extraction of this notice that a person reviewed.
         earlier_reviewed_id=Subquery(
-            Extraction.objects.filter(tender=OuterRef("pk"),
-                                      model_id=settings.LLM_MODEL,
-                                      review_decisions__isnull=False)
-            .exclude(pk=OuterRef("review_extraction_id"))
-            .order_by("-last_used_at", "-id").values("id")[:1]),
+            current_extractions(OuterRef("pk")).filter(review_decisions__isnull=False)
+            .exclude(pk=OuterRef("review_extraction_id")).values("id")[:1]),
     )
     flagged = Q(data_quality__contains=[INJECTION_PATTERN])
     for f in QUEUE_FLAGS:
@@ -273,8 +276,7 @@ class NeedsReviewAdmin(admin.ModelAdmin):
     def notice(self, obj):
         if obj.review_extraction_id is None:
             return format_html("{} <span class=\"quiet\">(no LLM extraction)</span>", obj.title)
-        url = reverse("admin:tenders_review_extraction", args=[obj.review_extraction_id])
-        return format_html('<a href="{}">{}</a>', url, obj.title)
+        return format_html('<a href="{}">{}</a>', review_current_url(obj), obj.title)
 
     @admin.display(description="status")
     def status(self, obj):
@@ -320,6 +322,8 @@ class NeedsReviewAdmin(admin.ModelAdmin):
                      name="tenders_upload_documents"),
                 path("extraction/<int:pk>/documents/<int:doc_pk>/delete/",
                      view(self.delete_document_view), name="tenders_delete_document"),
+                path("tender/<str:reference>/review/", view(self.review_current_view),
+                     name="tenders_review_current"),
                 *super().get_urls()]
 
     # -- the review page ----------------------------------------------------------------
@@ -356,14 +360,27 @@ class NeedsReviewAdmin(admin.ModelAdmin):
             "extraction": extraction,
             "tender": extraction.tender,
             "reviewable": reviewable,
-            "newest_id": (Extraction.objects.filter(tender=extraction.tender,
-                                                    model_id=extraction.model_id)
-                          .order_by("-last_used_at", "-id").values_list("id", flat=True).first()),
+            "newest_id": (current_extractions(extraction.tender, extraction.model_id)
+                          .values_list("id", flat=True).first()),
             "assessment": (extraction.assessments.filter(profile_id=_default_profile_id())
                            .first()),
             "gates": self._gate_context(extraction, bound) if reviewable else [],
             **self._documents_context(extraction.tender),
         })
+
+    def review_current_view(self, request, reference: str):
+        """The review page of the extraction the site shows for this notice now. Links that
+        should follow the notice (the queue, after an upload or delete) point here; a
+        #fragment on the link is kept by the browser through the redirect."""
+        if not can_review(request.user):
+            raise PermissionDenied
+        tender = get_object_or_404(Tender, reference_number=reference)
+        current = current_extraction(tender)
+        if current is None:
+            messages.warning(request, f"{reference} has no LLM extraction to review yet.")
+            return HttpResponseRedirect(reverse("admin:tenders_needsreview_changelist"))
+        return HttpResponseRedirect(reverse("admin:tenders_review_extraction",
+                                            args=[current.pk]))
 
     # -- reviewer document upload (tenders.documents.upload) ------------------------------
 
@@ -371,7 +388,7 @@ class NeedsReviewAdmin(admin.ModelAdmin):
     def _documents_context(tender: Tender) -> dict:
         docs = list(upload.uploaded(tender).select_related("uploaded_by").order_by("id"))
         return {
-            "uploads": [{"doc": d, "reading": upload.reading_status(d)} for d in docs],
+            "uploads": [{"doc": d, "reading": upload.reading(d)} for d in docs],
             "fetched_ok": tender.documents.filter(source=TenderDocument.Source.FETCHED,
                                                   status=TenderDocument.Status.OK).count(),
             "upload_limits": {"mb": upload.MAX_FILE_BYTES // (1024 * 1024),
@@ -387,8 +404,9 @@ class NeedsReviewAdmin(admin.ModelAdmin):
 
     @staticmethod
     def _back(extraction: Extraction) -> HttpResponseRedirect:
-        url = reverse("admin:tenders_review_extraction", args=[extraction.pk])
-        return HttpResponseRedirect(f"{url}#documents")
+        """To the notice's current extraction: an upload or delete is about the notice, and
+        the extraction it was sent from may no longer be the one the site shows."""
+        return HttpResponseRedirect(f"{review_current_url(extraction.tender)}#documents")
 
     @staticmethod
     def _reread(request, tender: Tender, done: str) -> None:
@@ -398,8 +416,11 @@ class NeedsReviewAdmin(admin.ModelAdmin):
             messages.warning(request, f"{done} Not re-read yet: {why_not}. The daily run "
                                       "reads it otherwise.")
         else:
-            messages.success(request, f"{done} The notice is being read again; reload this "
-                                      "page in a minute or two.")
+            # The browser stays on the extraction it was redirected to, so a reload would
+            # not reach the one the re-read makes: link the notice's current one instead.
+            messages.success(request, format_html(
+                '{} The notice is being read again; <a href="{}#documents">open the current '
+                'extraction</a> in a minute or two.', done, review_current_url(tender)))
 
     def upload_view(self, request, pk: int):
         extraction = self._documents_target(request, pk)
@@ -488,9 +509,8 @@ class NeedsReviewAdmin(admin.ModelAdmin):
                 assessments__extraction=extraction)}
             statuses = [assess(extraction, p).get_status_display() for p in profiles]
             # A decision on another extraction may carry to the current one the site shows.
-            newest = (Extraction.objects.select_related("tender")
-                      .filter(tender_id=extraction.tender_id, model_id=extraction.model_id)
-                      .order_by("-last_used_at", "-id").first())
+            newest = (current_extractions(extraction.tender_id, extraction.model_id)
+                      .select_related("tender").first())
             if newest.pk != extraction.pk:
                 for p in {default_profile(), *SupplierProfile.objects.filter(
                         assessments__extraction=newest)}:
@@ -500,6 +520,11 @@ class NeedsReviewAdmin(admin.ModelAdmin):
                                   f"Status now: {', '.join(sorted(set(statuses)))}.")
         url = reverse("admin:tenders_review_extraction", args=[extraction.pk])
         return HttpResponseRedirect(f"{url}#gate-{gate}")
+
+
+def review_current_url(tender) -> str:
+    """The link that always opens the notice's current extraction (review_current_view)."""
+    return reverse("admin:tenders_review_current", args=[tender.reference_number])
 
 
 def _default_profile_id():

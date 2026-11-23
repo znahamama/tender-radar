@@ -90,7 +90,9 @@ are in no telecom family.
   hints) and injection scan; only the redacted text is kept, never the PDF. The API then
   asks the worker to re-read that one notice (`extract_one`, under the usual LLM caps). An
   upload ranks as the main solicitation unless its name says amendment, and the public page
-  names it ("uploaded by the reviewer", no link) but shows only the quotes.
+  names it ("uploaded by the reviewer", no link) but shows only the quotes. A fetched or
+  uploaded file named "Standard Instructions" / "Instructions uniformisées" (boilerplate)
+  ranks last, after every other document.
 
 ## Architecture
 

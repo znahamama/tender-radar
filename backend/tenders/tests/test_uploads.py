@@ -583,6 +583,8 @@ def test_a_re_upload_that_hits_the_cache_stops_reading(staff, reviewer, x, meter
     ("rfp_amd_001.pdf", (1, 1)),
     ("ABES.PROD.PW__HP.B539.E79947.EBSU003.PDF", (1, 3)),
     ("ABES.PROD.PW__HP.B539.E79947.EBSU000.PDF", (0, 0)),
+    ("Standard Instructions 2003.pdf", (4, 0)),   # last, like a fetched one so named
+    ("RFP - Instructions uniformisées.pdf", (4, 0)),
 ])
 def test_an_upload_ranks_main_unless_its_name_says_amendment(name, rank):
     assert upload_rank(name) == rank
@@ -708,3 +710,134 @@ def test_command_reports_recleaned_uploads(x, reviewer, tmp_path, monkeypatch): 
     out = StringIO()
     call_command("fetch_documents", "--csv-dir", str(tmp_path), stdout=out)
     assert "1 uploaded document(s) re-cleaned from their stored text" in out.getvalue()
+
+
+def test_standard_instructions_are_read_last_among_the_other_documents(x, reviewer):  # noqa: F811
+    """Fetched or uploaded: after every other document in rank order (v4), and so last of
+    the other documents in v5, which keeps the main solicitation at the very end (the
+    order the pinned v5 prompt states)."""
+    t = x.tender
+    t.attachment_urls = [ATT + "2003-standard-instructions.pdf", ATT + "annex.pdf",
+                         ATT + "PW-1.EBSU001.PDF"]
+    t.save()
+    for url in t.attachment_urls:
+        TenderDocument.objects.create(tender=t, url=url, status="ok", text=f"text of {url}",
+                                      sha256="3" * 64, redact_version=REDACT_VERSION,
+                                      fetched_at=timezone.now())
+    si = add_upload(t, reviewer, "Standard Instructions.pdf", "Boilerplate.", sha="6" * 64)
+    add_upload(t, reviewer, "Statement of Work.pdf", "Uploaded main text.", sha="4" * 64)
+    assert document_rank(si) == (4, 0)
+    v4 = build_notice_with_documents(t, prompt_version="v4")
+    assert [d.name for d in v4.documents] == [
+        "Statement of Work.pdf", "PW-1.EBSU001.PDF", "annex.pdf",
+        "2003-standard-instructions.pdf", "Standard Instructions.pdf"]
+    v5 = build_notice_with_documents(t)
+    assert [d.name for d in v5.documents] == [
+        "PW-1.EBSU001.PDF", "annex.pdf", "2003-standard-instructions.pdf",
+        "Standard Instructions.pdf", "Statement of Work.pdf"]
+
+
+# --- review links that follow the notice's current extraction ---------------------------
+
+def current_url(tender):
+    return reverse("admin:tenders_review_current", args=[tender.reference_number])
+
+
+def review_page(x):
+    return reverse("admin:tenders_review_extraction", args=[x.pk])
+
+
+def newer(x, **fields):
+    """Another extraction of x's notice, made current (a later last_used_at), as a re-read
+    after an upload would."""
+    y = Extraction.objects.get(pk=x.pk)
+    y.pk = None
+    y.content_hash = "f" * 64
+    y.prompt_version = "v5"
+    y.last_used_at = timezone.now() + timedelta(minutes=1)
+    for k, v in fields.items():
+        setattr(y, k, v)
+    y.save()
+    return y
+
+
+def test_the_review_link_opens_the_current_extraction(staff, x):
+    r = staff.get(current_url(x.tender))
+    assert r.status_code == 302 and r["Location"] == review_page(x)
+    y = newer(x)
+    assert staff.get(current_url(x.tender))["Location"] == review_page(y)
+    Extraction.objects.filter(pk=x.pk).update(last_used_at=timezone.now() + timedelta(hours=1))
+    assert staff.get(current_url(x.tender))["Location"] == review_page(x)  # re-used: current
+
+
+def test_the_review_link_takes_a_reference_with_a_colon(staff, extraction):  # noqa: F811
+    x = extraction(reference_number="SSC-26-00000001:T")
+    r = staff.get(current_url(x.tender))
+    assert r.status_code == 302 and r["Location"] == review_page(x)
+
+
+def test_the_review_link_is_for_reviewers_only(client, x):
+    url = current_url(x.tender)
+    r = client.get(url)
+    assert r.status_code == 302 and r["Location"].startswith("/admin/login/")
+    client.force_login(User.objects.create_user("visitor"))
+    r = client.get(url)
+    assert r.status_code == 302 and r["Location"].startswith("/admin/login/")
+    client.force_login(User.objects.create_user("clerk", is_staff=True))
+    assert client.get(url).status_code == 403
+
+
+def test_the_review_link_without_an_extraction_goes_to_the_queue(staff, x):
+    Extraction.objects.filter(tender=x.tender).delete()
+    r = staff.get(current_url(x.tender), follow=True)
+    assert r.redirect_chain == [(reverse("admin:tenders_needsreview_changelist"), 302)]
+    assert any("has no LLM extraction to review yet" in m for m in texts(r))
+    assert staff.get(reverse("admin:tenders_review_current", args=["NO-SUCH-REF"])) \
+        .status_code == 404
+
+
+def test_the_queue_links_each_notice_through_the_review_link(staff, x):
+    html = staff.get(reverse("admin:tenders_needsreview_changelist")).content.decode()
+    assert f'href="{current_url(x.tender)}"' in html
+    assert f'href="{review_page(x)}"' not in html
+
+
+def test_after_an_upload_the_reviewer_lands_on_the_current_extraction(staff, x, invoked):
+    y = newer(x)  # the page the upload was sent from (x) is no longer the one the site shows
+    r = staff.post(upload_url(x), {"files": [pdf_file()]})
+    assert r.status_code == 302 and r["Location"] == f"{current_url(x.tender)}#documents"
+    r = staff.post(upload_url(x), {"files": [pdf_file("b.pdf", make_pdf(["Annex B."]))]},
+                   follow=True)
+    assert r.redirect_chain[-1] == (review_page(y), 302)
+    assert any(f'<a href="{current_url(x.tender)}#documents">open the current extraction</a>'
+               in m for m in texts(r))
+
+
+def test_after_a_delete_the_reviewer_lands_on_the_current_extraction(staff, reviewer, x,  # noqa: F811
+                                                                     invoked):
+    doc = add_upload(x.tender, reviewer, "rfp.pdf")
+    y = newer(x)
+    r = staff.post(delete_url(x, doc))
+    assert r.status_code == 302 and r["Location"] == f"{current_url(x.tender)}#documents"
+    doc = add_upload(x.tender, reviewer, "again.pdf", sha="7" * 64)
+    r = staff.post(delete_url(x, doc), follow=True)
+    assert r.redirect_chain[-1] == (review_page(y), 302)
+    assert any("open the current extraction" in m for m in texts(r))
+
+
+def test_an_uploaded_file_name_in_the_message_is_escaped(staff, x, invoked):
+    r = post(staff, x, pdf_file("<b>bold</b>.pdf"))
+    message = next(m for m in texts(r) if "being read again" in m)
+    assert "<b>" not in message
+
+
+def test_the_banner_and_the_reading_status_link_the_current_extraction(staff, reviewer, x):  # noqa: F811
+    doc = add_upload(x.tender, reviewer, "rfp.pdf")
+    y = newer(x, documents=[{"url": doc.url, "name": "rfp.pdf", "status": "full",
+                             "chars": 14, "total_chars": 14}])
+    html = staff.get(review_page(x)).content.decode()
+    assert f'(that is <a href="{review_page(y)}">#{y.pk}</a>)' in html
+    assert (f'<a href="{review_page(y)}#documents">read in full in extraction #{y.pk}</a>'
+            in html)
+    assert upload.reading(doc) == upload.Reading(f"read in full in extraction #{y.pk}", y.pk)
+    assert "not the extraction the site shows" not in staff.get(review_page(y)).content.decode()

@@ -16,7 +16,9 @@ re-evaluate, is not touched. Rows for URLs that left the set are deleted.
 
 Order and per-tender limit: allowed URLs are ranked main solicitation first (CanadaBuys'
 "...EBSU000.PDF", or a file named as a solicitation), then amendments by number
-("...EBSU001.PDF", ...), then other PDFs, then other file types, each group in CSV order.
+("...EBSU001.PDF", ...), then other PDFs, then other file types, then any file named as
+standard instructions ("Standard Instructions", "Instructions uniformisées": boilerplate),
+each group in CSV order.
 Only .pdf URLs are ranked and count toward the limit. The first 8 are downloaded; the rest
 are recorded as over_tender_limit, which is not final: a later run downloads any of them
 that rank within the limit then (e.g. once it is raised). Two kinds of row from before
@@ -63,6 +65,7 @@ import csv
 import hashlib
 import re
 import time
+import unicodedata
 from collections import Counter
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
@@ -122,19 +125,28 @@ _AMENDMENT_RE = re.compile(
     re.IGNORECASE)
 
 
+# PSPC's standard instructions (SACC 2003 "Standard Instructions - Goods or Services -
+# Competitive Requirements" and the like, in French "Instructions uniformisées"): long
+# boilerplate, the same for every notice, so read last and left out first at the cap.
+STANDARD_INSTRUCTIONS = 4  # the rank group, after every other document
+_STANDARD_INSTRUCTIONS_RE = re.compile(
+    r"standard[\W_]*instructions?|instructions?[\W_]*uniformis[eé]es?", re.IGNORECASE)
+
 _filename = url_filename  # the name the ranking reads
 
 
 def _rank(url: str) -> tuple[int, int]:
-    """(group, number): 0 main solicitation, 1 amendment n, 2 other PDF, 3 other file type."""
+    """(group, number): 0 main solicitation, 1 amendment n, 2 other PDF, 3 other file type,
+    4 standard instructions (whatever else the name says)."""
     return _rank_name(_filename(url))
 
 
 def upload_rank(name: str) -> tuple[int, int]:
-    """An uploaded document: an amendment when its file name says so (the same rules as a
-    fetched one's), otherwise the main solicitation, whatever else the name says."""
+    """An uploaded document: an amendment, or standard instructions (last), when its file
+    name says so (the same rules as a fetched one's), otherwise the main solicitation,
+    whatever else the name says."""
     rank = _rank_name(name)
-    return rank if rank[0] == 1 else (0, 0)
+    return rank if rank[0] in (1, STANDARD_INSTRUCTIONS) else (0, 0)
 
 
 def document_rank(doc) -> tuple[int, int]:
@@ -145,6 +157,8 @@ def document_rank(doc) -> tuple[int, int]:
 
 
 def _rank_name(name: str) -> tuple[int, int]:
+    if _STANDARD_INSTRUCTIONS_RE.search(unicodedata.normalize("NFC", name)):
+        return (STANDARD_INSTRUCTIONS, 0)
     if m := _EBSU_RE.search(name):
         n = int(m.group(1))
         return (0, 0) if n == 0 else (1, n)
@@ -157,7 +171,8 @@ def _rank_name(name: str) -> tuple[int, int]:
 
 
 def order_urls(urls: list[str]) -> list[str]:
-    """Main solicitation first, then amendments in order, then the rest (stable)."""
+    """Main solicitation first, then amendments in order, then the rest, standard
+    instructions last (stable)."""
     return sorted(urls, key=_rank)
 
 

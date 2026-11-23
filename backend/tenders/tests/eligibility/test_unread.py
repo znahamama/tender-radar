@@ -108,7 +108,10 @@ def test_cb435_like_flips_back_to_check():
 
 def test_cb181_like_flips_back_to_check():
     """Clearance unknown (the model's quote didn't hold), a land-claims warning, and an
-    amendment left out at the cap that changes the security requirements."""
+    amendment left out at the cap that adds a security requirement. Shaped like cb-181's
+    notice, not its documents: there amendment-005 removes the requirement ("There are no
+    security requirements") and v5 reads it whole, so clearance is "none" and the tripwire
+    rightly leaves the notice at no_blockers_stated."""
     data = gates(land_claims_applies={
         "value": "yes", "evidence": "This procurement is subject to the Canadian Free Trade "
                                     "Agreement."})
