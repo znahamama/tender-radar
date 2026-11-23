@@ -31,11 +31,19 @@ if TYPE_CHECKING:
 # given. Used only for tenders with at least one ok TenderDocument (DOCUMENTS_PROMPT_VERSION);
 # schema 2 (schema.ExtractionData2).
 #
+# v5 (2026-11-22): v4 with the documents in a new order, amendments first and the main
+# solicitation last (build_notice_with_documents), so the 120k cap cuts the main document
+# instead of dropping the amendments. Only two sentences change, the order and "earlier
+# text" for amendments (_V5_CHANGES). Replaces v4 for every documents extraction; v4 stays
+# pinned, and its stored extractions are still rebuilt in the v4 order.
+#
 # PROMPT_VERSION is the default the site and extract_tenders use. Switched from v2 to v3 on
 # 2026-11-18, after the single test run (docs/eval-protocol.md). DOCUMENTS_PROMPT_VERSION
 # replaces it for a tender with stored solicitation documents (prompt_version_for).
 PROMPT_VERSION = "v3"
-DOCUMENTS_PROMPT_VERSION = "v4"
+DOCUMENTS_PROMPT_VERSION = "v5"
+# Every prompt version that reads solicitation documents (schema 2), oldest first.
+DOCUMENTS_PROMPTS = ("v4", "v5")
 
 SYSTEM_PROMPT_V2 = """\
 You extract structured facts from one Canadian public tender notice for a small IT firm \
@@ -324,7 +332,30 @@ Example 2 gates:
 - the other gates: unknown, evidence null
 """
 
-PROMPTS = {"v2": SYSTEM_PROMPT_V2, "v3": SYSTEM_PROMPT_V3, "v4": SYSTEM_PROMPT_V4}
+# v5 = v4 with these replacements, each applied exactly once.
+_V5_CHANGES = (
+    ("each: the main solicitation first, then amendments in order, then other documents.",
+     ("each: amendments first, in order, then other documents, then the main solicitation "
+      "last.")),
+    ("when an amendment and earlier text disagree, use the amendment",
+     ("when an amendment and the main solicitation or an earlier amendment disagree, use "
+      "the amendment")),
+)
+
+
+def _v5() -> str:
+    text = SYSTEM_PROMPT_V4
+    for old, new in _V5_CHANGES:
+        if text.count(old) != 1:
+            raise AssertionError(f"prompt v4 does not contain {old!r} exactly once")
+        text = text.replace(old, new)
+    return text
+
+
+SYSTEM_PROMPT_V5 = _v5()
+
+PROMPTS = {"v2": SYSTEM_PROMPT_V2, "v3": SYSTEM_PROMPT_V3, "v4": SYSTEM_PROMPT_V4,
+           "v5": SYSTEM_PROMPT_V5}
 SYSTEM_PROMPT = PROMPTS[PROMPT_VERSION]
 
 TITLE, DESCRIPTION = "title", "description"
@@ -332,8 +363,8 @@ META_PREFIX = "meta:"
 
 
 # Which output schema (schema.SCHEMAS) each prompt version asks for.
-PROMPT_SCHEMAS = {"v2": "1", "v3": "1", "v4": "2"}
-# The whole user message of a v4 request (notice + documents), in characters.
+PROMPT_SCHEMAS = {"v2": "1", "v3": "1", "v4": "2", "v5": "2"}
+# The whole user message of a documents request (notice + documents), in characters.
 DOCUMENTS_MAX_CHARS = 120_000
 
 # Document statuses in an input: read whole, read up to a cut, or left out at the cap.
@@ -453,7 +484,7 @@ def build_input(tender: Tender, prompt_version: str | None = None) -> Notice:
     "rules-v1") gets build_notice, unchanged."""
     version = prompt_version or prompt_version_for(tender)
     if PROMPT_SCHEMAS.get(version) == "2":
-        return build_notice_with_documents(tender)
+        return build_notice_with_documents(tender, prompt_version=version)
     return build_notice(tender)
 
 
@@ -497,39 +528,92 @@ def _cut(text: str, room: int) -> str:
     return head[:nl] if nl >= room // 2 else head
 
 
+def input_order(docs: list, prompt_version: str = DOCUMENTS_PROMPT_VERSION) -> list:
+    """The documents (in the fetcher's rank order) in the order ``prompt_version`` reads them.
+
+    v4: rank order (main solicitation, amendments, the rest). v5: amendments, then the other
+    documents, then the main solicitation last; with more than one document ranked main, the
+    first in rank order is the very last (it gets whatever room is left)."""
+    if prompt_version == "v4":
+        return list(docs)
+    from tenders.documents.service import _rank
+
+    groups = [_rank(d.url)[0] for d in docs]
+    mains = [d for d, g in zip(docs, groups, strict=True) if g == 0]
+    return ([d for d, g in zip(docs, groups, strict=True) if g == 1]
+            + [d for d, g in zip(docs, groups, strict=True) if g >= 2] + mains[::-1])
+
+
+def _fill_v4(bodies: list[str], overheads: list[int], room: int) -> list[tuple[str, str]]:
+    """v4: whole documents in order until one doesn't fit; it and every later one are left
+    out, except that the first document is read up to the cap when even it doesn't fit."""
+    out: list[tuple[str, str]] = []
+    stopped = False
+    for body, extra in zip(bodies, overheads, strict=True):
+        if not stopped and extra + len(body) <= room:
+            out.append((FULL, body))
+            room -= extra + len(body)
+            continue
+        given = ""
+        if not stopped and not out:
+            given = _cut(body, room - extra)
+        stopped = True
+        out.append((PARTIAL if given else NOT_READ, given))
+    return out
+
+
+def _fill_v5(bodies: list[str], overheads: list[int], room: int,
+             priority: list[int]) -> list[tuple[str, str]]:
+    """v5: every document that fits whole, in input order (a document that doesn't is
+    skipped and the next one tried); then the room left goes to the best-ranked document
+    that didn't fit (``priority``: its place in the fetcher's rank order; the main
+    solicitation when there is one), read up to the cap."""
+    out: list[tuple[str, str]] = []
+    for body, extra in zip(bodies, overheads, strict=True):
+        if extra + len(body) <= room:
+            out.append((FULL, body))
+            room -= extra + len(body)
+        else:
+            out.append((NOT_READ, ""))
+    left = [i for i, (status, _) in enumerate(out) if status == NOT_READ]
+    if left:
+        i = min(left, key=lambda j: priority[j])
+        given = _cut(bodies[i], room - overheads[i])
+        if given:
+            out[i] = (PARTIAL, given)
+    return out
+
+
 def build_notice_with_documents(tender: Tender, documents: list | None = None,
-                                max_chars: int = DOCUMENTS_MAX_CHARS) -> Notice:
-    """build_notice, then <solicitation_documents> with one <document> per ok document, in
-    rank order, the whole message at most ``max_chars``. A document that doesn't fit is
-    left out, and so is every one after it (the cut falls on a document boundary), except
-    that the first document is read up to the cap when even it doesn't fit whole.
-    ``documents``: the TenderDocument rows to use, already ranked (tests).
+                                max_chars: int = DOCUMENTS_MAX_CHARS,
+                                prompt_version: str = DOCUMENTS_PROMPT_VERSION) -> Notice:
+    """build_notice, then <solicitation_documents> with one <document> per ok document, the
+    whole message at most ``max_chars``, in ``prompt_version``'s order (input_order). At most
+    one document is cut (truncated="true"); which one: _fill_v5, or _fill_v4 (kept to
+    rebuild stored v4 extractions exactly). ``documents``: the TenderDocument rows to use,
+    already in rank order (tests).
     """
     notice = build_notice(tender)
-    docs = _ranked_documents(tender) if documents is None else list(documents)
+    ranked = _ranked_documents(tender) if documents is None else list(documents)
+    docs = input_order(ranked, prompt_version)
     names = document_names([d.url for d in docs])
+    bodies = [neutralize(d.text) for d in docs]
     open_tag, close_tag = "<solicitation_documents>", "</solicitation_documents>"
     used = len(notice.text) + len(open_tag) + len(close_tag) + 2  # + the joining newlines
+    # Head (the longer, truncated="false" form), tail and three newlines around each body.
+    overheads = [len(f'<document name="{n}" truncated="false"></document>') + 3 for n in names]
+    room = max_chars - used
+    if prompt_version == "v4":
+        filled = _fill_v4(bodies, overheads, room)
+    else:
+        rank = {id(d): i for i, d in enumerate(ranked)}
+        filled = _fill_v5(bodies, overheads, room, [rank[id(d)] for d in docs])
     parts: list[str] = []
     inputs: list[DocumentInput] = []
-    stopped = False
-    for d, name in zip(docs, names, strict=True):
-        body = neutralize(d.text)
-        head, tail = f'<document name="{name}" truncated="false">', "</document>"
-        size = len(head) + len(body) + len(tail) + 3  # three newlines
-        status, given = NOT_READ, ""
-        if not stopped and used + size <= max_chars:
-            status, given = FULL, body
-        elif not stopped:
-            stopped = True
-            if not parts:  # the first document: read as much of it as fits
-                given = _cut(body, max_chars - used - (size - len(body)))
-                status = PARTIAL if given else NOT_READ
+    for d, name, body, (status, given) in zip(docs, names, bodies, filled, strict=True):
         if status != NOT_READ:
-            if status == PARTIAL:
-                head = f'<document name="{name}" truncated="true">'
-            parts.append(f"{head}\n{given}\n{tail}")
-            used += len(head) + len(given) + len(tail) + 3
+            cut = "true" if status == PARTIAL else "false"
+            parts.append(f'<document name="{name}" truncated="{cut}">\n{given}\n</document>')
         inputs.append(DocumentInput(name, d.url, status, len(given), len(body),
                                     bool(d.injection_patterns), body))
     text = "\n".join([notice.text, open_tag, *parts, close_tag])

@@ -9,7 +9,7 @@ import pytest
 from django.utils import timezone
 
 from tenders.admin import NeedsReviewAdmin, queue_flags, review_queue
-from tenders.eligibility.combine import combine
+from tenders.eligibility.combine import DOCS, combine
 from tenders.eligibility.service import assess, default_profile
 from tenders.extraction.providers import AnthropicExtractor
 from tenders.extraction.service import extract_tender
@@ -82,7 +82,7 @@ def test_v4_grounded_is_used():
     c = combine(_data(land_claims_applies=_gate("yes", "q4", MAIN_NAME)),
                 _data(land_claims_applies=_gate("yes", "q3")))
     assert c.data["eligibility"]["land_claims_applies"] == _gate("yes", "q4", MAIN_NAME)
-    assert c.versions["land_claims_applies"] == "v4" and c.flags == []
+    assert c.versions["land_claims_applies"] == DOCS and c.flags == []
 
 
 def test_v4_not_grounded_v3_grounded_uses_v3_from_the_notice():
@@ -96,7 +96,7 @@ def test_both_grounded_and_different_keeps_v4_and_flags():
     c = combine(_data(land_claims_applies=_gate("yes", "q4", MAIN_NAME)),
                 _data(land_claims_applies=_gate("no", "q3")))
     assert c.data["eligibility"]["land_claims_applies"]["value"] == "yes"
-    assert c.versions["land_claims_applies"] == "v4"
+    assert c.versions["land_claims_applies"] == DOCS
     assert c.flags == ["versions_disagree:eligibility.land_claims_applies"]
 
 
@@ -110,7 +110,7 @@ def test_same_answer_from_different_quotes_or_details_is_no_disagreement():
 
 def test_neither_grounded_stays_v4():
     c = combine(_data(), _data(land_claims_applies=_gate("unknown", None)))
-    assert c.data == _data() and c.versions["land_claims_applies"] == "v4" and c.flags == []
+    assert c.data == _data() and c.versions["land_claims_applies"] == DOCS and c.flags == []
 
 
 def test_nothing_to_combine_without_both():
@@ -286,7 +286,7 @@ def test_review_page_says_when_the_site_shows_the_v3_answer(make_tender, meter):
 
 
 @pytest.mark.parametrize(("action", "said"), [
-    ("accept", "a person reviewed it and accepted the v4 answer"),
+    ("accept", "a person reviewed it and accepted the answer from the documents"),
     ("correct", "a person reviewed it and corrected the answer"),
     ("reject", "a person reviewed it and marked the answer wrong"),
 ])

@@ -99,8 +99,15 @@ _EBSU_RE = re.compile(r"\.EBSU(\d{3})\.PDF$", re.IGNORECASE)
 _SOLICITATION_WORDS = frozenset(
     {"solicitation", "sollicitation", "demande", "invitation", "rfp", "rfq", "rfsa", "rfso",
      "itq", "itt", "dp", "ddp"})
-_AMENDMENT_RE = re.compile(r"(?:amendment|amend|modification|modif|addendum)[\W_]*(\d+)",
-                           re.IGNORECASE)
+# An amendment's number follows its keyword, directly ("amd2", "amendment_002"), after a
+# separator ("amd_001", "modif.-012"), or after up to four words
+# ("amendment-to-the-bid-solicitation-002"). The keyword must stand alone: "amd" inside a
+# longer word is not one. Checked before the solicitation words, so "rfp_amd_001" and
+# "...-amendment-to-the-bid-solicitation-002" are amendments, not main documents.
+_AMENDMENT_RE = re.compile(
+    r"(?<![a-z])(?:amendments?|amend|amd|modifications?|modif|addendum)(?![a-z])"
+    r"(?:[\W_]+[a-z]+){0,4}?[\W_]*(\d+)",
+    re.IGNORECASE)
 
 
 def _filename(url: str) -> str:

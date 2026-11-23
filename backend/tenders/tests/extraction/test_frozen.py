@@ -11,11 +11,13 @@ import anthropic
 import pytest
 
 from tenders import scope
-from tenders.eligibility import places, rules
+from tenders.eligibility import places, rules, unread
 from tenders.evals.harness import PINNED_PROMPTS
 from tenders.extraction.keyword import KEYWORD_RULES_VERSION, KeywordExtractor
 from tenders.extraction.prompt import (
+    _V5_CHANGES,
     DOCUMENTS_PROMPT_VERSION,
+    DOCUMENTS_PROMPTS,
     PROMPT_SCHEMAS,
     PROMPT_VERSION,
     PROMPTS,
@@ -40,6 +42,10 @@ FROZEN = {
     # Re-pinned the same day, before any successful call: "every quote names a source"
     # became gate evidence only, to fit schema 2 (below).
     ("prompt", "v4"): "50f72e984c708f4e9f24715d220c2fd6fb7c44ec4b37fd1a1b09b353634a7c15",
+    # v5: pinned 2026-11-22. v4 with the documents in a new order (amendments first, the
+    # main solicitation last, so the 120k cap cuts the main document): two sentences differ
+    # (prompt._V5_CHANGES). Replaces v4 for documents extractions; v4 stays pinned.
+    ("prompt", "v5"): "69ac8cb9c39f69ccc716064a0979f069083071f1d2e68b403013c38e19816c9e",
     ("schema", "1"): "4fab443b3ee8a8fe91e28637fb68762324c50751c78531fd4abc57531898e83e",
     # Schema 2 (prompt v4): schema 1 plus a source on each gate's evidence. Re-pinned twice
     # on 2026-11-19, before any successful use. First version: nullable sources on every
@@ -50,6 +56,9 @@ FROZEN = {
     ("baseline", "rules-v1"): "04590c85d129cbcff3b584289eac8437938d76677ee1ad58b40444a4a9f76441",
     # rules.py + places.py source (the gazetteer decides on-site blockers).
     ("eligibility", "3"): "69f130cd4bb6823d0a30e49b570fe5249513c039be1fd683ea0e5721a1f02b63",
+    # rules v4 (2026-11-22): v3 unchanged + unread.py, the unread-text tripwire. The site
+    # assesses with v4; the frozen eval (harness.FROZEN_VERSIONS) still scores with v3.
+    ("eligibility", "4"): "29d78d32630e8367efb043bbc23e42002de801554229f53d58eaf489b026f381",
     # scope.py source: which notices are in scope for an IT firm (category codes only).
     ("scope", "1"): "8edb35a113f6dc0c385b712faa870fc2340239cf575438abc2a1784d85165703",
 }
@@ -71,11 +80,20 @@ def test_prompt_v4_is_frozen():
     assert sha256(PROMPTS["v4"]) == FROZEN[("prompt", "v4")]
 
 
+def test_prompt_v5_is_frozen_and_is_v4_with_the_new_order():
+    assert sha256(PROMPTS["v5"]) == FROZEN[("prompt", "v5")]
+    v4, v5 = PROMPTS["v4"], PROMPTS["v5"]
+    assert "then amendments in order" in v4 and "then the main solicitation last" in v5
+    for old, new in _V5_CHANGES:
+        v4 = v4.replace(old, new)
+    assert v4 == v5
+
+
 def test_every_prompt_is_pinned_and_the_site_uses_v3():
     # A new prompt needs a pin above before it exists; the eval scores only pinned ones.
     assert set(PROMPTS) == {v for kind, v in FROZEN if kind == "prompt"}
-    # v4 needs solicitation documents, which the eval's notice-only cases don't have.
-    assert set(PINNED_PROMPTS) == set(PROMPTS) - {DOCUMENTS_PROMPT_VERSION}
+    # v4 and v5 need solicitation documents, which the eval's notice-only cases don't have.
+    assert set(PINNED_PROMPTS) == set(PROMPTS) - set(DOCUMENTS_PROMPTS)
     # The site switched to v3 on 2026-11-18, after the single test run. v2 stays pinned.
     assert PROMPT_VERSION == "v3" and SYSTEM_PROMPT is PROMPTS["v3"]
 
@@ -91,8 +109,8 @@ def test_schema_2_is_frozen_and_only_v4_uses_it():
     assert SCHEMA_VERSION_DOCUMENTS == "2"
     assert sha256(schema) == FROZEN[("schema", SCHEMA_VERSION_DOCUMENTS)]
     assert set(SCHEMAS) == {v for kind, v in FROZEN if kind == "schema"}
-    assert PROMPT_SCHEMAS == {"v2": "1", "v3": "1", "v4": "2"}
-    assert DOCUMENTS_PROMPT_VERSION == "v4"
+    assert PROMPT_SCHEMAS == {"v2": "1", "v3": "1", "v4": "2", "v5": "2"}
+    assert DOCUMENTS_PROMPTS == ("v4", "v5") and DOCUMENTS_PROMPT_VERSION == "v5"
 
 
 def test_keyword_baseline_is_frozen():
@@ -104,6 +122,12 @@ def test_eligibility_rules_v3_are_frozen():
     assert rules.RULES_VERSION == "3"
     source = b"".join(Path(m.__file__).read_bytes() for m in (rules, places))
     assert hashlib.sha256(source).hexdigest() == FROZEN[("eligibility", rules.RULES_VERSION)]
+
+
+def test_eligibility_rules_v4_are_frozen_and_build_on_v3():
+    assert unread.RULES_VERSION == "4" and unread.BASE_RULES_VERSION == rules.RULES_VERSION
+    source = b"".join(Path(m.__file__).read_bytes() for m in (rules, places, unread))
+    assert hashlib.sha256(source).hexdigest() == FROZEN[("eligibility", unread.RULES_VERSION)]
 
 
 def test_scope_rules_v1_are_frozen():

@@ -1043,6 +1043,44 @@ def test_a_file_named_as_a_solicitation_ranks_as_the_main_document(main):
                                          ATT + "amendment_002.pdf", ATT + "annex_a.pdf"]
 
 
+@pytest.mark.parametrize(("name", "rank"), [
+    # cb-346-24044821 (real names): "rfp" made these amendments the main document.
+    ("26-58047_rfp_amd_001_en.pdf", (1, 1)),
+    ("26-58047_rfp_amd_001_en_0.pdf", (1, 1)),
+    ("26-58047_rfp_en_0.pdf", (0, 0)),
+    # cb-487-11071191 (real names): "solicitation" did the same, the number four words on.
+    ("cic-160038---amendment-to-the-bid-solicitation-001_4.pdf", (1, 1)),
+    ("cic-160038---amendment-to-the-bid-solicitation-002.pdf", (1, 2)),
+    ("cic-160038---ircc-mass-notification-system_5.pdf", (2, 0)),
+    # amd / amd_NNN / amdN, French modification(s), and the forms that already worked.
+    ("w8484-261018-b_solicitation_amd2_en.pdf", (1, 2)),
+    ("rfp_amd_003.pdf", (1, 3)),
+    ("Modification_no_4_EN.pdf", (1, 4)),
+    ("modifications-005.pdf", (1, 5)),
+    ("amendment_002.pdf", (1, 2)),
+    ("Addendum-6.pdf", (1, 6)),
+    # Not amendments: "amd" inside a longer word, no keyword, no number at all.
+    ("amdocs-licence-2026.pdf", (2, 0)),
+    ("rfsa-nrcan-5000091272_a-001.pdf", (0, 0)),
+    ("amendment-history.pdf", (2, 0)),
+])
+def test_amendment_names(name, rank):
+    assert service._rank(WEB + name) == rank
+
+
+def test_cb346_and_cb487_main_documents_rank_ahead_of_their_amendments():
+    cb346 = [WEB + n for n in ("26-58047_rfp_amd_001_en_0.pdf", "26-58047_rfp_amd_001_en.pdf",
+                               "26-58047_rfp_en_0.pdf")]
+    assert service.order_urls(cb346)[0] == WEB + "26-58047_rfp_en_0.pdf"
+    cb487 = [WEB + n for n in ("cic-160038---amendment-to-the-bid-solicitation-002.pdf",
+                               "cic-160038---amendment-to-the-bid-solicitation-001_4.pdf",
+                               "cic-160038---ircc-mass-notification-system_5.pdf")]
+    assert service.order_urls(cb487) == [
+        WEB + "cic-160038---amendment-to-the-bid-solicitation-001_4.pdf",
+        WEB + "cic-160038---amendment-to-the-bid-solicitation-002.pdf",
+        WEB + "cic-160038---ircc-mass-notification-system_5.pdf"]
+
+
 def test_the_limit_keeps_the_main_solicitation_and_earliest_amendments(csv_dir):
     urls = [EBSU.format(n) for n in (5, 3, 0, 7, 1, 2, 4, 6, 8, 9)]  # CSV order, shuffled
     tender(urls=urls)

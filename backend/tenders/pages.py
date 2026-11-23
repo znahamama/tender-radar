@@ -21,7 +21,8 @@ from django.utils import timezone
 from django.views.decorators.http import require_GET
 
 from tenders.documents.fetch import is_allowed_url
-from tenders.eligibility.combine import V3, V4, Combined, combined_for
+from tenders.eligibility.combine import V3, Combined, combined_for
+from tenders.extraction.prompt import DOCUMENTS_PROMPTS
 from tenders.extraction.schema import GATES, NOTICE_SOURCE
 from tenders.ingest.injection import INJECTION_PATTERN
 from tenders.ingest.schema import SOURCE_TZ
@@ -269,9 +270,10 @@ class GateRow:
     version: str = ""  # which extraction the answer came from, when two were combined
 
 
-VERSION_LABELS = {V4: "v4 (notice and documents)", V3: "v3 (notice only)"}
+VERSION_LABELS = {**{v: f"{v} (notice and documents)" for v in DOCUMENTS_PROMPTS},
+                  V3: "v3 (notice only)"}
 _DECIDED = {
-    ReviewDecision.Action.ACCEPT: "a person reviewed it and accepted the v4 answer",
+    ReviewDecision.Action.ACCEPT: "a person reviewed it and accepted the answer from the documents",
     ReviewDecision.Action.CORRECT: "a person reviewed it and corrected the answer",
     ReviewDecision.Action.REJECT: "a person reviewed it and marked the answer wrong",
 }

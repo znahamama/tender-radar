@@ -68,7 +68,7 @@ class Command(BaseCommand):
             extractor = KeywordExtractor()
         else:
             extractor = AnthropicExtractor()
-            # A tender with ok solicitation documents is read with them (prompt v4); every
+            # A tender with ok solicitation documents is read with them (prompt v5); every
             # other tender stays on v3 and keeps its cache. One client, one meter: v4 calls
             # count against the same per-run and daily caps.
             with_documents = AnthropicExtractor(extractor.client,
@@ -127,8 +127,8 @@ class Command(BaseCommand):
         out(f"tokens in {meter.input_tokens}  out {meter.output_tokens}  "
             f"cost ${meter.cost:.6f}  (worst-case estimates included for failed connections)")
         if v4_failed:
-            out(self.style.WARNING(f"v4 failed {v4_failed}: kept their v3 extraction and "
-                                   "assessment (see the lines above)"))
+            out(self.style.WARNING(f"{DOCUMENTS_PROMPT_VERSION} failed {v4_failed}: kept their "
+                                   "v3 extraction and assessment (see the lines above)"))
 
         # A cap is the budget working as designed: a clean exit. Any other stop (bad key or
         # model, 400 on the first call) is a broken run; failing here fails the worker
@@ -139,4 +139,4 @@ class Command(BaseCommand):
 
     def _v4_failed(self, tender: Tender, reason: str) -> None:
         self.stdout.write(self.style.WARNING(
-            f"{tender.reference_number}  v4 failed, kept v3: {reason}"))
+            f"{tender.reference_number}  {DOCUMENTS_PROMPT_VERSION} failed, kept v3: {reason}"))

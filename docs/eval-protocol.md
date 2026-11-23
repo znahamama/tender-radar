@@ -209,6 +209,34 @@ rules and references only; no text.
 First run: `eval/reports/injection-2026-11-18.md`. Nothing frozen was changed. A fix for an
 attack that works would be a new prompt version (v4).
 
+## Prompt v5 and rules v4 (2026-11-22, site only, not scored)
+
+| Component | Version | Pinned hash (sha256) |
+|---|---|---|
+| LLM, notices read with documents (schema `2`) | prompt `v5` | system prompt `69ac8cb9…e19816c9e` |
+| Eligibility rules | `RULES_VERSION` `4` | source of `rules.py` + `places.py` + `unread.py` `29d78d32…b026f381` |
+
+- Prompt v5 is v4 with the documents in a new order (amendments, other documents, main
+  solicitation last, so the 120k cap cuts the main document instead of dropping
+  amendments). Two sentences change (`prompt._V5_CHANGES`). Like v4 it only reads notices
+  with stored documents, so the notice-only eval can't score it.
+- Rules v4 = rules v3, unchanged, plus the unread-text tripwire (`eligibility/unread.py`):
+  clearance or work location not stated, and stored document text the model did not read
+  names a clearance term or on-site work, makes no_blockers_stated check_solicitation, with
+  a warning. Never a blocker. The site assesses with v4; `run_eval` keeps scoring with v3
+  (`FROZEN_VERSIONS`).
+- Provenance: both came from a read-only review of the 16 open IT notices with documents on
+  2026-11-22. Two of them are labelled cases: **test-11** (cb-435-94227930) and dev-04
+  (cb-181-76348100). So v4 is not blind on test-11, and per "Test split scored once" it is
+  not evaluated on the test split.
+- Offline re-score from the stored outputs of `test-final-2026-11-18` (177 outputs) and
+  `dev-v3-2026-11-18` (90), no API call: every status is the same under v4 as under v3. The
+  local database has no stored documents for any of the 30 cases, so the tripwire has no text
+  to read there. With the documents prod has for test-11 (rebuilt from public sources), its
+  label's expected status would become check_solicitation (clearance unknown in the label;
+  the RFP and amendments say there is a security requirement). Its 9 outputs were already
+  check_solicitation.
+
 ## Reviewed pool (candidate labels from human review)
 
 A separate pool, never mixed into dev or test. In the admin review queue a person can

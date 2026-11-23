@@ -106,14 +106,18 @@ flowchart LR
 
 - **Backend:** Python 3.12, Django 5.2, server-rendered pages (no JavaScript on public pages).
 - **LLM:** `claude-haiku-5-5`, prompt v3, structured outputs, effort low, max 2000 tokens.
-  A notice with stored solicitation documents is read with them instead (prompt v4: the
-  notice, then the documents in rank order, at most 120,000 characters in all; each
+  A notice with stored solicitation documents is read with them instead (prompt v5: the
+  notice, then amendments, other documents and the main solicitation last, at most 120,000
+  characters in all, so the cap cuts the main document rather than the amendments; each
   eligibility gate's quote names its source and must be found in a source given (a wrong
   name is corrected and flagged), and a list item's quote must be found in the notice or a
   document given; max 4000 output tokens). Per gate, the v4 answer is used when its quote
   holds, otherwise the v3 answer from the notice; when both hold and differ, v4 decides and
   the notice goes to the review queue. If a v4 call fails, the tender keeps its v3 answer and
   the run carries on. Not in the eval set below; see the documents check under Evaluation.
+  Eligibility rules v4 add a check on what the model did not read: if clearance or work
+  location is not stated and stored document text past the cap names a clearance level or
+  on-site work, the notice stays "check the solicitation", with the term, document and page.
 - **Database:** Neon Postgres (free tier), pooled connections from Lambda.
 - **Infra:** AWS Lambda (arm64 container images, ECR), API Gateway HTTP API, EventBridge
   Scheduler, SSM Parameter Store, CloudWatch Logs. All Terraform; no VPC, NAT or RDS.

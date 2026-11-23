@@ -63,7 +63,7 @@
     {% if not_stated %}
     <ul class="plain">{% for label in not_stated %}<li>{{ label }}</li>{% endfor %}</ul>
     {% else %}<p>Every gate is stated.</p>{% endif %}
-    <p class="small">Assessed {{ assessment.computed_at|date:"Y-m-d H:i T" }} from extraction by {{ assessment.extraction.model_id }} (prompt {{ assessment.extraction.prompt_version }}{% if combined_from_v3 %}; {{ combined_from_v3 }} gate{{ combined_from_v3|pluralize }} from the prompt v3 extraction of the notice alone, where v4 had no quote that held{% endif %}), rules v{{ assessment.rules_version }}.{% if reviewed_count %} A person reviewed {{ reviewed_count }} of the model's answers; their values replace the model's.{% endif %}</p>
+    <p class="small">Assessed {{ assessment.computed_at|date:"Y-m-d H:i T" }} from extraction by {{ assessment.extraction.model_id }} (prompt {{ assessment.extraction.prompt_version }}{% if combined_from_v3 %}; {{ combined_from_v3 }} gate{{ combined_from_v3|pluralize }} from the prompt v3 extraction of the notice alone, where {{ assessment.extraction.prompt_version }} had no quote that held{% endif %}), rules v{{ assessment.rules_version }}.{% if reviewed_count %} A person reviewed {{ reviewed_count }} of the model's answers; their values replace the model's.{% endif %}</p>
   {% else %}
     <p>This notice has not been assessed yet. Only notices open at ingest time are assessed.</p>
   {% endif %}

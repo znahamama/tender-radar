@@ -4,7 +4,7 @@ import pytest
 from django.core.management import call_command
 
 from tenders.admin import AssessmentAdmin
-from tenders.eligibility import rules
+from tenders.eligibility import unread
 from tenders.eligibility.service import (
     assess,
     default_profile,
@@ -43,7 +43,7 @@ def test_assess_stores_decision(make_tender, meter):
     assert a.status == "blocked" and a.tender == t and a.profile == default_profile()
     assert {b["gate"] for b in a.blockers} == {"supply_arrangement_required", "clearance"}
     assert a.notes[0]["reason"] == "On-site work at St. John's (St. John's area)."
-    assert a.rules_version == rules.RULES_VERSION and len(a.inputs_hash) == 64
+    assert a.rules_version == unread.RULES_VERSION == "4" and len(a.inputs_hash) == 64
 
 
 def test_assess_is_idempotent(make_tender, meter):

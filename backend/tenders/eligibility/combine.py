@@ -1,6 +1,7 @@
-"""Per-gate combine of a tender's v4 extraction (notice and solicitation documents) with its
-v3 one (notice only). No API calls and no writes: both extractions are already stored and
-post-validated (assess() refreshes them first).
+"""Per-gate combine of a tender's documents extraction (prompt v4 or v5: notice and
+solicitation documents) with its v3 one (notice only); "v4" below means either. No API
+calls and no writes: both extractions are already stored and post-validated (assess()
+refreshes them first).
 
 For each eligibility gate ("grounded" = a quote survived post-validation):
 - v4 grounded -> v4's answer;
@@ -18,12 +19,17 @@ from __future__ import annotations
 import copy
 from dataclasses import dataclass, field
 
-from tenders.extraction.prompt import DOCUMENTS_PROMPT_VERSION, PROMPT_VERSION
+from tenders.extraction.prompt import (
+    DOCUMENTS_PROMPT_VERSION,
+    DOCUMENTS_PROMPTS,
+    PROMPT_VERSION,
+)
 from tenders.extraction.schema import GATES, NOTICE_SOURCE
 from tenders.models import Extraction
 from tenders.review import value_fields
 
-V4, V3 = DOCUMENTS_PROMPT_VERSION, PROMPT_VERSION
+# DOCS: the documents prompt the site uses now; a combine names the one it was given.
+DOCS, V3 = DOCUMENTS_PROMPT_VERSION, PROMPT_VERSION
 FROM_V3 = "from_v3"
 VERSIONS_DISAGREE = "versions_disagree"
 
@@ -31,7 +37,7 @@ VERSIONS_DISAGREE = "versions_disagree"
 @dataclass(frozen=True)
 class Combined:
     data: dict | None
-    versions: dict[str, str] = field(default_factory=dict)  # gate -> V4 | V3; {} if none
+    versions: dict[str, str] = field(default_factory=dict)  # gate -> "v4"/"v5" | V3; {}
     flags: list[str] = field(default_factory=list)
 
     def record(self, partner: Extraction | None) -> dict:
@@ -42,8 +48,8 @@ class Combined:
 
 
 def notice_only_partner(extraction: Extraction) -> Extraction | None:
-    """The newest ok v3 extraction of the same tender and model, for a v4 extraction."""
-    if extraction.prompt_version != V4:
+    """The newest ok v3 extraction of the same tender and model, for a documents extraction."""
+    if extraction.prompt_version not in DOCUMENTS_PROMPTS:
         return None
     return (Extraction.objects
             .filter(tender_id=extraction.tender_id, model_id=extraction.model_id,
@@ -60,8 +66,9 @@ def _answer(gate: str, g: dict) -> dict:
     return {f: g.get(f) for f in value_fields(gate)}
 
 
-def combine(v4_data: dict | None, v3_data: dict | None) -> Combined:
-    """Pure: the post-validated v4 data with v3 answers filled in per gate (a copy)."""
+def combine(v4_data: dict | None, v3_data: dict | None, docs_version: str = DOCS) -> Combined:
+    """Pure: the post-validated v4 data with v3 answers filled in per gate (a copy).
+    ``docs_version``: the documents extraction's prompt version, as recorded per gate."""
     if v4_data is None or v3_data is None:
         return Combined(v4_data)
     out = copy.deepcopy(v4_data)
@@ -70,7 +77,7 @@ def combine(v4_data: dict | None, v3_data: dict | None) -> Combined:
     for gate in GATES:
         g4, g3 = e4.get(gate), e3.get(gate)
         if _grounded(g4):
-            versions[gate] = V4
+            versions[gate] = docs_version
             if _grounded(g3) and _answer(gate, g3) != _answer(gate, g4):
                 flags.append(f"{VERSIONS_DISAGREE}:eligibility.{gate}")
         elif _grounded(g3):
@@ -78,7 +85,7 @@ def combine(v4_data: dict | None, v3_data: dict | None) -> Combined:
             versions[gate] = V3
             flags.append(f"{FROM_V3}:eligibility.{gate}")
         else:
-            versions[gate] = V4
+            versions[gate] = docs_version
     return Combined(out, versions, flags)
 
 
@@ -92,4 +99,4 @@ def combined_for(extraction: Extraction | None, record: dict | None
                if partner_id and data is not None else None)
     if partner is None:
         return Combined(data), None
-    return combine(data, partner.data), partner
+    return combine(data, partner.data, extraction.prompt_version), partner

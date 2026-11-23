@@ -18,6 +18,7 @@ from django.core.management.base import CommandError
 from django.utils import timezone
 from pydantic import ValidationError
 
+from tenders.documents.service import order_urls
 from tenders.extraction import providers
 from tenders.extraction.prompt import (
     DOCUMENTS_MAX_CHARS,
@@ -29,6 +30,7 @@ from tenders.extraction.prompt import (
     build_notice,
     build_notice_with_documents,
     document_names,
+    input_order,
     prompt_version_for,
 )
 from tenders.extraction.providers import OUTPUT_SCHEMA, AnthropicExtractor
@@ -120,14 +122,14 @@ def test_version_follows_ok_documents(make_tender):
     add_doc(t, AMEND2, "", status="too_many_pages")
     assert prompt_version_for(t) == "v3"
     add_doc(t, ANNEX, "Annex A - Pricing schedule.")
-    assert prompt_version_for(t) == "v4"
+    assert prompt_version_for(t) == "v5"
     assert build_input(t, "v3") == build_notice(t)
     assert build_input(t, "rules-v1") == build_notice(t)  # the keyword baseline
 
 
-def test_command_uses_v4_only_for_tenders_with_documents(make_tender, monkeypatch):
+def test_command_uses_v5_only_for_tenders_with_documents(make_tender, monkeypatch):
     """A tender without documents keeps its v3 cache (no call); one with documents gets one
-    v4 call, with the v4 prompt, schema 2 and the documents in the message."""
+    v5 call, with the v5 prompt, schema 2 and the documents in the message, main last."""
     plain = make_tender()
     client = StubClient(response(valid_data()))
     monkeypatch.setattr(providers, "_default_client", lambda: client)
@@ -138,21 +140,21 @@ def test_command_uses_v4_only_for_tenders_with_documents(make_tender, monkeypatc
     client.items = [response(with_sources(valid_data()))]
     out = StringIO()
     call_command("extract_tenders", stdout=out)
-    assert len(client.calls) == 2  # one v4 call; the plain tender was a cache hit
+    assert len(client.calls) == 2  # one v5 call; the plain tender was a cache hit
     v4_call = client.calls[1]
-    assert v4_call["system"] == PROMPTS["v4"]
+    assert v4_call["system"] == PROMPTS["v5"]
     assert (client.calls[0]["max_tokens"], v4_call["max_tokens"]) == (2000, 4000)
     assert "source" in json.dumps(v4_call["output_config"]["format"]["schema"])
     assert "<solicitation_documents>" in v4_call["messages"][0]["content"]
-    assert "[v4: 3 of 3 document(s) read]" in out.getvalue()
+    assert "[v5: 3 of 3 document(s) read]" in out.getvalue()
     assert "cache hits 1  ok 1" in out.getvalue()
 
     x = Extraction.objects.get(tender=docs)
-    assert (x.prompt_version, x.schema_version) == ("v4", "2")
-    assert [d["name"] for d in x.documents] == ["PW-1.EBSU000.PDF", "PW-1.EBSU001.PDF",
-                                               "annex.pdf"]
+    assert (x.prompt_version, x.schema_version) == ("v5", "2")
+    assert [d["name"] for d in x.documents] == ["PW-1.EBSU001.PDF", "annex.pdf",
+                                               "PW-1.EBSU000.PDF"]
     assert Extraction.objects.get(tender=plain).prompt_version == "v3"
-    assert set(LlmCall.objects.values_list("prompt_version", flat=True)) == {"v3", "v4"}
+    assert set(LlmCall.objects.values_list("prompt_version", flat=True)) == {"v3", "v5"}
 
 
 def test_v4_calls_count_against_the_same_run_cap(make_tender, monkeypatch, settings):
@@ -169,18 +171,53 @@ def test_v4_calls_count_against_the_same_run_cap(make_tender, monkeypatch, setti
 
 # --- 3. input: order, cap, cuts, record, hash ---------------------------------------------
 
-def test_documents_follow_the_notice_in_rank_order(make_tender):
+@pytest.mark.parametrize(("version", "expected"), [
+    ("v5", ["PW-1.EBSU001.PDF", "annex.pdf", "PW-1.EBSU000.PDF"]),  # amendments, others, main
+    ("v4", ["PW-1.EBSU000.PDF", "PW-1.EBSU001.PDF", "annex.pdf"]),  # rank order
+])
+def test_documents_follow_the_notice_in_each_versions_order(make_tender, version, expected):
     t = doc_tender(make_tender)
-    n = build_notice_with_documents(t)
+    n = build_notice_with_documents(t, prompt_version=version)
+    assert n == build_input(t, version)
     notice_text = build_notice(t).text
     assert n.text.startswith(notice_text + "\n<solicitation_documents>\n")
     assert n.text.endswith("</solicitation_documents>")
     names = [d.name for d in n.documents]
-    assert names == ["PW-1.EBSU000.PDF", "PW-1.EBSU001.PDF", "annex.pdf"]
+    assert names == expected
     order = [n.text.index(f'<document name="{name}" truncated="false">') for name in names]
     assert order == sorted(order)
     assert [d.status for d in n.documents] == [FULL] * 3
     assert not n.documents_cut and n.sources == build_notice(t).sources
+
+
+CB346 = "https://canadabuys.canada.ca/sites/default/files/webform/tender_notice/1/"
+
+
+def test_v5_puts_the_cb346_and_cb487_amendments_before_the_main_document():
+    """Their real file names. Under v4 the amendments ranked main (the names say "rfp" or
+    "solicitation"), went first, and the main document, too long to fit whole after them,
+    was left out."""
+    urls = [CB346 + n for n in ("26-58047_rfp_amd_001_en_0.pdf", "26-58047_rfp_en_0.pdf",
+                                "26-58047_rfp_amd_001_en.pdf")]
+    docs = [type("D", (), {"url": u})() for u in order_urls(urls)]
+    assert [d.url.rsplit("/", 1)[1] for d in input_order(docs, "v5")] == [
+        "26-58047_rfp_amd_001_en_0.pdf", "26-58047_rfp_amd_001_en.pdf",
+        "26-58047_rfp_en_0.pdf"]
+    urls = [CB346 + n for n in ("cic-160038---amendment-to-the-bid-solicitation-002.pdf",
+                                "cic-160038---ircc-mass-notification-system_5.pdf",
+                                "cic-160038---amendment-to-the-bid-solicitation-001_4.pdf",
+                                "cic-160038---npp-apm_2.pdf")]
+    docs = [type("D", (), {"url": u})() for u in order_urls(urls)]
+    assert [d.url.rsplit("/", 1)[1] for d in input_order(docs, "v5")] == [
+        "cic-160038---amendment-to-the-bid-solicitation-001_4.pdf",
+        "cic-160038---amendment-to-the-bid-solicitation-002.pdf",
+        "cic-160038---ircc-mass-notification-system_5.pdf", "cic-160038---npp-apm_2.pdf"]
+
+
+def test_v5_with_two_documents_ranked_main_reads_the_first_ranked_one_last():
+    urls = [MAIN, ATT + "rfp_part_2.pdf", AMEND1]  # both main: a tie keeps the CSV order
+    docs = [type("D", (), {"url": u})() for u in order_urls(urls)]
+    assert [d.url for d in input_order(docs, "v5")] == [AMEND1, ATT + "rfp_part_2.pdf", MAIN]
 
 
 def _sized(make_tender, *sizes):
@@ -190,20 +227,20 @@ def _sized(make_tender, *sizes):
     return t
 
 
-def test_cap_cuts_at_a_document_boundary(make_tender):
+def test_v4_cap_cuts_at_a_document_boundary(make_tender):
     """The second document doesn't fit: it and every later one are left out whole, even a
     small one that would have fitted."""
     t = _sized(make_tender, 50_000, 80_000, 1_000)
-    n = build_notice_with_documents(t)
+    n = build_notice_with_documents(t, prompt_version="v4")
     assert len(n.text) <= DOCUMENTS_MAX_CHARS
     assert [d.status for d in n.documents] == [FULL, NOT_READ, NOT_READ]
     assert [d.chars for d in n.documents] == [n.documents[0].total_chars, 0, 0]
     assert 'name="PW-1.EBSU001.PDF"' not in n.text and n.documents_cut
 
 
-def test_first_document_too_big_is_read_up_to_the_cap(make_tender):
+def test_v4_first_document_too_big_is_read_up_to_the_cap(make_tender):
     t = _sized(make_tender, 200_000, 1_000)
-    n = build_notice_with_documents(t)
+    n = build_notice_with_documents(t, prompt_version="v4")
     assert len(n.text) <= DOCUMENTS_MAX_CHARS
     first, second = n.documents
     assert first.status == PARTIAL and 100_000 < first.chars < first.total_chars
@@ -211,16 +248,74 @@ def test_first_document_too_big_is_read_up_to_the_cap(make_tender):
     assert second.status == NOT_READ
 
 
+def _by_name(n) -> dict:
+    return {d.name: d for d in n.documents}
+
+
+def test_v5_amendments_go_whole_and_the_main_document_gets_what_remains(make_tender):
+    t = _sized(make_tender, 50_000, 80_000, 1_000)  # main, amendment 1, amendment 2
+    n = build_notice_with_documents(t)
+    assert len(n.text) <= DOCUMENTS_MAX_CHARS
+    assert [d.name for d in n.documents] == ["PW-1.EBSU001.PDF", "PW-1.EBSU002.PDF",
+                                             "PW-1.EBSU000.PDF"]
+    main = _by_name(n)["PW-1.EBSU000.PDF"]
+    assert [d.status for d in n.documents] == [FULL, FULL, PARTIAL]
+    assert 30_000 < main.chars < main.total_chars
+    assert '<document name="PW-1.EBSU000.PDF" truncated="true">' in n.text
+    assert n.documents_cut
+
+
+def test_v5_a_document_that_does_not_fit_is_skipped_and_the_next_one_tried(make_tender):
+    """Amendment 2 doesn't fit whole: 3 and the main document still go whole after it, and
+    the room left is then a cut of amendment 2 (the best-ranked one that didn't fit)."""
+    t = _sized(make_tender, 10_000, 70_000, 60_000, 5_000)  # main, then amendments 1-3
+    n = build_notice_with_documents(t)
+    assert len(n.text) <= DOCUMENTS_MAX_CHARS
+    assert {d.name: d.status for d in n.documents} == {
+        "PW-1.EBSU001.PDF": FULL, "PW-1.EBSU002.PDF": PARTIAL, "PW-1.EBSU003.PDF": FULL,
+        "PW-1.EBSU000.PDF": FULL}
+    assert '<document name="PW-1.EBSU002.PDF" truncated="true">' in n.text
+
+
+def test_v5_main_document_too_big_is_read_up_to_the_cap(make_tender):
+    t = _sized(make_tender, 200_000, 1_000)
+    n = build_notice_with_documents(t)
+    assert len(n.text) <= DOCUMENTS_MAX_CHARS
+    amendment, main = n.documents
+    assert amendment.status == FULL
+    assert main.status == PARTIAL and 100_000 < main.chars < main.total_chars
+
+
+def test_v5_without_a_main_document_the_best_ranked_one_that_did_not_fit_is_cut(make_tender):
+    """cb-487's shape: its main document's name has no solicitation word, so nothing ranks
+    main. Amendments go whole, then the first-ranked document that didn't fit gets the
+    room left, even though a smaller one comes after it."""
+    big, small = ATT + "ircc-mass-notification-system_5.pdf", ATT + "q-and-a-3.pdf"
+    amendment = ATT + "amendment-to-the-bid-solicitation-001.pdf"
+    t = make_tender(attachment_urls=[big, small, amendment])
+    add_doc(t, amendment, ("word " * 8_000).strip())
+    add_doc(t, big, ("word " * 30_000).strip())
+    add_doc(t, small, ("word " * 2_000).strip())
+    n = build_notice_with_documents(t)
+    assert len(n.text) <= DOCUMENTS_MAX_CHARS
+    assert [(d.name, d.status) for d in n.documents] == [
+        ("amendment-to-the-bid-solicitation-001.pdf", FULL),
+        ("ircc-mass-notification-system_5.pdf", PARTIAL), ("q-and-a-3.pdf", FULL)]
+    assert '<document name="ircc-mass-notification-system_5.pdf" truncated="true">' in n.text
+
+
 def test_every_fitting_size_stays_under_the_cap(make_tender):
-    for sizes in ((119_000,), (60_000, 60_000), (10, 10, 10), (5_000,) * 30):
-        TenderDocument.objects.all().delete()
-        n = build_notice_with_documents(_sized(make_tender, *sizes))
-        assert len(n.text) <= DOCUMENTS_MAX_CHARS, sizes
+    for version in ("v4", "v5"):
+        for sizes in ((119_000,), (60_000, 60_000), (10, 10, 10), (5_000,) * 30,
+                      (200_000, 119_000, 1)):
+            TenderDocument.objects.all().delete()
+            n = build_notice_with_documents(_sized(make_tender, *sizes), prompt_version=version)
+            assert len(n.text) <= DOCUMENTS_MAX_CHARS, (version, sizes)
 
 
 def test_record_holds_names_urls_and_statuses_never_text(make_tender):
     t = _sized(make_tender, 50_000, 80_000)
-    record = build_notice_with_documents(t).documents_record()
+    record = build_notice_with_documents(t, prompt_version="v4").documents_record()
     assert record[1] == {"name": "PW-1.EBSU001.PDF", "url": ATT + "PW-1.EBSU001.PDF",
                          "status": NOT_READ, "chars": 0, "total_chars": 79_999,
                          "injection": False}
@@ -322,8 +417,8 @@ def test_source_correction_prefers_the_notice_then_documents_in_input_order(make
 
 
 def test_source_correction_never_reaches_a_document_left_out(make_tender):
-    t = _sized(make_tender, 50_000, 80_000)  # EBSU001 is not given to the model
-    TenderDocument.objects.filter(url=ATT + "PW-1.EBSU001.PDF").update(
+    t = _sized(make_tender, 50_000, 80_000, 80_000)  # EBSU002 is not given to the model
+    TenderDocument.objects.filter(url=ATT + "PW-1.EBSU002.PDF").update(
         text="Personnel must hold Secret clearance. " + "word " * 16_000)
     _, flags = _postvalidate(t, _clearance("Personnel must hold Secret clearance.",
                                            "notice"))
@@ -367,10 +462,11 @@ def test_whole_metadata_value_counts_only_for_the_notice(make_tender):
 
 
 def test_quote_from_a_document_left_out_is_ungrounded(make_tender):
-    t = _sized(make_tender, 50_000, 80_000)
-    TenderDocument.objects.filter(url=ATT + "PW-1.EBSU001.PDF").update(
+    t = _sized(make_tender, 50_000, 80_000, 80_000)  # EBSU002 is not given to the model
+    TenderDocument.objects.filter(url=ATT + "PW-1.EBSU002.PDF").update(
         text="Personnel must hold Secret clearance. " + "word " * 16_000)
-    d = _clearance("Personnel must hold Secret clearance.", "PW-1.EBSU001.PDF")
+    assert _by_name(build_notice_with_documents(t))["PW-1.EBSU002.PDF"].status == NOT_READ
+    d = _clearance("Personnel must hold Secret clearance.", "PW-1.EBSU002.PDF")
     assert "ungrounded:eligibility.clearance" in _postvalidate(t, d)[1]
 
 
@@ -406,8 +502,8 @@ def test_list_items_have_no_source_and_ground_in_the_notice_or_any_document(make
     it ("The compiled grammar is too large")."""
     assert "source" not in ExtractionData2.model_json_schema()["$defs"]["MandatoryRequirement2"][
         "properties"]
-    t = _sized(make_tender, 50_000, 80_000)  # EBSU001 is not given to the model
-    TenderDocument.objects.filter(url=ATT + "PW-1.EBSU001.PDF").update(
+    t = _sized(make_tender, 50_000, 80_000, 80_000)  # EBSU002 is not given to the model
+    TenderDocument.objects.filter(url=ATT + "PW-1.EBSU002.PDF").update(
         text="Personnel must hold Secret clearance. " + "word " * 16_000)
     d = with_sources(valid_data())
     notice_quote = d["mandatory_requirements"][0]["evidence"]
@@ -528,15 +624,15 @@ def test_v4_400_is_logged_and_the_tender_keeps_its_v3_answer(make_tender, monkey
     out = StringIO()
     call_command("extract_tenders", stdout=out)  # no CommandError
     text = out.getvalue()
-    assert (f"{with_docs.reference_number}  v4 failed, kept v3: BadRequestError (400) on the "
+    assert (f"{with_docs.reference_number}  v5 failed, kept v3: BadRequestError (400) on the "
             "first call of the run: check the LLM_* settings. API said: Schema has too many "
             "union-typed parameters") in text
-    assert "v4 failed 1: kept their v3 extraction and assessment" in text
+    assert "v5 failed 1: kept their v3 extraction and assessment" in text
     assert "stopped" not in text
     assert Extraction.objects.get(tender=later).status == "ok"
     assert len(client.calls) == 4  # two v3 earlier, then the v4 400 and the new v3 call
     _assert_kept_v3(with_docs, v3)
-    assert LlmCall.objects.filter(prompt_version="v4", status="error").count() == 1
+    assert LlmCall.objects.filter(prompt_version="v5", status="error").count() == 1
     # assess_tenders afterwards still assesses the v3 extraction.
     call_command("assess_tenders", stdout=StringIO())
     _assert_kept_v3(with_docs, v3)
@@ -550,15 +646,15 @@ def test_v4_failure_after_retries_removes_the_failed_row(make_tender, monkeypatc
     client.items = [api_error(anthropic.InternalServerError, 500, "overloaded")] * 2
     out = StringIO()
     call_command("extract_tenders", stdout=out)
-    assert (f"{with_docs.reference_number}  v4 failed, kept v3: api_error: "
+    assert (f"{with_docs.reference_number}  v5 failed, kept v3: api_error: "
             "InternalServerError (500): overloaded") in out.getvalue()
     _assert_kept_v3(with_docs, v3)
-    assert LlmCall.objects.filter(tender=with_docs, prompt_version="v4").count() == 2
-    # Next run: v4 is tried again, and an ok answer becomes the newest extraction.
+    assert LlmCall.objects.filter(tender=with_docs, prompt_version="v5").count() == 2
+    # Next run: v5 is tried again, and an ok answer becomes the newest extraction.
     client.items = [response(with_sources(valid_data()))]
     call_command("extract_tenders", stdout=StringIO())
     assert Extraction.objects.filter(tender=with_docs).latest("created_at").prompt_version \
-        == "v4"
+        == "v5"
 
 
 def test_v3_400_on_its_first_call_still_stops_the_run(make_tender, monkeypatch):
@@ -570,7 +666,7 @@ def test_v3_400_on_its_first_call_still_stops_the_run(make_tender, monkeypatch):
     out = StringIO()
     with pytest.raises(CommandError, match="first call of the run.*API said: bad effort"):
         call_command("extract_tenders", stdout=out)
-    assert "v4 failed, kept v3" in out.getvalue()
+    assert "v5 failed, kept v3" in out.getvalue()
     _assert_kept_v3(with_docs, v3)
 
 
@@ -589,5 +685,5 @@ def test_a_cap_on_a_v4_call_still_stops_the_run(make_tender, monkeypatch, settin
     out = StringIO()
     call_command("extract_tenders", stdout=out)  # a cap is a clean exit
     assert "stopped: daily cost cap reached" in out.getvalue()
-    assert "v4 failed" not in out.getvalue() and len(client.calls) == 2
+    assert "v5 failed" not in out.getvalue() and len(client.calls) == 2
     _assert_kept_v3(with_docs, v3)
