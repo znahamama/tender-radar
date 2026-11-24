@@ -133,7 +133,7 @@ def test_build_matches_build_push_script(deploy):
 
 def test_deploy_role_trusts_only_prod_environment_of_this_repo():
     tf = (ROOT / "infra" / "prod" / "deploy.tf").read_text()
-    assert 'github_deploy_subject = "repo:znahamama/tender-radar:environment:prod"' in tf
+    assert 'github_deploy_subject = "repo:znahamama@113527488/tender-radar@1449879130:environment:prod"' in tf
     assert tf.count('test     = "StringEquals"') == 2  # aud and sub, no StringLike wildcard
     assert "StringLike" not in tf
     assert "max_session_duration = 3600" in tf

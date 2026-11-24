@@ -271,7 +271,9 @@ unlock early, delete the attempt there or run this bootstrap again for that user
 `.github/workflows/deploy.yml` deploys every push to `main`. No AWS keys are stored in
 GitHub: the deploy job gets a GitHub OIDC token and exchanges it for the
 `tender-radar-deploy` role (`infra/prod/deploy.tf`). That role's trust policy accepts
-exactly one subject, `repo:znahamama/tender-radar:environment:prod`, so only a job running
+exactly one subject, `repo:znahamama@113527488/tender-radar@1449879130:environment:prod`
+(GitHub's immutable form: owner and repo names with their numeric IDs, so a recreated repo
+of the same name can't match), so only a job running
 in the GitHub environment `prod` of this repo can assume it, for at most 1 h. What it may
 do: push/pull images in the `tender-radar` ECR repo, `GetFunction`,
 `GetFunctionConfiguration` and `UpdateFunctionCode` on the two functions, and invoke the

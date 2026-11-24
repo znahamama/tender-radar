@@ -13,8 +13,12 @@
 
 locals {
   github_oidc_host = "token.actions.githubusercontent.com"
-  # Exact match, StringEquals. Changing the repo or environment name means changing this.
-  github_deploy_subject = "repo:znahamama/tender-radar:environment:prod"
+  # Exact match, StringEquals. The repo uses GitHub's immutable subject format
+  # (owner@<owner id>/repo@<repo id>; GET repos/znahamama/tender-radar/actions/oidc/
+  # customization/sub shows "use_immutable_subject": true), so a deleted or renamed repo
+  # recreated under the same name can't match. Changing the environment name means
+  # changing this.
+  github_deploy_subject = "repo:znahamama@113527488/tender-radar@1449879130:environment:prod"
 }
 
 # One per account per URL. If the account already has one (another project), import it
