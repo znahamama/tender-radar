@@ -22,3 +22,8 @@ output "schedule_state" {
 output "alerts_topic_arn" {
   value = aws_sns_topic.alerts.arn
 }
+
+output "deploy_role_arn" {
+  description = "Role the GitHub deploy workflow assumes via OIDC: set it as the prod environment variable AWS_DEPLOY_ROLE_ARN."
+  value       = aws_iam_role.deploy.arn
+}

@@ -1,0 +1,248 @@
+name: deploy
+# Production deploy: build api-<sha>/worker-<sha>, then worker code -> migrate -> API code
+# -> health. A push to main deploys that commit; "Run workflow" with a sha re-deploys an
+# older commit of main (rollback). Every run waits for approval in the GitHub environment
+# "prod". Runbook: infra/README.md, "Deploys from GitHub".
+#
+# Migrations run before the API changes, so the API that is still live keeps serving on
+# the new schema for a minute or two, and a rollback runs old code on the newest schema.
+# Every migration must therefore be backward compatible with the previous release.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      sha:
+        description: Full 40-character sha of a main commit to deploy (rollback). Empty = the tip of main.
+        type: string
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+env:
+  AWS_REGION: us-east-2
+  ECR_REPOSITORY: tender-radar
+  API_FUNCTION: tender-radar-api
+  WORKER_FUNCTION: tender-radar-worker
+
+jobs:
+  resolve:
+    name: resolve sha
+    runs-on: ubuntu-latest
+    outputs:
+      sha: ${{ steps.sha.outputs.sha }}
+      rollback: ${{ steps.sha.outputs.rollback }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0 # the whole of main, to check a rollback sha is on it
+          persist-credentials: false
+      - id: sha
+        env:
+          INPUT_SHA: ${{ inputs.sha }}
+        run: |
+          set -euo pipefail
+          if [[ "$GITHUB_REF" != "refs/heads/main" ]]; then
+            echo "::error::deploys run from main only (got $GITHUB_REF)"
+            exit 1
+          fi
+          if [[ -z "$INPUT_SHA" ]]; then
+            sha="$GITHUB_SHA"; rollback=false
+          else
+            if [[ ! "$INPUT_SHA" =~ ^[0-9a-f]{40}$ ]]; then
+              echo "::error::sha must be a full 40-character lowercase commit sha"
+              exit 1
+            fi
+            sha="$INPUT_SHA"; rollback=true
+            if ! git merge-base --is-ancestor "$sha" "$GITHUB_SHA" 2>/dev/null; then
+              echo "::error::$sha is not a commit on main"
+              exit 1
+            fi
+          fi
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          echo "rollback=$rollback" >> "$GITHUB_OUTPUT"
+          echo "deploying $sha (rollback: $rollback)"
+
+  # The existing CI jobs (gitleaks, test, terraform validate), run on the sha being deployed.
+  ci:
+    needs: resolve
+    uses: ./.github/workflows/ci.yml
+    with:
+      ref: ${{ needs.resolve.outputs.sha }}
+
+  deploy:
+    needs: [resolve, ci]
+    # Natively arm64, like the Lambdas: no QEMU.
+    runs-on: ubuntu-24.04-arm
+    environment: prod
+    # One deploy at a time, and never cancelled halfway (a half-done deploy could leave the
+    # worker on new code and the API on old). GitHub keeps at most one run waiting: a newer
+    # push replaces an older one that hasn't started.
+    concurrency:
+      group: deploy-prod
+      cancel-in-progress: false
+    permissions:
+      id-token: write # the OIDC token for aws-actions/configure-aws-credentials
+      contents: read
+    timeout-minutes: 45
+    env:
+      SHA: ${{ needs.resolve.outputs.sha }}
+      ROLLBACK: ${{ needs.resolve.outputs.rollback }}
+      API_URL: ${{ vars.API_URL }}
+    steps:
+      - name: check environment variables
+        env:
+          ROLE: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+        run: |
+          missing=0
+          [[ -n "$ROLE" ]] || { echo "::error::prod environment variable AWS_DEPLOY_ROLE_ARN is not set"; missing=1; }
+          [[ -n "$API_URL" ]] || { echo "::error::prod environment variable API_URL is not set"; missing=1; }
+          exit "$missing"
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ env.SHA }}
+          persist-credentials: false
+
+      - uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          role-session-name: deploy-${{ github.run_id }}
+          role-duration-seconds: 3600
+          aws-region: ${{ env.AWS_REGION }}
+          mask-aws-account-id: true # public repo: keep the account id out of the logs
+
+      - id: images
+        name: build and push images (skipped for tags that already exist)
+        # Same Dockerfile, targets, flags and lock as infra/scripts/build_push.sh.
+        run: |
+          set -euo pipefail
+          account="$(aws sts get-caller-identity --query Account --output text)"
+          registry="${account}.dkr.ecr.${AWS_REGION}.amazonaws.com"
+          echo "repo=${registry}/${ECR_REPOSITORY}" >> "$GITHUB_OUTPUT"
+          aws ecr get-login-password | docker login --username AWS --password-stdin "$registry"
+          for target in api worker; do
+            tag="${target}-${SHA}"
+            # BatchGetImage, not DescribeImages: the role's pull permission covers it.
+            found="$(aws ecr batch-get-image --repository-name "$ECR_REPOSITORY" \
+              --image-ids "imageTag=${tag}" --query 'length(images)' --output text)"
+            if [[ "$found" == "1" ]]; then
+              echo "skip: ${ECR_REPOSITORY}:${tag} already exists (tags are immutable)"
+              echo "${target}=${ECR_REPOSITORY}:${tag} (existing)" >> "$GITHUB_OUTPUT"
+              continue
+            fi
+            echo "build+push: ${ECR_REPOSITORY}:${tag}"
+            # --provenance=false / --sbom=false: no attestation manifests, so ECR gets a plain
+            # image manifest (Lambda rejects an image index).
+            docker buildx build \
+              --platform linux/arm64 \
+              --provenance=false \
+              --sbom=false \
+              --target "$target" \
+              --build-arg "GIT_SHA=${SHA}" \
+              --tag "${registry}/${ECR_REPOSITORY}:${tag}" \
+              --push \
+              .
+            echo "${target}=${ECR_REPOSITORY}:${tag} (built)" >> "$GITHUB_OUTPUT"
+          done
+
+      - id: worker
+        name: update worker code
+        env:
+          REPO: ${{ steps.images.outputs.repo }}
+        run: |
+          set -euo pipefail
+          aws lambda update-function-code --function-name "$WORKER_FUNCTION" \
+            --image-uri "${REPO}:worker-${SHA}" --query LastUpdateStatus --output text
+          aws lambda wait function-updated-v2 --function-name "$WORKER_FUNCTION"
+          echo "worker updated"
+
+      - id: migrate
+        name: migrate (worker, synchronous)
+        timeout-minutes: 17
+        run: |
+          set -euo pipefail
+          # AWS_MAX_ATTEMPTS=1 and a read timeout past the worker's 900 s: the CLI would
+          # otherwise give up after 60 s and send the invoke again (a second migrate).
+          AWS_MAX_ATTEMPTS=1 aws lambda invoke --function-name "$WORKER_FUNCTION" \
+            --cli-binary-format raw-in-base64-out --payload '{"task":"migrate"}' \
+            --cli-read-timeout 910 migrate.json > invoke.json
+          # The full error and traceback stay in CloudWatch: this repo's Actions logs are
+          # public, and a database error can name hosts and users.
+          if jq -e '.FunctionError' invoke.json > /dev/null; then
+            echo "result=failed: $(jq -r '.errorType // "error"' migrate.json)" >> "$GITHUB_OUTPUT"
+            echo "::error::migrate failed: $(jq -r '.errorType // "error"' migrate.json). aws logs tail /aws/lambda/${WORKER_FUNCTION} --since 30m"
+            exit 1
+          fi
+          jq -c '{ok, version, seconds, steps: [.steps[] | {step, ok}]}' migrate.json
+          if ! jq -e '.ok == true' migrate.json > /dev/null; then
+            echo "result=failed: \"ok\" is not true" >> "$GITHUB_OUTPUT"
+            echo "::error::migrate returned \"ok\": false"
+            exit 1
+          fi
+          # The new worker image ran it, not a sandbox still on the old code.
+          if ! jq -e --arg sha "$SHA" '.version == $sha' migrate.json > /dev/null; then
+            echo "result=failed: ran version $(jq -r .version migrate.json)" >> "$GITHUB_OUTPUT"
+            echo "::error::migrate ran version $(jq -r .version migrate.json), expected $SHA"
+            exit 1
+          fi
+          echo "result=ok ($(jq -r .seconds migrate.json) s)" >> "$GITHUB_OUTPUT"
+
+      - id: api
+        name: update API code
+        env:
+          REPO: ${{ steps.images.outputs.repo }}
+        run: |
+          set -euo pipefail
+          aws lambda update-function-code --function-name "$API_FUNCTION" \
+            --image-uri "${REPO}:api-${SHA}" --query LastUpdateStatus --output text
+          aws lambda wait function-updated-v2 --function-name "$API_FUNCTION"
+          echo "api updated"
+
+      - id: health
+        name: health reports the new sha
+        run: |
+          set -euo pipefail
+          url="${API_URL%/}/api/health"
+          deadline=$((SECONDS + 120))
+          while :; do
+            # The first request after a deploy is the slowest cold start (Lambda caching the
+            # new image): 5-7 s measured.
+            body="$(curl -sS --max-time 15 "$url" || true)"
+            version="$(jq -r '.version // empty' <<<"$body" 2>/dev/null || true)"
+            if [[ "$version" == "$SHA" ]]; then
+              echo "result=ok ($body)" >> "$GITHUB_OUTPUT"
+              echo "healthy: $body"
+              exit 0
+            fi
+            if (( SECONDS >= deadline )); then
+              echo "result=failed (last response: ${body:0:200})" >> "$GITHUB_OUTPUT"
+              echo "::error::/api/health did not report $SHA within 2 minutes; last response: ${body:0:200}"
+              exit 1
+            fi
+            echo "waiting: version=${version:-<none>}"
+            sleep 5
+          done
+
+      - name: summary
+        if: always()
+        env:
+          API_IMAGE: ${{ steps.images.outputs.api || 'not pushed' }}
+          WORKER_IMAGE: ${{ steps.images.outputs.worker || 'not pushed' }}
+          MIGRATE: ${{ steps.migrate.outputs.result || steps.migrate.outcome }}
+          HEALTH: ${{ steps.health.outputs.result || steps.health.outcome }}
+        run: |
+          {
+            echo "### deploy ${SHA:0:12}"
+            echo
+            echo "| | |"
+            echo "|---|---|"
+            echo "| sha | \`${SHA}\` |"
+            echo "| rollback | ${ROLLBACK} |"
+            echo "| api image | \`${API_IMAGE}\` |"
+            echo "| worker image | \`${WORKER_IMAGE}\` |"
+            echo "| migrate | ${MIGRATE} |"
+            echo "| health | ${HEALTH} |"
+          } | tee -a "$GITHUB_STEP_SUMMARY"

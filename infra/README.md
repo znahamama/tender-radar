@@ -6,7 +6,8 @@ Terraform (see below). Everything is tagged `Project=tender-radar`.
 ```
 infra/bootstrap/   S3 bucket for Terraform state (local state, gitignored)
 infra/prod/        ECR, IAM, 2 Lambdas, HTTP API, daily schedule, alarms (state in that bucket)
-infra/scripts/     build_push.sh: build arm64 images, push api-<sha> / worker-<sha>
+infra/scripts/     build_push.sh: build arm64 images, push api-<sha> / worker-<sha> (first deploy, emergencies)
+.github/workflows/deploy.yml   every push to main: CI, approval, build, worker -> migrate -> API -> health
 ```
 
 What gets created, and what doesn't: no VPC, NAT, ALB, RDS, or provisioned/reserved
@@ -22,7 +23,7 @@ values never reach state.
 | HTTP API | `$default` stage, auto-deploy, `ANY /` + `ANY /{proxy+}`, throttle 10 rps / burst 20, JSON access logs |
 | Scheduler | `tender-radar-daily`, 06:15 America/St_Johns, `{"task":"daily"}`, 0 retries, **DISABLED** until step (h) |
 | Logs | `/aws/lambda/tender-radar-{api,worker}`, `/aws/apigateway/tender-radar`, 30-day retention (`local.log_retention`) |
-| IAM | api-role, worker-role: own log group + `ssm:GetParameters` (one call per cold start): worker-role on `/tender-radar/prod/*`, api-role only on `DATABASE_URL` and `DJANGO_SECRET_KEY` by exact ARN (no LLM key, direct URL or bootstrap password). api-role also: `lambda:InvokeFunction` on the worker only (`extract_one` after a reviewer upload or delete). scheduler-role: invoke the worker only |
+| IAM | api-role, worker-role: own log group + `ssm:GetParameters` (one call per cold start): worker-role on `/tender-radar/prod/*`, api-role only on `DATABASE_URL` and `DJANGO_SECRET_KEY` by exact ARN (no LLM key, direct URL or bootstrap password). api-role also: `lambda:InvokeFunction` on the worker only (`extract_one` after a reviewer upload or delete). scheduler-role: invoke the worker only. `tender-radar-deploy` (GitHub OIDC, environment `prod` only, 1 h): ECR push/pull on this repo, update code of the two functions, invoke the worker (see **Deploys from GitHub**) |
 | Alerts | SNS `tender-radar-alerts` → one email; 5 CloudWatch alarms notify on ALARM and OK, one fed by a 5xx metric filter on the API access log (see **Alerts**) |
 
 ## AWS profiles: `tender-radar` and the `tender-radar-tf` bridge
@@ -158,6 +159,13 @@ terraform output api_url
 cd ../..
 ```
 
+This is the only time `git_sha` matters: it picks the images the two functions are
+**created** with. Both functions have `lifecycle { ignore_changes = [image_uri] }`, so from
+here on the deploy workflow owns the images and Terraform never shows or reverts an image
+change. Later plans still need some valid `TF_VAR_git_sha` (the variable has no default);
+any full sha, e.g. the current `HEAD`, will do. This apply also creates the GitHub OIDC
+provider and the deploy role; set up GitHub next (**Deploys from GitHub**, steps 2-3).
+
 ### (f) Run migrations
 
 `AWS_MAX_ATTEMPTS=1` and `--cli-read-timeout` matter. By default the CLI gives up reading
@@ -258,20 +266,161 @@ Lockout: 5 failed logins for one username from one address lock that pair for an
 then it unlocks by itself. While logged in, see **Axes → Access attempts** in the admin; to
 unlock early, delete the attempt there or run this bootstrap again for that username.
 
-## Later deploys
+## Deploys from GitHub
+
+`.github/workflows/deploy.yml` deploys every push to `main`. No AWS keys are stored in
+GitHub: the deploy job gets a GitHub OIDC token and exchanges it for the
+`tender-radar-deploy` role (`infra/prod/deploy.tf`). That role's trust policy accepts
+exactly one subject, `repo:znahamama/tender-radar:environment:prod`, so only a job running
+in the GitHub environment `prod` of this repo can assume it, for at most 1 h. What it may
+do: push/pull images in the `tender-radar` ECR repo, `GetFunction`,
+`GetFunctionConfiguration` and `UpdateFunctionCode` on the two functions, and invoke the
+worker. Nothing else: no IAM, no function configuration, no environment variables, no SSM.
+
+What one run does:
+
+1. **resolve**: the sha to deploy: the pushed commit, or the `sha` input of a manual run
+   (it must be a commit on `main`).
+2. **ci**: the existing `ci.yml` jobs (gitleaks, tests, terraform fmt/validate) on that sha.
+   `ci.yml` no longer runs on pushes to `main` by itself, since this is the same check.
+3. **deploy** (environment `prod`, so it waits for your approval; runs on `ubuntu-24.04-arm`):
+   - builds `api-<sha>` and `worker-<sha>` natively on arm64 with the same Dockerfile,
+     targets, flags and `requirements.lock` as `build_push.sh`. A tag that already exists
+     is not rebuilt (tags are immutable; this is what makes a rollback fast);
+   - points the **worker** at `worker-<sha>` and waits until the update is done;
+   - invokes `{"task":"migrate"}` synchronously; fails on a `FunctionError`, on
+     `"ok": false`, or when the summary's `version` isn't the sha (an old image ran it);
+   - points the **API** at `api-<sha>` and waits;
+   - polls `/api/health` until it reports the sha (up to 2 minutes), else fails;
+   - writes a summary (sha, images built or reused, migrate result, health) to the run page.
+
+   A failed step stops the run: nothing after it happens. A failure after the worker
+   update leaves the worker on the new code and the API on the old one, which is safe
+   because migrations are backward compatible (below); fix forward or roll back.
+
+Only one deploy runs at a time (concurrency group `deploy-prod`, never cancelled
+mid-run). If several runs pile up, GitHub keeps only the newest waiting one and cancels
+the older waiting ones; that's fine, the newest `main` contains them.
+
+The full migrate error stays in CloudWatch (`aws logs tail /aws/lambda/tender-radar-worker
+--since 30m`). The workflow prints only the error type: this repo is public, and so are its
+Actions logs.
+
+### One-time setup
+
+1. **Terraform** (you): plan and apply. On an existing deployment expect 3 to add
+   (`aws_iam_openid_connect_provider.github`, `aws_iam_role.deploy`,
+   `aws_iam_role_policy.deploy`), nothing to change or destroy, and the new output
+   `deploy_role_arn`.
+
+   ```sh
+   export TF_VAR_git_sha="$(git rev-parse HEAD)"   # any valid sha; ignored for existing functions
+   cd infra/prod
+   terraform plan -var-file=alerts.secret.tfvars -out=prod.tfplan
+   terraform apply prod.tfplan
+   terraform output -raw deploy_role_arn; echo
+   terraform output -raw api_url; echo
+   cd ../..
+   ```
+
+   An account has at most one OIDC provider per URL. If the apply fails with
+   `EntityAlreadyExists` for `token.actions.githubusercontent.com` (another project created
+   it), import it instead, then plan again:
+   `terraform import aws_iam_openid_connect_provider.github
+   arn:aws:iam::<account id>:oidc-provider/token.actions.githubusercontent.com`.
+   Its audience list must include `sts.amazonaws.com`. A shared provider would also be
+   deleted by **Tear it all down**; `terraform state rm` it before that.
+
+2. **GitHub environment** (you): repo **Settings → Environments → New environment** `prod`:
+   - **Required reviewers**: yourself. Leave "Prevent self-review" off (you're the only
+     reviewer, so it would block every deploy).
+   - **Deployment branches and tags**: "Selected branches and tags", add the branch rule
+     `main`. The role trusts any job in `prod`, so this is what keeps other branches out.
+   - **Environment variables** (variables, not secrets; neither value is secret):
+     `AWS_DEPLOY_ROLE_ARN` = the `deploy_role_arn` output, `API_URL` = the `api_url` output.
+
+3. **Optional hardening** (Settings → Actions → General): "Require actions to be pinned to a
+   full-length commit SHA" (the workflows already are; a test checks it too).
+
+4. **First run**: push to `main`, or **Actions → deploy → Run workflow** on `main` with
+   an empty sha.
+
+### Approving a deploy
+
+After CI passes, the run shows **Waiting for review** on the `deploy` job (and GitHub
+emails the reviewers). Open the run, **Review deployments**, tick `prod`, **Approve and
+deploy**. **Reject** deploys nothing. An unanswered request expires after 30 days. Follow
+along with `gh run watch`, or read the summary on the run page when it's done.
+
+### Rollback
+
+Re-deploy an older commit of `main`:
 
 ```sh
-git status                                  # clean, committed
-export TF_VAR_git_sha="$(git rev-parse HEAD)"
-infra/scripts/build_push.sh "$TF_VAR_git_sha"
-cd infra/prod && terraform plan -var-file=alerts.secret.tfvars -out=prod.tfplan && terraform apply prod.tfplan && cd ../..
-# Take the post-deploy cold start (5-7 s: Lambda caching the new image) so a visitor doesn't:
-API="$(terraform -chdir=infra/prod output -raw api_url)"; curl -sS "${API%/}/api/health"; echo
-# with new migrations: step (f) again
+gh workflow run deploy.yml --ref main -f sha=<full 40-char sha>
 ```
 
-ECR keeps the last 5 `api-*` and the last 5 `worker-*` images. To roll back, set
-`TF_VAR_git_sha` to an older sha whose images still exist, then plan and apply.
+(or **Actions → deploy → Run workflow**, branch `main`, field `sha`). The run is the same
+as a normal deploy, including CI on that sha and your approval. ECR keeps the last 5
+`api-*` and `worker-*` images, so a recent sha reuses its images and goes straight to the
+worker update; an older one is rebuilt from that commit and its own `requirements.lock`.
+Its migrate step finds nothing to apply: Django doesn't unapply migrations, so the
+database stays on the newest schema and the old code runs against it.
+
+The next push to `main` deploys `main`'s tip again. To stay rolled back, revert the bad
+commit on `main` (`git revert`), which is also a normal forward deploy and usually the
+better fix.
+
+### Migrations must be backward compatible
+
+Migrations run before the API switches, so for a minute or two the **old** API serves on
+the **new** schema, and a rollback runs old code on it indefinitely. So every migration
+has to work with the release before it (expand, then contract):
+
+- Add, don't change: new tables, and new columns that are nullable or have a database
+  default (`db_default=`; a plain `default=` is Python-side only, and the old code's
+  INSERTs don't know the column).
+- Never drop or rename a column or table the previous release still reads. Stop using it
+  in one release; remove it (`RemoveField`, `DeleteModel`) in a later one.
+- A rename is add new + backfill + switch reads + (later) drop old.
+- Data migrations must be safe to run twice, and fast: the worker's limit is 900 s, and a
+  long lock blocks the live API.
+
+### Emergency deploy (GitHub Actions unavailable)
+
+`infra/scripts/build_push.sh` is kept for this (and for the first deploy). It uses your
+own `tender-radar` profile, not the deploy role. Same order as the workflow:
+
+```sh
+git status                                   # clean, on main, at the commit to deploy
+sha="$(git rev-parse HEAD)"
+infra/scripts/build_push.sh "$sha"
+repo="$(terraform -chdir=infra/prod output -raw ecr_repository_url)"
+
+aws lambda update-function-code --no-cli-pager --function-name tender-radar-worker \
+  --image-uri "$repo:worker-$sha" --query LastUpdateStatus
+aws lambda wait function-updated-v2 --function-name tender-radar-worker
+# migrate: step (f). Continue only on "ok": true and no "FunctionError".
+aws lambda update-function-code --no-cli-pager --function-name tender-radar-api \
+  --image-uri "$repo:api-$sha" --query LastUpdateStatus
+aws lambda wait function-updated-v2 --function-name tender-radar-api
+API="$(terraform -chdir=infra/prod output -raw api_url)"; curl -sS "${API%/}/api/health"; echo
+```
+
+`terraform apply -var git_sha=...` does **not** change the images any more (they're
+ignored after creation).
+
+### Infrastructure changes
+
+Terraform still owns everything else: plan and apply as before. Any valid
+`TF_VAR_git_sha` works; image changes never appear in a plan.
+
+```sh
+export TF_VAR_git_sha="$(git rev-parse HEAD)"
+cd infra/prod && terraform plan -var-file=alerts.secret.tfvars -out=prod.tfplan && terraform apply prod.tfplan && cd ../..
+```
+
+## Worker tasks by hand
 
 ### Re-assess only (after a rules or profile change)
 
@@ -379,6 +528,7 @@ subscription is replaced; confirm the new one).
 | SNS | 1 topic; email deliveries: 1,000/month free, a few per month used | $0 |
 | S3 state bucket | KBs, a few hundred requests | <$0.01 |
 | ECR basic scan on push | free | $0 |
+| GitHub Actions | public repo: standard runners, including `ubuntu-24.04-arm`, are free | $0 |
 | Data transfer out | CSV downloads come *in* (free); calls to Neon/Anthropic are tiny | ~$0 |
 
 Not AWS, but these are the real spend: Anthropic usage is capped per day by

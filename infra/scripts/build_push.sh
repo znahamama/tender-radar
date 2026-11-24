@@ -4,6 +4,10 @@
 #
 #   infra/scripts/build_push.sh "$(git rev-parse HEAD)"
 #
+# Normal deploys don't use this: .github/workflows/deploy.yml builds the same images in CI.
+# Kept for the first deploy (images must exist before Terraform creates the Lambdas) and
+# for emergencies when GitHub Actions is unavailable (infra/README.md, "Emergency deploy").
+#
 # Refuses a dirty working tree, and a sha that isn't HEAD, so every tag is exactly the
 # commit it names. ECR tags are IMMUTABLE: an existing tag is skipped, never overwritten.
 set -euo pipefail
@@ -62,4 +66,5 @@ for target in api worker; do
     .
 done
 
-echo "done. Next: cd infra/prod && terraform apply -var git_sha=${sha}"
+echo "done. First deploy: cd infra/prod && terraform apply (TF_VAR_git_sha=${sha})."
+echo "Existing functions: Terraform ignores image_uri; follow infra/README.md \"Emergency deploy\"."

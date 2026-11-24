@@ -4,7 +4,10 @@ variable "region" {
 }
 
 variable "git_sha" {
-  description = "Commit whose images to run: ECR tags api-<sha> and worker-<sha> (see infra/scripts/build_push.sh)."
+  # Read only when a Lambda is CREATED (first deploy, or after a destroy): lambda.tf ignores
+  # image_uri afterwards, and .github/workflows/deploy.yml owns the images. Every plan still
+  # needs a valid value; any sha works then, e.g. TF_VAR_git_sha=$(git rev-parse HEAD).
+  description = "Commit whose images a newly created Lambda starts with: ECR tags api-<sha> and worker-<sha>. Ignored for existing functions (CI deploys images)."
   type        = string
   validation {
     condition     = can(regex("^[0-9a-f]{40}$", var.git_sha))

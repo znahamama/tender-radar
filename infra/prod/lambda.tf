@@ -1,6 +1,10 @@
 # Both functions: container images (arm64) from the one ECR repo, no VPC (Neon and
 # Anthropic are public endpoints, and a VPC would need a NAT gateway), no reserved or
 # provisioned concurrency.
+#
+# Images: Terraform sets image_uri from var.git_sha only when it CREATES a function. After
+# that, lifecycle.ignore_changes hands image_uri to the deploy workflow (deploy.tf role,
+# aws lambda update-function-code), so a plan never shows or reverts an image change.
 
 resource "aws_cloudwatch_log_group" "lambda" {
   for_each          = local.lambdas
@@ -40,6 +44,11 @@ resource "aws_lambda_function" "api" {
   }
 
   depends_on = [aws_cloudwatch_log_group.lambda, aws_iam_role_policy.lambda, aws_ecr_repository_policy.app]
+
+  lifecycle {
+    # CI owns the image (.github/workflows/deploy.yml); var.git_sha only picks it at create.
+    ignore_changes = [image_uri]
+  }
 }
 
 resource "aws_lambda_function" "worker" {
@@ -65,6 +74,11 @@ resource "aws_lambda_function" "worker" {
   }
 
   depends_on = [aws_cloudwatch_log_group.lambda, aws_iam_role_policy.lambda, aws_ecr_repository_policy.app]
+
+  lifecycle {
+    # CI owns the image (.github/workflows/deploy.yml); var.git_sha only picks it at create.
+    ignore_changes = [image_uri]
+  }
 }
 
 # The scheduler and the API (extract_one) invoke asynchronously, and async Lambda invokes
