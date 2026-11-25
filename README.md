@@ -149,8 +149,8 @@ each system fails", not as a ranking.
 | Gate answers read from solicitation documents | 4 supported, 1 weakly evidenced, **0 wrong** | 5 of 8 answers checked on 4 tenders, by hand, not blind |
 | Adversarial review | no sign-in bypass, no XSS, no leaked secret; 2 medium issues fixed | one review, 2026-11-23 |
 
-**Live site, Demo Night:** {{IT_TOTAL}} open IT notices: {{BLOCKED}} blocked, {{CHECK}}
-check the solicitation, {{NO_BLOCKERS}} no blockers stated.
+**Live site, as of 2026-11-24 (open IT notices; changes daily):** 37 open IT notices:
+9 blocked, 24 check the solicitation, 4 no blockers stated.
 
 ### Test eval (20 notices, scored once)
 
