@@ -7,14 +7,14 @@
 <h1>{{ tender.title }}</h1>
 
 <dl class="summary summary-key">
-  <div class="summary-row"><dt>Closes</dt><dd>{% if tender.closing_date %}<time datetime="{{ tender.closing_date|date:'c' }}">{{ tender.closing_date|date:"Y-m-d H:i T" }}</time> (St. John's time){% if is_open %} <span class="until">in {{ tender.closing_date|timeuntil }}</span>{% endif %}{% else %}Not stated{% endif %}{% if not is_open %} · <span class="closed">not open</span>{% endif %}</dd></div>
+  <div class="summary-row"><dt>Closes</dt><dd>{% if tender.closing_date %}{% now "Y" as this_year %}<time datetime="{{ tender.closing_date|date:'c' }}" title="{{ tender.closing_date|date:'Y-m-d H:i T' }} (St. John's time)">{% if tender.closing_date|date:"Y" == this_year %}{{ tender.closing_date|date:"D, M j, H:i T" }}{% else %}{{ tender.closing_date|date:"D, M j, Y, H:i T" }}{% endif %}</time>{% if is_open %} <span class="until">in {% with u=tender.closing_date|timeuntil %}{{ u|truncatewords:2|cut:", …" }}{% endwith %}</span>{% endif %}{% else %}Not stated{% endif %}{% if not is_open %} · <span class="closed">not open</span>{% endif %}</dd></div>
   <div class="summary-row"><dt>Buyer</dt><dd>{{ tender.buyer_org_name|default:"Not stated" }}</dd></div>
   <div class="summary-row"><dt>Reference</dt><dd>{{ tender.reference_number }}{% if tender.solicitation_number %} (solicitation {{ tender.solicitation_number }}){% endif %}</dd></div>
   {% if scope %}
   <div class="summary-row"><dt>Scope</dt><dd><p class="scope-line">{% include "tenders/_scope_badge.html" with scope=scope.status %} <strong>Scope:</strong>
-  {% if scope.status == "in" %}IT work (matched {% for c in scope.codes %}{{ c.scheme }} {{ c.code }}{% if c.description %} {{ c.description }}{% endif %}{% if not forloop.last %}; {% endif %}{% endfor %}{% if scope.more %}; and {{ scope.more }} more{% endif %})
-  {% elif scope.status == "out" %}outside IT work for this firm (codes: {% for c in scope.codes %}{{ c.scheme }} {{ c.code }}{% if c.description %} {{ c.description }}{% endif %}{% if not forloop.last %}; {% endif %}{% endfor %}{% if scope.more %}; and {{ scope.more }} more{% endif %})
-  {% else %}unknown: the notice lists no UNSPSC or GSIN category code{% endif %}
+  {% with n=scope.codes|length|add:scope.more %}{% if scope.status == "in" %}IT work{% if n %} · {{ n }} matching code{{ n|pluralize }}<span class="scope-codes">{% for c in scope.codes %}{{ c.scheme }} {{ c.code }}{% if c.description %} {{ c.description }}{% endif %}{% if not forloop.last %}; {% endif %}{% endfor %}{% if scope.more %}; and {{ scope.more }} more{% endif %}</span>{% endif %}
+  {% elif scope.status == "out" %}outside IT work for this firm{% if n %} · {{ n }} code{{ n|pluralize }}<span class="scope-codes">{% for c in scope.codes %}{{ c.scheme }} {{ c.code }}{% if c.description %} {{ c.description }}{% endif %}{% if not forloop.last %}; {% endif %}{% endfor %}{% if scope.more %}; and {{ scope.more }} more{% endif %}</span>{% endif %}
+  {% else %}unknown: the notice lists no UNSPSC or GSIN category code{% endif %}{% endwith %}
   <br><span class="small">From the notice's category codes (scope rules v1). Scope doesn't change the eligibility status below.</span>
 </p></dd></div>
   {% endif %}

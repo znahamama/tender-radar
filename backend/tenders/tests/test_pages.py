@@ -810,8 +810,9 @@ def test_detail_scope_line_names_the_matched_codes_with_titles(client):
         {"scheme": "gsin", "code": "N7030", "family": "ADP equipment and software"}]}
     a.save()
     html = _detail(client, "IN")
-    assert ("Scope:</strong>\n  IT work (matched UNSPSC 43230000 Software; "
-            "GSIN N7030 ADP equipment and software)") in html  # no title stored: the family
+    assert ('Scope:</strong>\n  IT work · 2 matching codes<span class="scope-codes">'
+            "UNSPSC 43230000 Software; GSIN N7030 ADP equipment and software</span>"
+            ) in html  # no title stored: the family
     assert "72151100" not in html.split("Scope:")[1].split("</p>")[0]
     assert html.index("Scope:") < html.index('id="elig-heading"')
 
@@ -824,8 +825,9 @@ def test_detail_scope_line_lists_the_codes_when_outside_it(client):
     codes = ["72151100", *(f"{30000000 + i}" for i in range(11))]
     assess(make_tender("OUT", unspsc_codes=codes), "check_solicitation", scope="out")
     line = _detail(client, "OUT").split("Scope:")[1].split("</p>")[0]
-    assert "outside IT work for this firm (codes: UNSPSC 72151100 Plumbing construction services;" in line
-    assert line.count("UNSPSC ") == 10 and "and 2 more)" in line
+    assert ('outside IT work for this firm · 12 codes<span class="scope-codes">'
+            "UNSPSC 72151100 Plumbing construction services;") in line
+    assert line.count("UNSPSC ") == 10 and "and 2 more</span>" in line
 
 
 def test_detail_scope_line_unknown_and_not_assessed(client):

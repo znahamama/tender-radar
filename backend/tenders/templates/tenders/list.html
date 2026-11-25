@@ -45,10 +45,9 @@
 {% if page.object_list %}
 <div class="table-wrap">
 <table class="tenders{% if filters.scope != 'all' %} only-it{% endif %}">
-  <colgroup><col class="col-ref"><col class="col-notice"><col class="col-status"><col class="col-closes"><col class="col-reason"></colgroup>
+  <colgroup><col class="col-notice"><col class="col-status"><col class="col-closes"><col class="col-reason"></colgroup>
   <thead>
     <tr>
-      <th scope="col">Reference</th>
       <th scope="col">Notice</th>
       <th scope="col">Status</th>
       <th scope="col">Closes (St. John's time)</th>
@@ -58,8 +57,7 @@
   <tbody>
     {% for t in page.object_list %}
     <tr class="row row-{{ t.eligibility_status|default:'not_assessed' }}">
-      <td class="cell-ref">{{ t.reference_number }}</td>
-      <td class="cell-notice"><span class="notice-line">{% include "tenders/_scope_badge.html" with scope=t.scope_status %}<a class="notice-title" href="{% url 'tender-detail' t.reference_number %}" title="{% if t.buyer_org_name %}{{ t.buyer_org_name }} · {% endif %}{{ t.get_region_scope_display }} · {{ t.get_notice_kind_display }}">{{ t.title }}</a></span><span class="notice-meta">{% if t.buyer_org_name %}{{ t.buyer_org_name }} · {% endif %}{{ t.get_region_scope_display }} · {{ t.get_notice_kind_display }}</span></td>
+      <td class="cell-notice"><span class="notice-line">{% include "tenders/_scope_badge.html" with scope=t.scope_status %}<a class="notice-title" href="{% url 'tender-detail' t.reference_number %}" title="{{ t.reference_number }} · {% if t.buyer_org_name %}{{ t.buyer_org_name }} · {% endif %}{{ t.get_region_scope_display }} · {{ t.get_notice_kind_display }}">{{ t.title }}</a></span><span class="notice-meta">{{ t.reference_number }} · {% if t.buyer_org_name %}{{ t.buyer_org_name }} · {% endif %}{{ t.get_region_scope_display }} · {{ t.get_notice_kind_display }}</span></td>
       <td class="cell-status">{% include "tenders/_badge.html" with status=t.eligibility_status %}</td>
       <td class="cell-closes">{% if t.closing_date %}<time datetime="{{ t.closing_date|date:'c' }}" title="{{ t.closing_date|date:'Y-m-d H:i T' }}">{% if t.closing_date|date:"Y" == this_year %}{{ t.closing_date|date:"M j, H:i" }}{% else %}{{ t.closing_date|date:"M j, Y" }}{% endif %}</time>{% if filters.show != "all" %} <span class="until">in {% with u=t.closing_date|timeuntil %}{{ u|truncatewords:2|cut:", …" }}{% endwith %}</span>{% endif %}{% else %}Not stated{% endif %}</td>
       <td class="cell-reason">{% if t.first_blocker %}{{ t.first_blocker|truncatechars:60 }}{% elif t.open_reason %}{{ t.open_reason|truncatechars:60 }}{% else %}<span class="none">—</span>{% endif %}</td>

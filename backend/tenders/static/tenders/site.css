@@ -246,10 +246,9 @@ h3 { font-size: var(--text-sm); font-weight: 600; margin: var(--s5) 0 var(--s2);
 table { width: 100%; border-collapse: collapse; }
 th, td { text-align: left; vertical-align: top; overflow-wrap: break-word; }
 .tenders { table-layout: fixed; font-size: var(--text-sm); line-height: 1.25rem; }
-.col-ref { width: 10.5rem; }
-.col-status { width: 10rem; }
+.col-status { width: 10.75rem; } /* fits "No blockers stated": the status never truncates */
 .col-closes { width: 11.5rem; }
-.col-reason { width: 12rem; }
+.col-reason { width: 20rem; }
 .tenders th, .tenders td {
   padding: .625rem var(--s3);
   vertical-align: middle;
@@ -262,7 +261,6 @@ th, td { text-align: left; vertical-align: top; overflow-wrap: break-word; }
 .tenders tbody tr:last-child td { border-bottom: 0; }
 .tenders tbody tr { position: relative; } /* the title's link stretches over its whole row */
 .tenders tbody tr:hover { background: var(--subtle); }
-.cell-ref { font-size: var(--text-xs); color: var(--muted-fg); font-variant-numeric: tabular-nums; }
 .notice-line { display: flex; align-items: center; gap: var(--s2); min-width: 0; }
 .notice-line .badge { flex: none; }
 .notice-title {
@@ -279,7 +277,10 @@ th, td { text-align: left; vertical-align: top; overflow-wrap: break-word; }
 .notice-title:focus-visible::after { outline: 2px solid var(--accent); outline-offset: -2px; border-radius: var(--radius-sm); }
 .cell-closes { font-variant-numeric: tabular-nums; }
 .until { margin-left: .375rem; font-size: var(--text-xs); color: var(--muted-fg); }
+.cell-status { text-overflow: clip; }
 .cell-reason, .none { color: var(--muted-fg); }
+.tenders .cell-reason { white-space: normal; } /* in full where it fits; cut below 1100px */
+.only-it .badge-scope-in { display: none; } /* every row is IT in this view */
 
 /* Footer: "1–25 of 71" on the left, the pager on the right. */
 .panel-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s2) var(--s4); margin-top: var(--s4); font-size: var(--text-sm); }
@@ -328,7 +329,9 @@ span.pager-btn { border-color: var(--border); color: var(--muted-fg); box-shadow
 .scope-line > strong { /* the row's key already says "Scope" */
   position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap;
 }
+.scope-codes { display: block; margin-top: .125rem; font-size: var(--text-xs); color: var(--muted-fg); }
 .scope-line .small { display: block; margin-top: var(--s1); font-size: var(--text-xs); }
+.scope-line br { display: none; } /* the note below is a block of its own */
 
 .caution {
   margin: var(--s4) 0;
@@ -347,7 +350,7 @@ span.pager-btn { border-color: var(--border); color: var(--muted-fg); box-shadow
   box-shadow: var(--shadow);
 }
 .verdict h2 { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2) var(--s3); margin: 0; }
-.verdict h2 .badge { padding: .1rem .6rem; border: 1px solid var(--border); border-radius: 999px; }
+.verdict h2 .badge { padding: .1rem .7rem; border: 1px solid var(--border); border-radius: 999px; font-size: 1rem; font-weight: 600; }
 .verdict h3 { color: var(--muted-fg); font-weight: 500; margin: var(--s5) 0 0; }
 .verdict > p { margin: var(--s3) 0 0; }
 .findings { list-style: none; padding: 0; margin: 0; }
@@ -409,9 +412,12 @@ details.technical .small:first-of-type { margin-top: 0; }
 /* --- projectors and small laptops: give the titles more of the row --------------- */
 
 @media (max-width: 72em) {
-  .col-ref { width: 7.5rem; }
-  .col-reason { width: 10rem; }
   .tool-search { width: 12rem; }
+}
+
+@media (max-width: 68.75em) { /* 1100px */
+  .col-reason { width: 13rem; }
+  .tenders .cell-reason { white-space: nowrap; }
 }
 
 /* --- phones -------------------------------------------------------------------- */
@@ -443,7 +449,6 @@ details.technical .small:first-of-type { margin-top: 0; }
   }
   .tenders tbody tr:last-child { border-bottom: 0; }
   .tenders td { padding: 0; border: 0; }
-  .tenders .cell-ref { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
   .tenders .cell-notice { grid-area: notice; }
   .tenders .cell-status { grid-area: status; }
   .tenders .cell-status .badge { font-size: var(--text-xs); gap: .35rem; }

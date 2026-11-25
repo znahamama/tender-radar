@@ -66,16 +66,16 @@ def test_list_toolbar_marks_the_picked_values_and_its_links_keep_other_filters(c
     assert html.count('aria-current="true"') == 2  # one per toggle
 
 
-def test_list_rows_are_reference_notice_status_closes_reason(client):
+def test_list_rows_are_notice_status_closes_reason(client):
     _board(client)
     html = get_list(client).content.decode()
     row = re.search(r'<tr class="row row-blocked">(.*?)</tr>', html, re.DOTALL).group(1)
     cells = re.findall(r'<td class="cell-(\w+)"', row)
-    assert cells == ["ref", "notice", "status", "closes", "reason"]
-    assert '<td class="cell-ref">B</td>' in row
-    # Scope chip before the title; buyer, region and type in a tooltip and for screen readers.
+    assert cells == ["notice", "status", "closes", "reason"]
+    # Scope chip before the title; reference, buyer, region and type in a tooltip and for
+    # screen readers (no column of their own).
     assert row.index('class="badge badge-scope-in"') < row.index('class="notice-title"')
-    meta = "Public Services and Procurement Canada · NL · Regular"
+    meta = "B · Public Services and Procurement Canada · NL · Regular"
     assert f'title="{meta}">Tender B</a>' in row
     assert f'<span class="notice-meta">{meta}</span>' in row
     assert '<span class="badge badge-blocked">Blocked</span>' in row  # a word, not a colour
