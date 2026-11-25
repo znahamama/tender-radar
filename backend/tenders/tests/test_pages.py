@@ -479,7 +479,11 @@ def test_banner_and_footer(client):
     for url in (reverse("tender-list"), reverse("tender-detail", args=["T"])):
         html = client.get(url).content.decode()
         assert ("Eligibility is assessed for a fictional firm, Harbourline Software "
-                "(fictional). Always verify in the solicitation documents.") in html
+                "(fictional). Public data only; not bid advice. Always verify in the "
+                "solicitation documents.") in html
+        assert ("How it works, evaluation and source code: "
+                '<a href="https://github.com/znahamama/tender-radar"') in html
+        assert html.index("How it works, evaluation") < html.index("Contains information licensed")
         assert "Contains information licensed under the" in html
         assert 'href="https://open.canada.ca/en/open-government-licence-canada"' in html
         assert "Data updated <time" in html and "2026-11-07 23:00 NST" in html
