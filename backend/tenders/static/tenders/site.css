@@ -247,7 +247,7 @@ table { width: 100%; border-collapse: collapse; }
 th, td { text-align: left; vertical-align: top; overflow-wrap: break-word; }
 .tenders { table-layout: fixed; font-size: var(--text-sm); line-height: 1.25rem; }
 .col-status { width: 10.75rem; } /* fits "No blockers stated": the status never truncates */
-.col-closes { width: 11.5rem; }
+.col-closes { width: 13.5rem; } /* fits "Sep 30, 2027 in 10 months" */
 .col-reason { width: 20rem; }
 .tenders th, .tenders td {
   padding: .625rem var(--s3);

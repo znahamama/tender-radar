@@ -1,10 +1,18 @@
 # NL Public Tender Radar
 
-Eligibility triage for Canadian federal tenders: can a small St. John's IT firm even bid?
+Federal IT tenders from CanadaBuys, triaged for one fictional St. John's IT firm: blocked,
+check the solicitation, or no blockers stated, with the exact quote behind every answer,
+including from the solicitation documents. An LLM only extracts quoted facts; plain,
+versioned Python rules make the decision.
 
 **Live:** https://h70n8j46yk.execute-api.us-east-2.amazonaws.com/
 (a cold start takes 1.3–2.1 s; see Performance below).
-The site runs prompt v3 as of 2026-11-18: its 90 open notices were re-extracted for about $0.09.
+
+![Architecture: a daily worker fetches, redacts and extracts CanadaBuys notices into Neon Postgres; a Django API Lambda serves the public pages](docs/architecture.svg)
+
+| The list (IT notices) | A blocked notice | No blockers stated |
+|---|---|---|
+| [![The list of open IT notices, each with its status, closing date and reason](docs/screenshots/list.png)](docs/screenshots/list.png) | [![cb-621-34120934: blocked by a supply arrangement and a Secret clearance, with quotes from the solicitation document](docs/screenshots/cb-621-34120934.png)](docs/screenshots/cb-621-34120934.png) | [![SSC-26-00035517:T: no blockers stated, with quotes from documents a reviewer uploaded](docs/screenshots/SSC-26-00035517-T.png)](docs/screenshots/SSC-26-00035517-T.png) |
 
 ## The problem
 
@@ -54,7 +62,7 @@ category codes only, with no LLM:
 - **Outside IT work:** codes present, none in an IT family. **Unknown:** no code at all.
 
 Scope is a separate line on each notice and never changes the eligibility status. The list
-shows IT notices by default, with a link to show all.
+shows IT notices by default, with an "IT | All notices" toggle.
 
 **On 2026-11-19:** of 80 open notices, **41 IT, 39 outside, 0 unknown** (every notice had a
 code). National notices: 39 of 47 IT; NL notices: 2 of 33.
@@ -98,22 +106,7 @@ are in no telecom family.
 
 ## Architecture
 
-```mermaid
-flowchart LR
-    subgraph Daily run
-        S[EventBridge Scheduler<br/>06:15 St. John's] --> W[Worker Lambda]
-        W -->|download CSV| C[(CanadaBuys<br/>open data)]
-        W --> R[Redaction]
-        R --> A[Anthropic API<br/>Claude Haiku 5.5]
-        R --> DB[(Neon Postgres)]
-        A --> DB
-    end
-    subgraph Public site
-        U[Browser] --> H[API Gateway<br/>HTTP API]
-        H --> L[API Lambda<br/>Django]
-        L --> DB
-    end
-```
+The diagram is at the top of this page ([docs/architecture.svg](docs/architecture.svg)).
 
 - **Backend:** Python 3.12, Django 5.2, server-rendered pages (no JavaScript on public pages).
 - **LLM:** `claude-haiku-5-5`, prompt v3, structured outputs, effort low, max 2000 tokens.
@@ -125,7 +118,7 @@ flowchart LR
   document given; max 4000 output tokens). Per gate, the v4 answer is used when its quote
   holds, otherwise the v3 answer from the notice; when both hold and differ, v4 decides and
   the notice goes to the review queue. If a v4 call fails, the tender keeps its v3 answer and
-  the run carries on. Not in the eval set below; see the documents check under Evaluation.
+  the run carries on. Not in the eval set below; see the documents check under Results.
   Eligibility rules v4 add a check on what the model did not read: if clearance or work
   location is not stated and stored document text past the cap names a clearance level or
   on-site work, the notice stays "check the solicitation", with the term, document and page.
@@ -138,15 +131,35 @@ flowchart LR
   deploy takes ~6.5 s while Lambda caches the new image, so the deploy runbook ends with a
   warm-up curl.
 
-## Evaluation
+## Results
+
+Every number here comes with its sample size. They are small samples: read them as "where
+each system fails", not as a ranking.
+
+### At a glance
+
+| What | Result | Sample |
+|---|---|---|
+| Test eval, all fields correct | **prompt v3 88%** (141/160) vs keyword baseline **77%** (123/160) | 20 notices × 8 fields, scored once at eligibility rules v3 |
+| Test eval, false blocks | **0** (v3, v2 and baseline) | 20 notices, 5 of them blocked |
+| Test eval, status agrees with the label | v3 18/20, baseline 17/20 | 20 notices |
+| Prompt injection reaching its target | **0/20** | 5 attack notices × 4 runs |
+| Model flagged the attack | **20/20** (0/20 on clean twins) | 20 attack + 20 twin runs |
+| Code-side injection detector | 5/5 attacks, **0/326** real notices | 5 attacks, every stored notice |
+| Gate answers read from solicitation documents | 4 supported, 1 weakly evidenced, **0 wrong** | 5 of 8 answers checked on 4 tenders, by hand, not blind |
+| Adversarial review | no sign-in bypass, no XSS, no leaked secret; 2 medium issues fixed | one review, 2026-11-23 |
+
+**Live site, Demo Night:** {{IT_TOTAL}} open IT notices: {{BLOCKED}} blocked, {{CHECK}}
+check the solicitation, {{NO_BLOCKERS}} no blockers stated.
+
+### Test eval (20 notices, scored once)
 
 The question: does the LLM extract the gates better than a keyword baseline, and does the
-final status match what a human would decide?
-
-**Test set: 20 blind cases, scored once** at commit `3cce2a9` on 2026-11-18, for prompt v3
-(on the site now), prompt v2 and the keyword baseline. Values are after the grounding check,
-i.e. what the site shows. "Scored" is the cached run every other number uses; the LLM was also
-run 3 more times per case, and v3's mean and range are over all its runs.
+final status match what a human would decide? 20 blind test cases were scored once at commit
+`3cce2a9` on 2026-11-18, for prompt v3, prompt v2 and the keyword baseline, with eligibility
+rules v3. Values are after the grounding check, i.e. what the site shows. "Scored" is the
+cached run every other number uses; the LLM was also run 3 more times per case, and v3's mean
+and range are over all its runs.
 
 | Field (correct of 20) | v3 scored | v3 mean (min–max) | v2 scored | Baseline |
 |---|---|---|---|---|
@@ -166,9 +179,14 @@ run 3 more times per case, and v3's mean and range are over all its runs.
 - **False blocks: 0** for all three. **Both LLM prompts caught 5 of 5 blocked notices**; the
   baseline missed one (test-16), which landed on "check solicitation".
 - **Overclaims** (a value the notice doesn't state): v3 **3**, v2 **8**, baseline **12**.
-  Wrong / missed: v3 4 / 12, v2 5 / 15, baseline 8 / 17.
-- **Consistency:** across runs, the status was the same in 19/20 cases for both prompts.
+  Wrong / missed: v3 4 / 12, v2 5 / 15, baseline 8 / 17. None of v3's scored answers had to be
+  reset by the grounding check (v2: 8).
+- **Consistency:** across runs, the status was the same in 19/20 cases for both prompts. Every
+  gate that changed between runs moved between a value and `unknown`; none flipped between
+  two values (e.g. yes↔no).
 - **Cost:** the test run made 150 API calls for about $0.17. The baseline is free.
+- **Dev set (n=10, used to design v3):** all fields v3 71/80, v2 67/80, baseline 63/80; status
+  7/10, 6/10, 6/10 ([eval/reports/dev-v3-2026-11-18.md](eval/reports/dev-v3-2026-11-18.md)).
 
 **Protocol** ([docs/eval-protocol.md](docs/eval-protocol.md))
 
@@ -189,24 +207,28 @@ run 3 more times per case, and v3's mean and range are over all its runs.
 - **Repeats:** the per-run call cap stopped the repeats 3 calls short (test-19 and test-20 have
   3 runs instead of 4). Every case has its scored run from all three systems.
 
-**Dev set (n=10, used to design v3):** all fields v3 71/80, v2 67/80, baseline 63/80; status
-7/10, 6/10, 6/10 ([eval/reports/dev-v3-2026-11-18.md](eval/reports/dev-v3-2026-11-18.md)).
-
-**What this does and doesn't show.**
+**What the numbers show, and don't.**
 
 - With n = 20, one case is 5 points and the per-field 95% intervals are wide (18/20 is
-  70–97%). The test set shows where each system fails better than it ranks them.
-- v3's supply-arrangement gain on dev (4/10 → 9/10) didn't carry over: on test it scored
-  12/20, below the baseline's 13/20.
-- On-site work is v3's weakest gate: 15/20 scored, mean 68% across runs, below v2's 17/20.
-- LLM answers vary from run to run, which is why the mean and range are reported next to the
-  scored run.
+  70–97%).
+- v3 overclaims less and quotes better than v2 (3 overclaims against 8).
+- Supply arrangements are the LLM's weak gate: v3's gain on dev (4/10 → 9/10) didn't carry
+  over, and on test it scored 12/20, below the baseline's 13/20.
+- On-site work is v3's weakest gate after that: 15/20 scored, mean 68% across runs, below
+  v2's 17/20. On dev, the baseline missed on-site work written in plain language.
+- The baseline overclaims supplier origin: on dev it read any named trade agreement (CPTPP,
+  WTO GPA) as an origin restriction.
+- Most notices push their criteria into attached documents: on the production run of
+  2026-11-16, 72 of 88 open notices were "check solicitation". The tool's value is narrowing
+  the list, not clearing notices.
 
 Full report: [eval/reports/test-final-2026-11-18.md](eval/reports/test-final-2026-11-18.md)
-(per-case disagreements with evidence quotes for v3, v2 and the baseline; dev and test side by
-side; same data in `.json`).
+(per-case disagreements with evidence quotes for v3, v2 and the baseline; same data in
+`.json`).
 
-**Prompt injection** (5 invented attack notices, each with a clean twin, 4 runs each, prompt v3):
+### Prompt injection (5 attacks × 4 runs, prompt v3)
+
+5 invented attack notices, each with a clean twin, 4 runs each.
 
 - **0/20** attack runs reached the attacker's target; no status changed.
 - One of 20 attack runs (d, buyer-name metadata) moved a field outside the clean twin's range
@@ -218,8 +240,9 @@ side; same data in `.json`).
 
 Report: [eval/reports/injection-2026-11-18.md](eval/reports/injection-2026-11-18.md).
 
-**Solicitation documents (prompt v4), precision check, 2026-11-19.** A small sample: 8
-answers on 4 tenders, checked by hand by the person who built the tool, not blind. It
+### Solicitation documents: precision check (8 answers on 4 tenders)
+
+Prompt v4, 2026-11-19. Checked by hand by the person who built the tool, not blind. It
 measures precision only; recall (what the documents say that the model missed) isn't
 measured.
 
@@ -229,42 +252,86 @@ measured.
 - **Review decisions: 3.** 2 supply-arrangement answers on requests for a supply arrangement
   were wrong and corrected: PW-__PQ-992-74154 (v4), and PW-__HP-539-79947 (v3, resolved by
   accepting v4's answer). 1 v3 work-location answer was rejected (PW-_ERD-005-26943).
-- **Coverage:** 4 of 80 open notices had solicitation documents the tool could download
-  and read. Most attachments sit behind supplier portals.
+- **Coverage:** 4 of 80 open notices had solicitation documents the tool could download and
+  read. Most attachments sit behind supplier portals.
+
+Prompts v5 and eligibility rules v4 came later (2026-11-22) and are not scored: they only
+apply to notices with documents, which the notice-only eval set doesn't have.
 
 Report: [eval/reports/documents-precision-2026-11-19.md](eval/reports/documents-precision-2026-11-19.md).
 
+### Adversarial review (2026-11-23)
+
+One review of the whole system, locally (a throwaway Postgres) and with gentle probes of
+production.
+
+- **Held:** escaping and the CSP (`<script>`, event handlers, template syntax and
+  `javascript:` URLs in every notice field), admin access control, CSRF, the login lockout
+  (including a spoofed `X-Forwarded-For` on production), upload validation, injection
+  resistance, and the statuses on production data. No way past a sign-in, no XSS, no leaked
+  secret.
+- **Fixed** (commit `56232ba`): the public API's role could read every secret (now only the
+  database URL and Django key); Django 500s raised no alarm (a 5xx alarm on the access log);
+  plus low issues: NUL characters in search and paths, reviewer corrections not checked
+  against the documents the model read, and the LLM cap not reported.
+- **Deferred:** listed under Known limits below.
+
 ## Findings
 
-- **v3 overclaims less and quotes better than v2.** On the test set it stated something the
-  notice doesn't say 3 times against v2's 8, and none of its scored answers had to be reset by
-  the grounding check (v2: 8). All fields: 141/160 against 132/160.
-- **Most notices push their criteria into attached documents.** On the production run of
-  2026-11-16, 72 of 88 open notices were "check solicitation" (14 blocked, 2 no blockers
-  stated), and 8 of the 10 dev notices were labelled `see_solicitation`. For these, "check solicitation" is the honest answer, and the
-  tool's value is narrowing the list rather than clearing notices.
-- **The LLM is weak on supply arrangements.** 4/10 against the baseline's 9/10. It left the
-  gate unknown even when the notice type itself said "Request for Standing Offer" or "Request
-  for Supply Arrangement", and twice its quote failed the grounding check. This gate accounts
-  for 2 of its 3 missed blocks (dev-02, dev-09) and is the main target for prompt v3.
-- **The baseline overclaims supplier origin from trade agreements.** It read any named trade
-  agreement (CPTPP, WTO GPA, bilateral FTAs) as an origin restriction: 4 overclaims, where the
-  LLM made 1.
-- **The baseline misses on-site work written in plain language** ("snow clearing services at
-  the St.John’s Research and Development Centre"): 3 misses where the LLM was right.
-- **Exclusion wording fools both systems.** On notice `cb-8448-42897985` (seen on the live
-  detail page; not an eval case, and excluded from selection for that reason), both the LLM
-  and the baseline read "excludes locations in areas subject to Comprehensive Land Claims
-  Agreements" as land claims *applying*. The label guide treats this wording as `no`.
-  This is one observation, not an eval metric.
 - **CanadaBuys reorders list fields between CSV regenerations.** Trade agreements and regions
   came back as the same items in a new order, so unchanged notices counted as "updated" and
-  were re-extracted. Fix: `content_hash` ignores list order, and migration 0011 recomputed the
-  stored hashes. The next daily run: 0 updated, 341 unchanged.
-- **Run-to-run variance shows up as value↔unknown flips.** Every gate that changed between runs
-  moved between a value and `unknown`; none flipped between two values (e.g. yes↔no). Status
-  flips follow from those (dev-02 went blocked ↔ check solicitation as its supply-arrangement
-  gate flipped).
+  were re-extracted, at LLM cost. Fix: `content_hash` ignores list order, and migration 0011
+  recomputed the stored hashes. The next daily run: 0 updated, 341 unchanged.
+- **A bad API key was swallowed.** A revoked key or a 400 on the first call stopped the run
+  "cleanly", so the Lambda invocation succeeded and no alarm could fire. Now any stop other
+  than the budget cap fails the run after printing its totals, which trips the worker Errors
+  alarm; a test drives a revoked key through the real command and handler.
+- **Guessed notice links 404'd.** Early ingest built a CanadaBuys URL from the reference
+  number when the CSV had none, and many of those pages don't exist. Now the site links only
+  the CSV's own `https://` URL, otherwise offers a search by solicitation number labelled as
+  a search; migration 0012 cleared the guessed URLs already stored.
+- **A schema too large for structured outputs failed the first document run with a 400.**
+  Adding a nullable `source` to each gate took schema 2 to 17 union-typed fields (the API
+  allows 16), and sources on both the gates and list items gave "grammar too large". Our
+  tests used a stub client, so nothing caught it before production. Fix: sources on the six
+  gates only, a test that checks every schema against the published limits, the API's error
+  message in the log, and a failed document read now keeps the notice's earlier answer
+  instead of stopping the run.
+- **Amendment 005 removed a security requirement (cb-181-76348100).** Prompt v4 sent the main
+  solicitation first, so the 120,000-character cap could cut the amendments, and the
+  removal went unread. Prompt v5 reads amendments first, so it sees the change and the notice
+  correctly shows "no blockers stated".
+- **The unread-text tripwire caught cb-435-94227930.** The model read only part of a long RFP
+  and left clearance and work location unknown, so the notice showed "no blockers stated".
+  Rules v4 search the text the model didn't read: the RFP says "This document contains a
+  security requirement" (about page 59) and names on-site work, so the notice moved to "check
+  the solicitation", with the term, document and page.
+- **The 5xx alarm caught a real outage on its first day.** On 2026-11-23 a hand-run Terraform
+  apply put the new API code live before migration 0021 had run, and every page returned 500 for about a minute
+  (4 server errors in 10 seconds). The new `api-5xx` alarm fired; the older Lambda Errors
+  alarm stayed OK, because Django answers a 500 without the function failing. That outage is
+  why deploys now run the migration before the API changes (below).
+
+## How deploys work
+
+Every push to `main` runs `.github/workflows/deploy.yml`
+([infra/README.md](infra/README.md#deploys-from-github) has the full runbook):
+
+1. **CI** on that commit: gitleaks, ruff, Django checks, pytest, `terraform fmt`/`validate`.
+2. **Approval:** the deploy job runs in the GitHub environment `prod`, so it waits for a
+   person to approve it.
+3. **OIDC, no stored keys:** the job exchanges a GitHub OIDC token for the
+   `tender-radar-deploy` role, for at most an hour. Its trust policy accepts only this repo's
+   `prod` environment (by GitHub's immutable numeric IDs); it may push images and update the
+   two functions' code, nothing else.
+4. **Worker → migrate → API → health:** build the arm64 images (an existing tag is reused),
+   point the worker at the new image, run `migrate` through it (the run fails if an old image
+   answered), then point the API at its new image and poll `/api/health` until it reports the
+   new commit. A failed step stops the run.
+
+A rollback is a manual run of the same workflow with an older commit of `main`: the images
+already exist, so nothing is rebuilt. Terraform (roles, alarms, schedule) is still applied
+by hand.
 
 ## Safety and cost
 
@@ -283,8 +350,9 @@ Report: [eval/reports/documents-precision-2026-11-19.md](eval/reports/documents-
   password never passes through a terminal, a log or the chat.
 - **Strict CSP:** public pages load one same-origin stylesheet and no scripts
   (`default-src 'none'`), with `frame-ancestors 'none'`.
-- **No long-lived keys:** Lambdas use IAM roles, deploys use short-lived `aws login`
-  sessions, and CI holds no AWS credentials.
+- **No long-lived keys:** Lambdas use IAM roles; GitHub deploys through a short-lived OIDC
+  role (see How deploys work), and Terraform is applied by hand with short-lived `aws login`
+  sessions. No AWS keys are stored in GitHub.
 - **Secrets live in SSM SecureStrings** created by hand; Terraform knows only their names, so
   the values never reach Terraform state or the repo. The public API's role can read only the
   database URL and the Django secret key (not the LLM key); the worker reads the rest.
@@ -293,23 +361,28 @@ Report: [eval/reports/documents-precision-2026-11-19.md](eval/reports/documents-
 - **Cost:** total LLM spend to date is under $1 across all dev, production and eval runs. AWS is estimated at $0–1/month (mostly free tier); Neon is on its free tier.
   See the cost table in [infra/README.md](infra/README.md).
 
-## Limits
+## Known limits
 
-- One fictional firm profile; no real users or client data.
-- Federal notices from CanadaBuys only; no provincial or municipal sources.
-- Solicitation documents are read only when CanadaBuys publishes them as downloadable
-  PDFs: 4 of 80 open notices on 2026-11-19. Most notices still end at "check solicitation".
-- LLM output varies run to run (status stable in 19/20 test cases).
-- Small evaluation: 20 test cases scored once, plus 10 dev cases; per-field intervals are wide.
-- **Known limits** (adversarial review, 2026-11-23): the 10 rps / burst 20 API throttle is one
-  bucket shared by all visitors, so one client can push everyone onto 429s. Deferred: parallel
-  uploads can exceed the per-notice and per-day upload limits (staff only); a delete that
-  races an in-flight extraction can leave that stale extraction current, naming the deleted
-  upload, until the next daily run (gates fall back to unknown); a whole metadata value is
-  accepted as a quote even when it doesn't support the answer; `CSRF_TRUSTED_ORIGINS` is a
-  wildcard over us-east-2 API Gateways (the CSRF token still applies).
-- Indigenous set-asides (PSIB) aren't assessed for the fictional firm: they're a real blocker
-  that the six gates don't model.
+- **Documents behind a login.** Solicitation documents are read only when CanadaBuys
+  publishes them as downloadable files: 4 of 80 open notices on 2026-11-19. Most sit behind
+  SAP Business Network (Ariba) or SSC's P2P portal, so most notices still end at "check the
+  solicitation" unless a reviewer uploads the PDFs.
+- **Small eval.** 20 test cases scored once, plus 10 dev cases; per-field intervals are wide.
+  Prompt v5 and rules v4 (documents) are not scored at all, and the documents precision check
+  is 8 answers, not blind.
+- **LLM output varies run to run** (status stable in 19/20 test cases).
+- **One shared throttle.** The API's 10 requests/s (burst 20) is one bucket for all visitors,
+  so one client can push everyone onto 429s.
+- **Deferred findings** from the adversarial review (2026-11-23):
+  - parallel uploads can exceed the per-notice and per-day upload limits (staff only);
+  - a delete that races an in-flight extraction can leave that stale extraction current,
+    naming the deleted upload, until the next daily run (gates fall back to unknown);
+  - a whole metadata value is accepted as a quote even when it doesn't support the answer;
+  - `CSRF_TRUSTED_ORIGINS` is a wildcard over us-east-2 API Gateways (the CSRF token still
+    applies).
+- **Scope of the model:** one fictional firm profile and no real users or client data;
+  federal notices from CanadaBuys only, no provincial or municipal sources. Indigenous
+  set-asides (PSIB) aren't assessed: they're a real blocker that the six gates don't model.
 
 ## Scope cuts
 

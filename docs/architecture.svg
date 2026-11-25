@@ -1,0 +1,149 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 800" width="1280" height="800" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#475569"/>
+    </marker>
+    <style>
+      .box{fill:#ffffff;stroke:#94a3b8;stroke-width:1.5}
+      .ext{fill:#f1f5f9;stroke:#64748b;stroke-width:1.5}
+      .step{fill:#eff6ff;stroke:#3b82f6;stroke-width:1.5}
+      .t{font-size:15px;font-weight:600;fill:#0f172a}
+      .s{font-size:12.5px;fill:#334155}
+      .l{font-size:12px;fill:#475569}
+      .ln{stroke:#475569;stroke-width:1.6;fill:none;marker-end:url(#a)}
+      .dash{stroke-dasharray:5 4}
+    </style>
+  </defs>
+  <rect width="1280" height="800" fill="#ffffff"/>
+  <text x="20" y="36" font-size="22" font-weight="700" fill="#0f172a">NL Public Tender Radar: architecture</text>
+
+  <rect x="230" y="60" width="770" height="660" rx="10" fill="#fafafa" stroke="#f59e0b" stroke-width="2"/>
+  <text x="480" y="84" font-size="13" font-weight="600" fill="#b45309">AWS · us-east-2 · no VPC, NAT or RDS</text>
+
+  <rect class="ext" x="20" y="150" width="180" height="80" rx="8"/>
+  <text class="t" x="110" y="182" text-anchor="middle">CanadaBuys</text>
+  <text class="s" x="110" y="202" text-anchor="middle">open-data tender CSVs</text>
+  <text class="s" x="110" y="218" text-anchor="middle">+ public solicitation PDFs</text>
+
+  <rect class="ext" x="20" y="450" width="180" height="60" rx="8"/>
+  <text class="t" x="110" y="476" text-anchor="middle">Visitor</text>
+  <text class="s" x="110" y="495" text-anchor="middle">browser</text>
+
+  <rect class="ext" x="20" y="540" width="180" height="60" rx="8"/>
+  <text class="t" x="110" y="566" text-anchor="middle">Reviewer (admin)</text>
+  <text class="s" x="110" y="585" text-anchor="middle">review, correct, upload PDFs</text>
+
+  <rect class="ext" x="1040" y="120" width="220" height="80" rx="8"/>
+  <text class="t" x="1150" y="152" text-anchor="middle">Anthropic API</text>
+  <text class="s" x="1150" y="172" text-anchor="middle">Claude Haiku 5.5</text>
+  <text class="s" x="1150" y="188" text-anchor="middle">structured JSON output</text>
+
+  <rect class="ext" x="1040" y="390" width="220" height="110" rx="8"/>
+  <text class="t" x="1150" y="420" text-anchor="middle">Neon Postgres 18</text>
+  <text class="s" x="1150" y="440" text-anchor="middle">tenders, extractions,</text>
+  <text class="s" x="1150" y="456" text-anchor="middle">assessments, redacted</text>
+  <text class="s" x="1150" y="472" text-anchor="middle">document text (private),</text>
+  <text class="s" x="1150" y="488" text-anchor="middle">append-only reviews</text>
+
+  <rect class="ext" x="1040" y="620" width="220" height="60" rx="8"/>
+  <text class="t" x="1150" y="646" text-anchor="middle">Owner's email</text>
+  <text class="s" x="1150" y="665" text-anchor="middle">ALARM / OK alerts</text>
+
+  <rect class="box" x="260" y="92" width="200" height="60" rx="8"/>
+  <text class="t" x="360" y="117" text-anchor="middle">EventBridge Scheduler</text>
+  <text class="s" x="360" y="137" text-anchor="middle">daily 06:15 St. John's time</text>
+
+  <!-- Worker -->
+  <rect class="box" x="260" y="182" width="720" height="170" rx="8"/>
+  <text class="t" x="276" y="204">Worker Lambda</text>
+  <text class="s" x="276" y="343">container · 900 s · async retries 0</text>
+
+  <rect class="step" x="275" y="218" width="155" height="96" rx="6"/>
+  <text class="t" x="352" y="240" text-anchor="middle">1 · Ingest</text>
+  <text class="s" x="352" y="260" text-anchor="middle">fetch, filter, redact</text>
+  <text class="s" x="352" y="276" text-anchor="middle">order-insensitive hash</text>
+  <text class="s" x="352" y="292" text-anchor="middle">injection check</text>
+
+  <rect class="step" x="450" y="218" width="155" height="96" rx="6"/>
+  <text class="t" x="527" y="240" text-anchor="middle">2 · Extract</text>
+  <text class="s" x="527" y="260" text-anchor="middle">notice (+ documents)</text>
+  <text class="s" x="527" y="276" text-anchor="middle">quotes must ground</text>
+  <text class="s" x="527" y="292" text-anchor="middle">50 calls, $0.15/day</text>
+
+  <rect class="step" x="625" y="218" width="155" height="96" rx="6"/>
+  <text class="t" x="702" y="240" text-anchor="middle">3 · Decide</text>
+  <text class="s" x="702" y="260" text-anchor="middle">six gates in code</text>
+  <text class="s" x="702" y="276" text-anchor="middle">IT scope rule</text>
+  <text class="s" x="702" y="292" text-anchor="middle">human reviews win</text>
+
+  <rect class="step" x="800" y="218" width="155" height="96" rx="6"/>
+  <text class="t" x="877" y="240" text-anchor="middle">4 · Documents</text>
+  <text class="s" x="877" y="260" text-anchor="middle">public PDFs only</text>
+  <text class="s" x="877" y="276" text-anchor="middle">sandboxed parse</text>
+  <text class="s" x="877" y="292" text-anchor="middle">redact, store text</text>
+
+  <path class="ln dash" d="M877 314 V332 H527 V316"/>
+  <text class="l" x="702" y="346" text-anchor="middle">documents are read on the next run</text>
+
+  <!-- API side -->
+  <rect class="box" x="260" y="450" width="180" height="70" rx="8"/>
+  <text class="t" x="350" y="478" text-anchor="middle">HTTP API</text>
+  <text class="s" x="350" y="498" text-anchor="middle">API Gateway · 10 rps</text>
+
+  <rect class="box" x="480" y="420" width="240" height="136" rx="8"/>
+  <text class="t" x="600" y="446" text-anchor="middle">API Lambda</text>
+  <text class="s" x="600" y="466" text-anchor="middle">Django + gunicorn</text>
+  <text class="s" x="600" y="482" text-anchor="middle">IT notices by default,</text>
+  <text class="s" x="600" y="498" text-anchor="middle">quotes with their source</text>
+  <text class="s" x="600" y="514" text-anchor="middle">review queue + uploads</text>
+  <text class="s" x="600" y="530" text-anchor="middle">login lockout, strict CSP</text>
+
+  <!-- Bottom row -->
+  <rect class="box" x="260" y="620" width="170" height="60" rx="8"/>
+  <text class="t" x="345" y="645" text-anchor="middle">SSM Parameter Store</text>
+  <text class="s" x="345" y="664" text-anchor="middle">encrypted secrets</text>
+
+  <rect class="box" x="445" y="620" width="180" height="60" rx="8"/>
+  <text class="t" x="535" y="645" text-anchor="middle">ECR</text>
+  <text class="s" x="535" y="664" text-anchor="middle">pinned-dependency images</text>
+
+  <rect class="box" x="645" y="620" width="160" height="60" rx="8"/>
+  <text class="t" x="725" y="645" text-anchor="middle">CloudWatch</text>
+  <text class="s" x="725" y="664" text-anchor="middle">5 failure alarms</text>
+
+  <rect class="box" x="830" y="620" width="150" height="60" rx="8"/>
+  <text class="t" x="905" y="645" text-anchor="middle">SNS</text>
+  <text class="s" x="905" y="664" text-anchor="middle">alerts topic</text>
+
+  <text class="l" x="260" y="705">Both Lambdas read secrets from SSM at cold start and run images from ECR.</text>
+
+  <!-- Arrows -->
+  <path class="ln" d="M360 152 V182"/>
+  <path class="ln" d="M200 190 H245 V266 H275"/>
+  <path class="ln" d="M110 150 V52 H877 V218"/>
+  <text class="l" x="885" y="122">public PDFs</text>
+  <path class="ln" d="M430 266 H450"/>
+  <path class="ln" d="M605 266 H625"/>
+  <path class="ln" d="M780 266 H800"/>
+  <path class="ln" d="M527 218 V160 H1040"/>
+  <text class="l" x="888" y="153">text in, JSON out</text>
+  <path class="ln" d="M980 300 H1015 V415 H1040"/>
+  <text class="l" x="1008" y="372" text-anchor="end">write</text>
+
+  <path class="ln dash" d="M505 420 V354"/>
+  <text class="l" x="512" y="398">upload → re-read now</text>
+  <path class="ln" d="M200 480 H260"/>
+  <path class="ln" d="M200 570 H240 V505 H260"/>
+  <path class="ln" d="M440 485 H480"/>
+  <path class="ln" d="M720 470 H1040"/>
+  <text class="l" x="880" y="462" text-anchor="middle">read pages, write reviews</text>
+
+  <path class="ln dash" d="M960 352 V580 H785 V620"/>
+  <path class="ln dash" d="M700 556 V620"/>
+  <text class="l" x="690" y="603" text-anchor="end">metrics: errors, 5xx, missed or failed runs</text>
+  <path class="ln" d="M805 650 H830"/>
+  <path class="ln" d="M980 650 H1040"/>
+
+  <text class="l" x="20" y="755">Deploy: GitHub Actions via OIDC after CI + approval (worker → migrate → API → health check) · infra by Terraform · LLM extracts, code decides.</text>
+  <text class="l" x="20" y="775">Fictional firm: Harbourline Software (fictional). Public data only; document copyright stays with the Government of Canada.</text>
+</svg>
