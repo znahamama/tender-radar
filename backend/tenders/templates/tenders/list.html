@@ -68,6 +68,7 @@
 </p>
 
 {% if page.object_list %}
+<div class="table-card">
 <table class="tenders{% if filters.scope != 'all' %} only-it{% endif %}">
   <thead>
     <tr>
@@ -89,6 +90,7 @@
     {% endfor %}
   </tbody>
 </table>
+</div>
 {% endif %}
 
 {% if page.has_other_pages %}

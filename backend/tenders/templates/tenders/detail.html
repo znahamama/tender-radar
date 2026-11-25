@@ -6,20 +6,19 @@
 <p class="back"><a href="{% url 'tender-list' %}">← All open notices</a></p>
 <h1>{{ tender.title }}</h1>
 
-<dl class="meta meta-key">
-  <dt>Closes</dt><dd>{% if tender.closing_date %}<time datetime="{{ tender.closing_date|date:'c' }}">{{ tender.closing_date|date:"Y-m-d H:i T" }}</time> (St. John's time){% if is_open %} <span class="until">in {{ tender.closing_date|timeuntil }}</span>{% endif %}{% else %}Not stated{% endif %}{% if not is_open %} · <span class="closed">not open</span>{% endif %}</dd>
-  <dt>Buyer</dt><dd>{{ tender.buyer_org_name|default:"Not stated" }}</dd>
-  <dt>Reference</dt><dd>{{ tender.reference_number }}{% if tender.solicitation_number %} (solicitation {{ tender.solicitation_number }}){% endif %}</dd>
-</dl>
-
-{% if scope %}
-<p class="scope-line">{% include "tenders/_scope_badge.html" with scope=scope.status %} <strong>Scope:</strong>
+<dl class="summary summary-key">
+  <div class="summary-row"><dt>Closes</dt><dd>{% if tender.closing_date %}<time datetime="{{ tender.closing_date|date:'c' }}">{{ tender.closing_date|date:"Y-m-d H:i T" }}</time> (St. John's time){% if is_open %} <span class="until">in {{ tender.closing_date|timeuntil }}</span>{% endif %}{% else %}Not stated{% endif %}{% if not is_open %} · <span class="closed">not open</span>{% endif %}</dd></div>
+  <div class="summary-row"><dt>Buyer</dt><dd>{{ tender.buyer_org_name|default:"Not stated" }}</dd></div>
+  <div class="summary-row"><dt>Reference</dt><dd>{{ tender.reference_number }}{% if tender.solicitation_number %} (solicitation {{ tender.solicitation_number }}){% endif %}</dd></div>
+  {% if scope %}
+  <div class="summary-row"><dt>Scope</dt><dd><p class="scope-line">{% include "tenders/_scope_badge.html" with scope=scope.status %} <strong>Scope:</strong>
   {% if scope.status == "in" %}IT work (matched {% for c in scope.codes %}{{ c.scheme }} {{ c.code }}{% if c.description %} {{ c.description }}{% endif %}{% if not forloop.last %}; {% endif %}{% endfor %}{% if scope.more %}; and {{ scope.more }} more{% endif %})
   {% elif scope.status == "out" %}outside IT work for this firm (codes: {% for c in scope.codes %}{{ c.scheme }} {{ c.code }}{% if c.description %} {{ c.description }}{% endif %}{% if not forloop.last %}; {% endif %}{% endfor %}{% if scope.more %}; and {{ scope.more }} more{% endif %})
   {% else %}unknown: the notice lists no UNSPSC or GSIN category code{% endif %}
   <br><span class="small">From the notice's category codes (scope rules v1). Scope doesn't change the eligibility status below.</span>
-</p>
-{% endif %}
+</p></dd></div>
+  {% endif %}
+</dl>
 
 {% if injection_caution %}<p class="caution" role="note">{{ injection_caution }}</p>{% endif %}
 
@@ -67,7 +66,7 @@
 <section aria-labelledby="gates-heading">
   <h2 id="gates-heading">The six gates</h2>
   {% if llm or baseline %}
-  <table class="gates">
+  <table class="gates summary-table">
     <thead>
       <tr>
         <th scope="col">Gate</th>
@@ -97,7 +96,7 @@
     <summary>Technical detail: extraction, flags and keyword baseline</summary>
     {% if assessment %}<p class="small">Assessed {{ assessment.computed_at|date:"Y-m-d H:i T" }} from extraction by {{ assessment.extraction.model_id }} (prompt {{ assessment.extraction.prompt_version }}{% if combined_from_v3 %}; {{ combined_from_v3 }} gate{{ combined_from_v3|pluralize }} from the prompt v3 extraction of the notice alone, where {{ assessment.extraction.prompt_version }} had no quote that held{% endif %}), rules v{{ assessment.rules_version }}.</p>{% endif %}
     {% if llm or baseline %}
-    <table class="gates gates-tech">
+    <table class="gates gates-tech summary-table">
       <thead>
         <tr>
           <th scope="col">Gate</th>
@@ -130,12 +129,12 @@
 
 <section aria-labelledby="about-heading">
   <h2 id="about-heading">About this notice</h2>
-  <dl class="meta">
-    <dt>Published</dt><dd>{% if published %}<time datetime="{{ published|date:'Y-m-d' }}">{{ published|date:"Y-m-d" }}</time>{% else %}Not stated{% endif %}</dd>
-    <dt>Notice type</dt><dd>{{ tender.notice_type|default:"Not stated" }} ({{ tender.get_notice_kind_display }})</dd>
-    <dt>Region scope</dt><dd>{{ tender.get_region_scope_display }}</dd>
-    <dt>Official notice</dt><dd>{% if official_url %}<a href="{{ official_url }}" rel="external noreferrer">{{ official_url }}</a>{% else %}No link available{% endif %}</dd>
-    {% if search_url %}<dt>Search</dt><dd><a href="{{ search_url }}" rel="external noreferrer">Search CanadaBuys for solicitation {{ tender.solicitation_number }}</a> <span class="small">(a search on CanadaBuys, not a link to this notice)</span></dd>{% endif %}
+  <dl class="summary">
+    <div class="summary-row"><dt>Published</dt><dd>{% if published %}<time datetime="{{ published|date:'Y-m-d' }}">{{ published|date:"Y-m-d" }}</time>{% else %}Not stated{% endif %}</dd></div>
+    <div class="summary-row"><dt>Notice type</dt><dd>{{ tender.notice_type|default:"Not stated" }} ({{ tender.get_notice_kind_display }})</dd></div>
+    <div class="summary-row"><dt>Region scope</dt><dd>{{ tender.get_region_scope_display }}</dd></div>
+    <div class="summary-row"><dt>Official notice</dt><dd>{% if official_url %}<a href="{{ official_url }}" rel="external noreferrer">{{ official_url }}</a>{% else %}No link available{% endif %}</dd></div>
+    {% if search_url %}<div class="summary-row"><dt>Search</dt><dd><a href="{{ search_url }}" rel="external noreferrer">Search CanadaBuys for solicitation {{ tender.solicitation_number }}</a> <span class="small">(a search on CanadaBuys, not a link to this notice)</span></dd></div>{% endif %}
   </dl>
 </section>
 
