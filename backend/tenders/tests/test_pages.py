@@ -189,6 +189,63 @@ def test_list_truncates_a_long_label(client):
     assert f">{label[:59]}…</td>" in html and label not in html
 
 
+@pytest.mark.parametrize(("warnings", "not_stated", "shown"), [
+    # The first warning's label, else its gate's name (land claims never has a label).
+    ([blocker("On-site work at Gander, elsewhere in NL.", gate="work_location",
+              label="On-site (Gander)")], ["clearance"], "On-site (Gander)"),
+    ([blocker("A comprehensive land claims agreement applies.", gate="land_claims_applies")],
+     [], "Land claims agreement"),
+    # No warning: how many gates the notice leaves unstated.
+    ([], ["clearance", "work_location", "land_claims_applies"], "3 gates not stated"),
+    ([], ["clearance"], "1 gate not stated"),
+    ([], [], ""),
+])
+def test_list_open_reason_for_check_rows(client, warnings, not_stated, shown):
+    assess(make_tender("C"), "check_solicitation", warnings=warnings, not_stated=not_stated)
+    assert get_list(client).context["page"].object_list[0].open_reason == shown
+
+
+def test_list_open_reason_only_on_check_rows(client):
+    assess(make_tender("B"), "blocked", blockers=[blocker("Clearance required.")],
+           warnings=[blocker("x", gate="land_claims_applies")], not_stated=["work_location"])
+    assess(make_tender("N"), "no_blockers_stated", not_stated=["work_location"])
+    make_tender("UNASSESSED")
+    assert {r.reference_number: r.open_reason
+            for r in get_list(client).context["page"].object_list} == {
+        "B": "", "N": "", "UNASSESSED": ""}
+
+
+def _summary(response):
+    return response.context["status_total"], {
+        s["value"]: s["count"] for s in response.context["status_summary"]}
+
+
+def test_list_status_summary_counts_ignore_the_status_filter_only(client):
+    for ref in ("B1", "B2"):
+        assess(make_tender(ref), "blocked", blockers=[blocker("Clearance required.")])
+    assess(make_tender("C"), "check_solicitation")
+    assess(make_tender("N", region_scope="national"), "no_blockers_stated")
+    make_tender("UNASSESSED")
+    make_tender("CLOSED", tender_status="Expired")
+
+    expected = {"blocked": 2, "check_solicitation": 1, "no_blockers_stated": 1,
+                "not_assessed": 1}
+    assert _summary(get_list(client)) == (5, expected)
+    # Each count is what its link shows, whichever status is picked.
+    assert _summary(get_list(client, status="blocked")) == (5, expected)
+    # The other filters apply: region, open/all, scope.
+    assert _summary(get_list(client, region="national")) == (1, {
+        "blocked": 0, "check_solicitation": 0, "no_blockers_stated": 1})
+    assert _summary(get_list(client, show="all"))[1]["not_assessed"] == 2
+    assert _summary(get_list(client, scope=None)) == (4, {
+        "blocked": 2, "check_solicitation": 1, "no_blockers_stated": 1})
+
+
+def test_list_status_summary_with_nothing_listed(client):
+    assert _summary(get_list(client)) == (0, {
+        "blocked": 0, "check_solicitation": 0, "no_blockers_stated": 0})
+
+
 def test_list_region_filter_and_title_search(client):
     make_tender("NL", region_scope="nl", title="Network cabling, St. John's")
     make_tender("NAT", region_scope="national", title="Cloud hosting services")

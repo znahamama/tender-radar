@@ -15,7 +15,16 @@ from urllib.parse import urlencode
 
 from django.conf import settings
 from django.core.paginator import Paginator
-from django.db.models import F, OuterRef, Q, QuerySet, Subquery
+from django.db.models import (
+    Count,
+    F,
+    Func,
+    IntegerField,
+    OuterRef,
+    Q,
+    QuerySet,
+    Subquery,
+)
 from django.db.models.fields.json import KT
 from django.http import Http404
 from django.shortcuts import get_object_or_404, render
@@ -124,18 +133,54 @@ def tender_rows() -> QuerySet[Tender]:
         first_blocker_label=Subquery(
             newest.annotate(r=KT("blockers__0__label")).values("r")[:1]),
         first_blocker_gate=Subquery(newest.annotate(r=KT("blockers__0__gate")).values("r")[:1]),
+        first_warning_label=Subquery(
+            newest.annotate(r=KT("warnings__0__label")).values("r")[:1]),
+        first_warning_gate=Subquery(newest.annotate(r=KT("warnings__0__gate")).values("r")[:1]),
+        not_stated_count=Subquery(newest.annotate(
+            r=Func(F("not_stated"), function="jsonb_array_length", output_field=IntegerField())
+        ).values("r")[:1]),
         scope_status=Subquery(newest.annotate(r=KT("scope__status")).values("r")[:1]),
     )
 
 
-def blocker_label(row: Tender) -> str:
-    """Short form of a row's first blocker. Findings from before rules v3 have no label:
-    fall back to the gate's name (the next assess_tenders run adds the label)."""
-    if row.first_blocker_label:
-        return row.first_blocker_label
-    if row.first_blocker_gate:
-        return GATE_LABELS.get(row.first_blocker_gate, row.first_blocker_gate)
+def _short_label(label: str | None, gate: str | None) -> str:
+    """A finding's short form. Findings from before rules v3, and gates that never get a
+    label (land claims, extraction), fall back to the gate's name."""
+    if label:
+        return label
+    if gate:
+        return GATE_LABELS.get(gate, gate)
     return ""
+
+
+def blocker_label(row: Tender) -> str:
+    """Short form of a row's first blocker (the next assess_tenders run adds old labels)."""
+    return _short_label(row.first_blocker_label, row.first_blocker_gate)
+
+
+def open_reason(row: Tender) -> str:
+    """What is still open on a check_solicitation row, in a few words: its first warning,
+    else how many gates the notice leaves unstated. Empty for every other status."""
+    if row.eligibility_status != Assessment.Status.CHECK_SOLICITATION:
+        return ""
+    warning = _short_label(row.first_warning_label, row.first_warning_gate)
+    if warning:
+        return warning
+    n = row.not_stated_count or 0
+    return f"{n} gate{'' if n == 1 else 's'} not stated" if n else ""
+
+
+def status_summary(filters: Filters) -> tuple[int, list[dict]]:
+    """The list's triage summary: notices per eligibility status under every filter except
+    the status one (so each count is what its link would show), and their total. One
+    GROUP BY query. "Not assessed" is listed only when there is one."""
+    rows = (replace(filters, status="").apply(tender_rows()).order_by()
+            .values("eligibility_status").annotate(n=Count("pk")))
+    counts = {r["eligibility_status"] or NOT_ASSESSED: r["n"] for r in rows}
+    summary = [{"value": value, "label": label, "count": counts.get(value, 0)}
+               for value, label in STATUS_LABELS.items()
+               if value != NOT_ASSESSED or counts.get(value)]
+    return sum(counts.values()), summary
 
 
 # --- list -----------------------------------------------------------------------------
@@ -191,7 +236,11 @@ def tender_list(request):
     page.object_list = list(page.object_list)
     for row in page.object_list:
         row.first_blocker = blocker_label(row)
+        row.open_reason = open_reason(row)
+    status_total, statuses = status_summary(filters)
     return render(request, "tenders/list.html", {
+        "status_total": status_total,
+        "status_summary": statuses,
         "page": page,
         "filters": filters,
         "status_choices": list(STATUS_LABELS.items()),
