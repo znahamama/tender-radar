@@ -1,53 +1,29 @@
 {% extends "tenders/base.html" %}
 
 {% block content %}
-<h1>{% if filters.show == "all" %}All notices{% else %}Open notices{% endif %}</h1>
-<p class="lede">Federal IT tenders from CanadaBuys, checked against six eligibility gates for one fictional St. John's IT firm. Every answer comes with the exact quote behind it.</p>
-
-<nav class="triage" aria-label="Notices by eligibility">
-  <ul>
-    <li><a class="triage-all" href="{% querystring status=None page=None %}"{% if not filters.status %} aria-current="true"{% endif %}><span class="triage-n">{{ status_total }}</span> <span class="triage-label">{% if filters.scope == "all" %}notice{{ status_total|pluralize }}{% else %}IT notice{{ status_total|pluralize }}{% endif %}</span></a></li>
-    {% for s in status_summary %}
-    <li><a class="triage-{{ s.value }}" href="{% querystring status=s.value page=None %}"{% if filters.status == s.value %} aria-current="true"{% endif %}><span class="triage-n">{{ s.count }}</span> <span class="triage-label">{{ s.label }}</span></a></li>
-    {% endfor %}
-  </ul>
-</nav>
-
-<div class="controls">
-<nav class="toggle" aria-label="Which notices">
-  {% if filters.show == "all" %}
-  <a href="{% querystring show=None page=None %}">Open only</a> <strong aria-current="page">All</strong>
-  {% else %}
-  <strong aria-current="page">Open only</strong> <a href="{% querystring show='all' page=None %}">All</a>
-  {% endif %}
-</nav>
-
-<nav class="toggle scope-toggle" aria-label="Which kinds of work">
-  {% if filters.scope == "all" %}
-  Showing all {{ scope_counts.all }} notices · <a href="{% querystring scope=None page=None %}">Show {{ scope_counts.it }} IT notices only</a>
-  {% else %}
-  Showing {{ scope_counts.it }} IT notices · <a href="{% querystring scope='all' page=None %}">Show all {{ scope_counts.all }}</a>
-  {% endif %}
-</nav>
+{% now "Y" as this_year %}
+<section class="panel" aria-labelledby="list-heading">
+<div class="panel-head">
+  <h1 id="list-heading">{% if filters.show == "all" %}All notices{% else %}Open notices{% endif %}</h1>
+  <p class="lede">Federal IT tenders from CanadaBuys, checked against six eligibility gates for one fictional St. John's IT firm. Every answer comes with the exact quote behind it.</p>
 </div>
 
-<details class="filters-panel"{% if filtered %} open{% endif %}>
-<summary>Search and filter</summary>
-<form class="filters" method="get" action="{% url 'tender-list' %}" role="search">
-  <label>Title contains
-    <input type="search" name="q" value="{{ filters.q }}" maxlength="200">
+<form class="toolbar" method="get" action="{% url 'tender-list' %}" role="search" aria-label="Filter notices">
+  <label class="tool tool-search"><span class="visually-hidden">Title contains</span>
+    <input type="search" name="q" value="{{ filters.q }}" maxlength="200" placeholder="Filter notices…">
   </label>
-  <label>Eligibility
+  <label class="tool tool-select"><span class="tool-label">Status</span>
     <select name="status">
-      <option value="">Any</option>
-      {% for value, label in status_choices %}
-      <option value="{{ value }}"{% if filters.status == value %} selected{% endif %}>{{ label }}</option>
+      <option value="">All {{ status_total }}</option>
+      {% for s in status_summary %}
+      <option value="{{ s.value }}"{% if filters.status == s.value %} selected{% endif %}>{{ s.label }} {{ s.count }}</option>
       {% endfor %}
+      {% if filters.status == "not_assessed" and status_summary|length != status_choices|length %}<option value="not_assessed" selected>Not assessed 0</option>{% endif %}
     </select>
   </label>
-  <label>Region scope
+  <label class="tool tool-select"><span class="tool-label">Region</span>
     <select name="region">
-      <option value="">Any</option>
+      <option value="">All</option>
       {% for value, label in region_choices %}
       <option value="{{ value }}"{% if filters.region == value %} selected{% endif %}>{{ label }}</option>
       {% endfor %}
@@ -55,25 +31,26 @@
   </label>
   {% if filters.show == "all" %}<input type="hidden" name="show" value="all">{% endif %}
   {% if filters.scope == "all" %}<input type="hidden" name="scope" value="all">{% endif %}
-  <button type="submit">Filter</button>
-  {% if filtered %}<a href="{% querystring q=None status=None region=None page=None %}">Clear</a>{% endif %}
+  <button class="apply" type="submit">Apply</button>
+  {% if filtered %}<a class="reset" href="{% querystring q=None status=None region=None page=None %}">Reset</a>{% endif %}
+  <span class="toolbar-gap"></span>
+  <span class="segmented" role="group" aria-label="Open or closed">
+    <a href="{% querystring show=None page=None %}"{% if filters.show != "all" %} aria-current="true"{% endif %}>Open</a><a href="{% querystring show='all' page=None %}"{% if filters.show == "all" %} aria-current="true"{% endif %}>All</a>
+  </span>
+  <span class="segmented" role="group" aria-label="Kind of work">
+    <a href="{% querystring scope=None page=None %}"{% if filters.scope != "all" %} aria-current="true"{% endif %}>IT <span class="seg-n">{{ scope_counts.it }}</span></a><a href="{% querystring scope='all' page=None %}"{% if filters.scope == "all" %} aria-current="true"{% endif %}>All notices <span class="seg-n">{{ scope_counts.all }}</span></a>
+  </span>
 </form>
-</details>
-
-<p class="count">
-  {% if page.paginator.count %}
-  {{ page.start_index }}–{{ page.end_index }} of {{ page.paginator.count }}.
-  {% else %}No notices match.{% endif %}
-  {% if filters.show == "all" %}Latest closing date first.{% else %}Closing soonest first.{% endif %}
-</p>
 
 {% if page.object_list %}
-<div class="table-card">
+<div class="table-wrap">
 <table class="tenders{% if filters.scope != 'all' %} only-it{% endif %}">
+  <colgroup><col class="col-ref"><col class="col-notice"><col class="col-status"><col class="col-closes"><col class="col-reason"></colgroup>
   <thead>
     <tr>
-      <th scope="col">Eligibility</th>
+      <th scope="col">Reference</th>
       <th scope="col">Notice</th>
+      <th scope="col">Status</th>
       <th scope="col">Closes (St. John's time)</th>
       <th scope="col">Reason</th>
     </tr>
@@ -81,11 +58,11 @@
   <tbody>
     {% for t in page.object_list %}
     <tr class="row row-{{ t.eligibility_status|default:'not_assessed' }}">
+      <td class="cell-ref">{{ t.reference_number }}</td>
+      <td class="cell-notice"><span class="notice-line">{% include "tenders/_scope_badge.html" with scope=t.scope_status %}<a class="notice-title" href="{% url 'tender-detail' t.reference_number %}" title="{% if t.buyer_org_name %}{{ t.buyer_org_name }} · {% endif %}{{ t.get_region_scope_display }} · {{ t.get_notice_kind_display }}">{{ t.title }}</a></span><span class="notice-meta">{% if t.buyer_org_name %}{{ t.buyer_org_name }} · {% endif %}{{ t.get_region_scope_display }} · {{ t.get_notice_kind_display }}</span></td>
       <td class="cell-status">{% include "tenders/_badge.html" with status=t.eligibility_status %}</td>
-      <td class="cell-notice"><a class="notice-title" href="{% url 'tender-detail' t.reference_number %}">{{ t.title }}</a> {% include "tenders/_scope_badge.html" with scope=t.scope_status %}
-        <span class="notice-meta">{% if t.buyer_org_name %}{{ t.buyer_org_name }} · {% endif %}{{ t.get_region_scope_display }} · {{ t.get_notice_kind_display }}</span></td>
-      <td class="cell-closes">{% if t.closing_date %}<time datetime="{{ t.closing_date|date:'c' }}">{{ t.closing_date|date:"Y-m-d H:i T" }}</time>{% if filters.show != "all" %} <span class="until">in {{ t.closing_date|timeuntil }}</span>{% endif %}{% else %}Not stated{% endif %}</td>
-      <td class="cell-reason">{% if t.first_blocker %}{{ t.first_blocker|truncatechars:60 }}{% elif t.open_reason %}{{ t.open_reason|truncatechars:60 }}{% endif %}</td>
+      <td class="cell-closes">{% if t.closing_date %}<time datetime="{{ t.closing_date|date:'c' }}" title="{{ t.closing_date|date:'Y-m-d H:i T' }}">{% if t.closing_date|date:"Y" == this_year %}{{ t.closing_date|date:"M j, H:i" }}{% else %}{{ t.closing_date|date:"M j, Y" }}{% endif %}</time>{% if filters.show != "all" %} <span class="until">in {% with u=t.closing_date|timeuntil %}{{ u|truncatewords:2|cut:", …" }}{% endwith %}</span>{% endif %}{% else %}Not stated{% endif %}</td>
+      <td class="cell-reason">{% if t.first_blocker %}{{ t.first_blocker|truncatechars:60 }}{% elif t.open_reason %}{{ t.open_reason|truncatechars:60 }}{% else %}<span class="none">—</span>{% endif %}</td>
     </tr>
     {% endfor %}
   </tbody>
@@ -93,11 +70,16 @@
 </div>
 {% endif %}
 
-{% if page.has_other_pages %}
-<nav class="pager" aria-label="Pages">
-  {% if page.has_previous %}<a href="{% querystring page=page.previous_page_number %}" rel="prev">← Previous</a>{% endif %}
-  <span>Page {{ page.number }} of {{ page.paginator.num_pages }}</span>
-  {% if page.has_next %}<a href="{% querystring page=page.next_page_number %}" rel="next">Next →</a>{% endif %}
-</nav>
-{% endif %}
+<div class="panel-foot">
+  <p class="count">{% if page.paginator.count %}{{ page.start_index }}–{{ page.end_index }} of {{ page.paginator.count }}{% else %}No notices match.{% endif %}
+    <span class="order">· {% if filters.show == "all" %}Open first, closing soonest; then closed, most recent first{% else %}Closing soonest first{% endif %}</span></p>
+  {% if page.paginator.count %}
+  <nav class="pager" aria-label="Pages">
+    <span class="pager-where">Page {{ page.number }} of {{ page.paginator.num_pages }}</span>
+    {% if page.has_previous %}<a class="pager-btn" href="{% querystring page=1 %}" aria-label="First page">«</a><a class="pager-btn" href="{% querystring page=page.previous_page_number %}" rel="prev" aria-label="Previous page">‹</a>{% else %}<span class="pager-btn" aria-hidden="true">«</span><span class="pager-btn" aria-hidden="true">‹</span>{% endif %}
+    {% if page.has_next %}<a class="pager-btn" href="{% querystring page=page.next_page_number %}" rel="next" aria-label="Next page">›</a><a class="pager-btn" href="{% querystring page=page.paginator.num_pages %}" aria-label="Last page">»</a>{% else %}<span class="pager-btn" aria-hidden="true">›</span><span class="pager-btn" aria-hidden="true">»</span>{% endif %}
+  </nav>
+  {% endif %}
+</div>
+</section>
 {% endblock %}

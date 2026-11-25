@@ -16,6 +16,7 @@ from urllib.parse import urlencode
 from django.conf import settings
 from django.core.paginator import Paginator
 from django.db.models import (
+    Case,
     Count,
     F,
     Func,
@@ -24,6 +25,8 @@ from django.db.models import (
     Q,
     QuerySet,
     Subquery,
+    Value,
+    When,
 )
 from django.db.models.fields.json import KT
 from django.http import Http404
@@ -211,7 +214,15 @@ class Filters:
         if self.show == "open":
             qs = qs.filter(is_open()).order_by(F("closing_date").asc(nulls_last=True), "id")
         else:
-            qs = qs.order_by(F("closing_date").desc(nulls_last=True), "id")
+            # Open notices first, closing soonest (as in the open view); then closed ones,
+            # most recently closed first. A far-future date stays at the end of the open ones.
+            closing_if_open = Case(When(is_open(), then=F("closing_date")))
+            closing_if_closed = Case(When(is_open(), then=None), default=F("closing_date"))
+            qs = qs.alias(
+                closed=Case(When(is_open(), then=Value(0)), default=Value(1)),
+                open_closing=closing_if_open, closed_closing=closing_if_closed,
+            ).order_by("closed", F("open_closing").asc(nulls_last=True),
+                       F("closed_closing").desc(nulls_last=True), "id")
         if self.status == NOT_ASSESSED:
             qs = qs.filter(eligibility_status__isnull=True)
         elif self.status:

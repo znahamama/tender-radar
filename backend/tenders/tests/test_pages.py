@@ -118,6 +118,21 @@ def test_list_orders_open_by_closing_date_soonest_first(client):
     assert refs(get_list(client)) == ["SOONER", "LATER", "NO-DATE"]
 
 
+def test_list_all_view_puts_open_first_then_most_recently_closed(client):
+    now = timezone.now()
+    make_tender("OPEN-FAR", closing_date=datetime(2100, 12, 31, tzinfo=UTC))
+    make_tender("OPEN-SOON", closing_date=now + timedelta(days=2))
+    make_tender("OPEN-NO-DATE", closing_date=None)
+    make_tender("CLOSED-OLD", tender_status="Expired", closing_date=now - timedelta(days=30))
+    make_tender("CLOSED-NO-DATE", tender_status="Expired", closing_date=None)
+    make_tender("CLOSED-RECENT", tender_status="Expired", closing_date=now - timedelta(days=1))
+    # Open at the last ingest, but its closing date has passed since: closed.
+    make_tender("PAST-CLOSE", closing_date=now - timedelta(hours=1))
+    assert refs(get_list(client, show="all")) == [
+        "OPEN-SOON", "OPEN-FAR", "OPEN-NO-DATE",
+        "PAST-CLOSE", "CLOSED-RECENT", "CLOSED-OLD", "CLOSED-NO-DATE"]
+
+
 def test_list_status_filter(client):
     assess(make_tender("B"), "blocked", blockers=[blocker("Corporate clearance required.")])
     assess(make_tender("C"), "check_solicitation")
@@ -747,7 +762,8 @@ def test_list_shows_it_notices_by_default_with_both_counts(client):
     r = get_list(client, scope=None)
     assert sorted(refs(r)) == ["IT-1", "IT-2"]
     html = r.content.decode()
-    assert 'Showing 2 IT notices · <a href="?scope=all">Show all 5</a>' in html
+    assert ('<a href="" aria-current="true">IT <span class="seg-n">2</span></a>'
+            '<a href="?scope=all">All notices <span class="seg-n">5</span></a>') in html
     assert html.count('class="badge badge-scope-in"') == 2
 
 
@@ -756,7 +772,8 @@ def test_list_toggle_shows_every_notice_with_its_scope_badge(client):
     r = get_list(client, scope="all")
     assert sorted(refs(r)) == ["IT-1", "IT-2", "NO-CODES", "NOT-IT", "UNASSESSED"]
     html = r.content.decode()
-    assert 'Showing all 5 notices · <a href="?">Show 2 IT notices only</a>' in html
+    assert ('<a href="?">IT <span class="seg-n">2</span></a><a href="?scope=all" '
+            'aria-current="true">All notices <span class="seg-n">5</span></a>') in html
     assert ">Not IT</span>" in html and ">No codes</span>" in html
     assert '<input type="hidden" name="scope" value="all">' in html  # the form keeps it
 
@@ -765,7 +782,8 @@ def test_scope_counts_follow_the_other_filters(client):
     _scoped(client)
     assess(make_tender("NAT-IT", region_scope="national"), "blocked", scope="in")
     html = get_list(client, scope=None, region="national").content.decode()
-    assert "Showing 1 IT notices · " in html and "Show all 1</a>" in html
+    assert 'IT <span class="seg-n">1</span>' in html
+    assert 'All notices <span class="seg-n">1</span>' in html
 
 
 def test_scope_never_changes_the_eligibility_badge(client):

@@ -1,4 +1,4 @@
-"""The public pages' layout: the list as a triage board, the detail page verdict first.
+"""The public pages' layout: the list as one panel, the detail page verdict first.
 
 Wording and data are tested in test_pages.py; this pins the order and structure the demo
 relies on, and that status is never shown by colour alone."""
@@ -31,40 +31,60 @@ def _board(client):
 
 # --- list -------------------------------------------------------------------------------
 
-def test_list_leads_with_the_intro_and_the_status_summary(client):
+def test_list_is_one_panel_heading_toolbar_table_pager(client):
     _board(client)
     html = get_list(client, scope=None).content.decode()
-    assert f'<p class="lede">{INTRO}</p>' in html
-    assert html.index("lede") < html.index('class="triage"') < html.index('class="tenders')
-    assert '<span class="triage-n">3</span> <span class="triage-label">IT notices</span>' in html
+    order = ['<section class="panel"', '<h1 id="list-heading">Open notices</h1>',
+             f'<p class="lede">{INTRO}</p>', '<form class="toolbar"', '<table class="tenders',
+             'class="panel-foot"', '</section>']
+    assert [html.index(s) for s in order] == sorted(html.index(s) for s in order)
+    assert html.count("<form") == 1  # one GET form replaces the counts, toggles and filters
+    assert "<h1 id=\"list-heading\">All notices</h1>" in get_list(client, show="all").content.decode()
+
+
+def test_list_status_control_counts_each_status(client):
+    _board(client)
+    html = get_list(client, scope=None).content.decode()
+    assert '<option value="">All 3</option>' in html
     for value, label in (("blocked", "Blocked"), ("check_solicitation", "Check solicitation"),
                          ("no_blockers_stated", "No blockers stated")):
-        assert (f'<a class="triage-{value}" href="?status={value}"><span class="triage-n">1'
-                f'</span> <span class="triage-label">{label}</span></a>') in html
-    assert "triage-not_assessed" not in html  # listed only when there is one
+        assert f'<option value="{value}">{label} 1</option>' in html
+    assert 'value="not_assessed"' not in html  # listed only when there is one
 
 
-def test_list_summary_marks_the_picked_status_and_keeps_other_filters(client):
+def test_list_toolbar_marks_the_picked_values_and_its_links_keep_other_filters(client):
     _board(client)
     html = get_list(client, status="blocked", region="nl").content.decode()
+    assert '<option value="blocked" selected>Blocked 1</option>' in html
+    assert '<option value="nl" selected>' in html
     # {% querystring %} keeps the request's own parameter order.
-    assert ('<a class="triage-blocked" href="?status=blocked&amp;region=nl&amp;scope=all"'
-            ' aria-current="true">') in html
-    assert '<a class="triage-all" href="?region=nl&amp;scope=all">' in html
-    assert html.count('aria-current="true"') == 1
+    assert ('<a href="?status=blocked&amp;region=nl&amp;scope=all" aria-current="true">Open</a>'
+            '<a href="?status=blocked&amp;region=nl&amp;scope=all&amp;show=all">All</a>') in html
+    assert ('<a href="?status=blocked&amp;region=nl">IT <span class="seg-n">1</span></a>'
+            '<a href="?status=blocked&amp;region=nl&amp;scope=all" aria-current="true">'
+            'All notices <span class="seg-n">1</span></a>') in html
+    assert html.count('aria-current="true"') == 2  # one per toggle
 
 
-def test_list_rows_lead_with_status_and_end_with_the_reason(client):
+def test_list_rows_are_reference_notice_status_closes_reason(client):
     _board(client)
     html = get_list(client).content.decode()
     row = re.search(r'<tr class="row row-blocked">(.*?)</tr>', html, re.DOTALL).group(1)
     cells = re.findall(r'<td class="cell-(\w+)"', row)
-    assert cells == ["status", "notice", "closes", "reason"]
+    assert cells == ["ref", "notice", "status", "closes", "reason"]
+    assert '<td class="cell-ref">B</td>' in row
+    # Scope chip before the title; buyer, region and type in a tooltip and for screen readers.
+    assert row.index('class="badge badge-scope-in"') < row.index('class="notice-title"')
+    meta = "Public Services and Procurement Canada · NL · Regular"
+    assert f'title="{meta}">Tender B</a>' in row
+    assert f'<span class="notice-meta">{meta}</span>' in row
     assert '<span class="badge badge-blocked">Blocked</span>' in row  # a word, not a colour
     assert ">Supply arrangement (SBIPS)</td>" in row
+    assert '<span class="until">in 1 week</span>' in row  # open view: time left, short
     check = re.search(r'<tr class="row row-check_solicitation">(.*?)</tr>', html, re.DOTALL).group(1)
     assert ">2 gates not stated</td>" in check
-    assert '<span class="until">in ' in row  # open view: time left
+    clear = re.search(r'<tr class="row row-no_blockers_stated">(.*?)</tr>', html, re.DOTALL).group(1)
+    assert '<span class="none">—</span></td>' in clear
 
 
 def test_list_unassessed_rows_and_closed_view(client):
@@ -74,10 +94,30 @@ def test_list_unassessed_rows_and_closed_view(client):
     assert 'class="until"' not in get_list(client, show="all").content.decode()
 
 
-def test_list_filters_fold_unless_a_filter_is_on(client):
+def test_list_toolbar_is_one_get_form_with_an_apply_button(client):
     _board(client)
-    assert '<details class="filters-panel">' in get_list(client).content.decode()
-    assert '<details class="filters-panel" open>' in get_list(client, q="Tender").content.decode()
+    html = get_list(client, show="all").content.decode()
+    form = re.search(r'<form class="toolbar" method="get"(.*?)</form>', html, re.DOTALL).group(1)
+    for part in ('placeholder="Filter notices…"', 'name="status"', 'name="region"',
+                 '<input type="hidden" name="show" value="all">',
+                 '<input type="hidden" name="scope" value="all">',
+                 '<button class="apply" type="submit">Apply</button>'):
+        assert part in form
+    assert 'class="reset"' not in form  # nothing to reset
+    filtered = get_list(client, q="Tender").content.decode()
+    assert '<a class="reset" href="?scope=all">Reset</a>' in filtered
+
+
+def test_list_pager_links_and_greys_out_its_ends(client):
+    for i in range(30):
+        make_tender(f"R-{i:02d}")
+    first = get_list(client).content.decode()
+    assert "1–25 of 30" in first and "Page 1 of 2" in first
+    assert first.count('<span class="pager-btn" aria-hidden="true">') == 2  # « ‹
+    assert '<a class="pager-btn" href="?scope=all&amp;page=2" aria-label="Last page">»</a>' in first
+    second = get_list(client, page=2).content.decode()  # the URL is ?page=2&scope=all
+    assert '<a class="pager-btn" href="?page=1&amp;scope=all" aria-label="First page">«</a>' in second
+    assert second.count('<span class="pager-btn" aria-hidden="true">') == 2  # › »
 
 
 def test_list_it_only_view_marks_its_table(client):
