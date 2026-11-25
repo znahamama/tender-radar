@@ -33,12 +33,13 @@
   {% if filters.scope == "all" %}<input type="hidden" name="scope" value="all">{% endif %}
   <button class="apply" type="submit">Apply</button>
   {% if filtered %}<a class="reset" href="{% querystring q=None status=None region=None page=None %}">Reset</a>{% endif %}
-  <span class="toolbar-gap"></span>
+  <span class="toolbar-toggles">
   <span class="segmented" role="group" aria-label="Open or closed">
     <a href="{% querystring show=None page=None %}"{% if filters.show != "all" %} aria-current="true"{% endif %}>Open</a><a href="{% querystring show='all' page=None %}"{% if filters.show == "all" %} aria-current="true"{% endif %}>All</a>
   </span>
   <span class="segmented" role="group" aria-label="Kind of work">
     <a href="{% querystring scope=None page=None %}"{% if filters.scope != "all" %} aria-current="true"{% endif %}>IT <span class="seg-n">{{ scope_counts.it }}</span></a><a href="{% querystring scope='all' page=None %}"{% if filters.scope == "all" %} aria-current="true"{% endif %}>All notices <span class="seg-n">{{ scope_counts.all }}</span></a>
+  </span>
   </span>
 </form>
 

@@ -175,14 +175,18 @@ h3 { font-size: var(--text-sm); font-weight: 600; margin: var(--s5) 0 var(--s2);
 .toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2); margin: var(--s5) 0 var(--s4); font-size: var(--text-sm); }
 .toolbar input, .toolbar select, .toolbar button { font: inherit; color: var(--fg); }
 .tool { display: inline-flex; align-items: center; height: 2rem; border: 1px solid var(--input); border-radius: var(--radius-sm); background: var(--bg); }
-.tool-search { width: 16rem; }
+/* The search box gives up width first, so the toggles keep their place on the right. */
+.tool-search { flex: 1 1 12rem; min-width: 8rem; max-width: 16rem; }
 .tool-search input { width: 100%; height: 100%; padding: 0 var(--s3); border: 0; border-radius: inherit; background: transparent; }
 .tool-search input::placeholder { color: var(--muted-fg); opacity: 1; }
-.tool-select { position: relative; border-style: dashed; padding-left: var(--s3); }
+.tool-select { position: relative; min-width: 7rem; border-style: dashed; padding-left: var(--s3); }
 .tool-select:hover { background: var(--muted); }
-.tool-label { font-weight: 500; padding-right: var(--s2); margin-right: var(--s2); border-right: 1px solid var(--border); line-height: 1rem; }
+.tool-label { flex-shrink: 0; white-space: nowrap; font-weight: 500; padding-right: var(--s2); margin-right: var(--s2); border-right: 1px solid var(--border); line-height: 1rem; }
 .tool-select select {
   appearance: none;
+  field-sizing: content; /* as wide as the picked option, not the longest one */
+  min-width: 0;
+  text-overflow: ellipsis;
   height: 100%;
   padding: 0 1.75rem 0 0;
   border: 0;
@@ -204,24 +208,33 @@ h3 { font-size: var(--text-sm); font-weight: 600; margin: var(--s5) 0 var(--s2);
 /* The bordered box carries the focus ring, so the select inside doesn't draw a second one. */
 .tool:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
 .tool input:focus-visible, .tool select:focus-visible { outline: none; }
+/* No JavaScript, so the form needs a submit button. It is always there (nothing moves on
+   focus) as a quiet outlined button, and turns primary only on hover or keyboard focus. */
 .toolbar .apply {
+  flex-shrink: 0;
   height: 2rem;
   padding: 0 var(--s3);
-  border: 1px solid var(--primary);
+  border: 1px solid var(--input);
   border-radius: var(--radius-sm);
-  background: var(--primary);
-  color: var(--on-primary);
+  background: var(--bg);
+  color: var(--fg);
   font-weight: 500;
   cursor: pointer;
 }
-/* No JavaScript, so the form needs a submit button; it shows once the toolbar has focus. */
-.toolbar:not(:focus-within) .apply {
-  position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap;
+.toolbar .apply:hover, .toolbar .apply:focus-visible {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: var(--on-primary);
 }
-.reset { padding: 0 var(--s2); line-height: 2rem; color: var(--fg); font-weight: 500; text-decoration: none; border-radius: var(--radius-sm); }
+.reset { flex-shrink: 0; white-space: nowrap; padding: 0 var(--s2); line-height: 2rem; color: var(--fg); font-weight: 500; text-decoration: none; border-radius: var(--radius-sm); }
 .reset:hover { background: var(--muted); }
 .reset::after { content: " ×"; content: " ×" / ""; color: var(--muted-fg); }
-.toolbar-gap { flex: 1; }
+/* The two toggles stay together on one line, pushed to the right of the filters. From
+   960px up the toolbar never wraps: the search box, then the selects, give up width instead. */
+.toolbar-toggles { display: flex; flex-shrink: 0; gap: var(--s2); margin-left: auto; }
+@media (min-width: 60em) {
+  .toolbar { flex-wrap: nowrap; }
+}
 
 /* Open | All and IT | All notices: small segmented toggles of real links. */
 .segmented { display: inline-flex; height: 2rem; border: 1px solid var(--input); border-radius: var(--radius-sm); overflow: hidden; }
@@ -411,10 +424,6 @@ details.technical .small:first-of-type { margin-top: 0; }
 
 /* --- projectors and small laptops: give the titles more of the row --------------- */
 
-@media (max-width: 72em) {
-  .tool-search { width: 12rem; }
-}
-
 @media (max-width: 68.75em) { /* 1100px */
   .col-reason { width: 13rem; }
   .tenders .cell-reason { white-space: nowrap; }
@@ -426,10 +435,10 @@ details.technical .small:first-of-type { margin-top: 0; }
   h1 { font-size: 1.375rem; }
   h2 { margin-top: var(--s6); }
   .panel { margin-top: var(--s4); padding: var(--s4); }
-  .tool-search { width: 100%; }
+  .tool-search { flex-basis: 100%; max-width: none; }
   .tool-select { flex: 1 1 auto; }
   .tool-select select { flex: 1; }
-  .toolbar-gap { display: none; }
+  .toolbar-toggles { margin-left: 0; }
   .card { padding: var(--s4); }
   .summary-row { grid-template-columns: 1fr; }
 
